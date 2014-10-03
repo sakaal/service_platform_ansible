@@ -1,0 +1,12 @@
+[Unit]
+Description=Sonatype Nexus OSS Artifact Repository
+
+[Service]
+Type=forking
+ExecStart={{ nexus_home }}/bin/nexus start
+ExecStop={{ nexus_home }}/bin/nexus stop
+ExecReload={{ nexus_home }}/bin/nexus restart
+PIDFile={{ nexus_home }}/run/nexus.pid
+
+[Install]
+WantedBy=multi-user.target

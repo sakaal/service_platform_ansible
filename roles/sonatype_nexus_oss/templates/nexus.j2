@@ -1,0 +1,39 @@
+#!/bin/sh
+
+### BEGIN INIT INFO
+# Provides:          nexus
+# Required-Start:    $remote_fs $named $network $time
+# Required-Stop:     $remote_fs
+# Default-Start:     3 4 5
+# Default-Stop:      0 1 2 6
+# Short-Description: Nexus OSS
+# Description:       Sonatype Nexus OSS artifact repository
+### END INIT INFO
+
+NEXUS_USER={{ nexus_user | mandatory }}
+NEXUS_BIN={{ nexus_home | mandatory }}/bin/nexus
+
+test -x $NEXUS_BIN || {
+    echo "$NEXUS_BIN not installed";
+    if [ "$1" = "stop" ]; then exit 0;
+    else exit 5; fi;
+}
+
+SU="su -l $NEXUS_USER -c "
+
+case "$1" in
+start)
+    $SU "$NEXUS_BIN start"
+    ;;
+stop)
+    $SU "$NEXUS_BIN stop"
+    ;;
+restart|force-reload)
+    $SU "$NEXUS_BIN restart"
+    ;;
+status)
+    $SU "$NEXUS_BIN status"
+    ;;
+\*)
+    echo "usage: $0 (start|stop|restart|status|help)"
+esac

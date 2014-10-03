@@ -1,0 +1,18 @@
+---
+# file: ci_servers.yml
+
+#
+# Continuous Integration (CI) services
+#
+
+- hosts: ci_servers
+  vars_files:
+    - /mnt/sensitive_data/etc/ansible/vars/admin_access.yml
+    - /mnt/sensitive_data/etc/ansible/vars/hetzner.yml
+  roles:
+    - transport_layer_security
+    - java_oracle
+    - ca_trust
+    - java_keystore
+    - jenkins_ci
+    - jenkins_ci_backup

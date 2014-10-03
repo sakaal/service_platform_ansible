@@ -1,0 +1,42 @@
+---
+# file: roles/java_keystore/tasks/main.yml
+
+#
+# Import certificates to Java truststore files.
+#
+
+#
+# http://docs.oracle.com/javase/8/docs/technotes/guides/security/jsse/JSSERefGuide.html#X509TrustManager
+#
+# {{ java_oracle_home }}/jre/lib/security/jssecacerts
+# {{ java_oracle_home }}/jre/lib/security/cacerts
+#
+# Note that /etc/pki/java/cacerts is managed by roles/ca_trust.
+#
+
+- name: Check Java keystores
+  with_nested:
+  - java_keystores
+  - java_certificates
+  sudo: yes
+  shell: >
+         chdir="/etc/pki/java" "{{ java_oracle_home | mandatory }}/bin/keytool"
+         -keystore "{{ item.0.keystore | mandatory }}"
+         -list -alias "{{ item.1.alias | mandatory }}"
+         -storepass "{{ item.0.storepass | default('changeit') }}"
+  register: java_keystore
+  changed_when: java_keystore.rc != 0 and
+                not 'Keystore file does not exist' in java_keystore.stdout
+  failed_when: False
+
+- name: Import certificates to Java keystores
+  with_items: java_keystore.results
+  when: item|changed
+  sudo: yes
+  shell: >
+         chdir="/etc/pki/java" "{{ java_oracle_home | mandatory }}/bin/keytool"
+         -keystore "{{ item.item.0.keystore }}"
+         -import -alias "{{ item.item.1.alias }}"
+         -file "{{ item.item.1.cert | mandatory }}"
+         -storepass "{{ item.item.0.storepass | default('changeit') }}"
+         -noprompt

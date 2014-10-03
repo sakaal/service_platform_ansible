@@ -1,0 +1,12 @@
+---
+# file: roles/backup_tools
+
+#
+# Tools for configuring automated backups
+#
+  
+- name: Backup tools
+  with_items:
+  - lftp
+  sudo: yes
+  yum: name={{ item }}

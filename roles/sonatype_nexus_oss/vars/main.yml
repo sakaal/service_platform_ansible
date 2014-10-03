@@ -1,0 +1,8 @@
+---
+# file: roles/sonatype_nexus_oss/vars/main.yml
+
+nexus_user: nexus
+nexus_home: "/home/{{ nexus_user | mandatory }}/nexus-{{ nexus_version | mandatory }}"
+nexus_conf: "/home/{{ nexus_user }}/sonatype-work/nexus/conf"
+nexus_archive: "nexus-{{ nexus_version }}-bundle.tar.gz"
+files_dir: "{{ playbook_dir }}/roles/sonatype_nexus_oss/files"

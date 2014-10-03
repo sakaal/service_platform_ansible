@@ -1,0 +1,5 @@
+---
+# file: roles/https_virtual_proxies/meta/main.yml
+
+dependencies:
+  - { role: http_server }

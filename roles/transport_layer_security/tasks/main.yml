@@ -1,0 +1,21 @@
+---
+# file: roles/transport_layer_security/tasks/main.yml
+#
+# Copy X.509 PKI certificates and keys to target hosts (for TLS/SSL)
+#
+
+- name: X.509 server key
+  sudo: yes
+  copy: src=/mnt/sensitive_data/etc/pki/tls/private/{{ x509_key | mandatory }}
+        dest=/etc/pki/tls/private/{{ x509_key }}
+        owner=root group=root mode=0600
+
+- name: X.509 certificate
+  sudo: yes
+  copy: src=/mnt/sensitive_data/etc/pki/tls/certs/{{ x509_cert | mandatory }}
+        dest=/etc/pki/tls/certs/{{ x509_cert }}
+        owner=root group=root mode=0644
+
+#
+# See roles/ca_trust for trusted CA bundles. 
+#

@@ -1,0 +1,42 @@
+---
+# file: roles/java_oracle/tasks/main.yml
+
+- name: Download the Oracle Java archive locally
+  run_once: yes
+  local_action: >
+                command chdir="{{ files_dir }}"
+                creates={{ java_oracle_archive | mandatory }}
+                wget -nv --no-cookies --no-check-certificate
+                --header "Cookie: oraclelicense=accept-secureback-cookie"
+                http://download.oracle.com/otn-pub/java/{{ java_oracle_dirpath | mandatory }}/{{ java_oracle_archive }}
+                -O {{ java_oracle_archive }}
+
+- name: Verify the Oracle Java archive
+  run_once: yes
+  local_action: stat path="{{ files_dir }}/{{ java_oracle_archive }}"
+  register: java
+  failed_when: java.stat.md5 != "{{ java_oracle_md5sum | mandatory }}"
+
+- name: Upload the Oracle Java RPM
+  sudo: yes
+  copy: >
+        src="{{ java_oracle_archive }}"
+        dest="{{ packages_dir | mandatory }}/{{ java_oracle_archive }}"
+
+- name: Install the Oracle Java RPM
+  sudo: yes
+  command: >
+           chdir={{ packages_dir }}
+           creates="{{ java_oracle_home | mandatory }}"
+           rpm -U {{ java_oracle_archive }}
+  register: java_oracle_installed
+
+- name: Set Oracle java as default
+  sudo: yes
+  command: alternatives --set java "{{ java_oracle_home }}/bin/java"
+  when: java_oracle_installed|changed and ansible_distribution == 'Fedora'
+
+- name: Set Oracle jar as default
+  sudo: yes
+  command: alternatives --set jar "{{ java_oracle_home }}/bin/jar"
+  when: java_oracle_installed|changed and ansible_distribution == 'Fedora'

@@ -1,0 +1,7 @@
+---
+# file: roles/sonatype_nexus_oss/handlers/main.yml
+
+- name: Restart Nexus
+  sudo: yes
+  sudo_user: root
+  service: name=nexus state=restarted

@@ -1,0 +1,17 @@
+---
+# file: web_servers.yml
+
+#
+# Web services and reverse proxies
+#
+
+- hosts: web_servers
+  vars_files:
+    - /mnt/sensitive_data/etc/ansible/vars/admin_access.yml
+    - /mnt/sensitive_data/etc/ansible/vars/dynect.yml
+    - /mnt/sensitive_data/etc/ansible/vars/hetzner.yml
+  roles:
+    - dmz
+    - dmz_bastion
+    - transport_layer_security
+    - https_virtual_proxies

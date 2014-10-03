@@ -1,0 +1,13 @@
+DEVICE="eth1"
+NAME="eth1"
+DEFROUTE=yes
+ONBOOT=yes
+NETBOOT=no
+IPV6INIT=no
+BOOTPROTO=dhcp
+TYPE=Ethernet
+IPV4_FAILURE_FATAL=yes
+HWADDR={{ ansible_eth1.macaddress | mandatory }}
+PEERDNS=yes
+PEERROUTES=yes
+ZONE=dmz

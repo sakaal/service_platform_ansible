@@ -1,0 +1,67 @@
+# file: roles/hetzner_backup_authorized_keys/tasks/main.yml
+
+#
+# Configures a backup client and the on-site backup service
+# for SSH public key authentication to allow non-interactive access.
+#
+# http://wiki.hetzner.de/index.php/Backup_Space_SSH_Keys/en
+#
+
+- name: RFC 4716 format public key without comment
+  shell: ssh-keygen -e -f .ssh/id_rsa.pub | grep -v "Comment:" |
+         tee .ssh/id_rsa_rfc4716.pub
+  register: id_rsa_rfc4716_pub
+  changed_when: False
+
+#
+# TODO: This will hang if the connection to Hetzner backup space hangs.
+#
+- name: Check if already authorized to access the Hetzner backup space
+  no_log: True
+  shell: >
+         lftp -c "
+         open -u {{ backup_onsite_account | mandatory }},{{ backup_onsite_password | mandatory }}
+         sftp://{{ backup_onsite_service | mandatory }} ;
+         cat .ssh/authorized_keys ;
+         "
+  register: hetzner_backup_access
+  changed_when: not id_rsa_rfc4716_pub.stdout in hetzner_backup_access.stdout 
+  failed_when: False
+
+- name: Hetzner backup space authorized keys
+  when: (hetzner_backup_access|changed) and
+        (hetzner_backup_access.stdout.strip() == "")
+  no_log: True
+  shell: >
+         lftp -c "
+         open -u {{ backup_onsite_account }},{{ backup_onsite_password }}
+         sftp://{{ backup_onsite_service }} ;
+         mkdir -p .ssh ;
+         put -O .ssh .ssh/id_rsa_rfc4716.pub -o authorized_keys ;
+         chmod 700 .ssh ; chmod 600 .ssh/authorized_keys ;
+         "
+
+- set_fact:
+    existing_keys: (hetzner_backup_access|changed) and
+                   (hetzner_backup_access.stdout.strip() != "")
+
+- name: List the existing backup space authorized keys
+  when: existing_keys
+  copy: dest=".ssh/backup_authorized_keys"
+        content="{{ hetzner_backup_access.stdout }}\n"
+
+- name: Add a backup space authorized key
+  when: existing_keys
+  shell: chdir=".ssh" cat id_rsa_rfc4716.pub >> backup_authorized_keys
+
+- name: Install the Hetzner backup space authorized keys
+  when: existing_keys
+  no_log: True
+  shell: >
+         lftp -c "
+         open -u {{ backup_onsite_account }},{{ backup_onsite_password }}
+         sftp://{{ backup_onsite_service }} ;
+         rm -f .ssh/authorized_keys ;
+         put -O .ssh .ssh/backup_authorized_keys -o authorized_keys ;
+         chmod 600 .ssh/authorized_keys ;
+         "

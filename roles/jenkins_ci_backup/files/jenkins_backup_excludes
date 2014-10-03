@@ -1,0 +1,9 @@
+.bash_history
+backups
+cache
+config-history/*
+jobs/*/builds/*/archive
+jobs/*/workspace*
+plugins/*.bak
+plugins/*/*
+war

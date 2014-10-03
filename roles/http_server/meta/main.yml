@@ -1,0 +1,4 @@
+# file: roles/http_server/meta/main.yml
+
+dependencies:
+  - { role: '{{ playbook_dir | dirname }}/service_infra_ansible/roles/dynect_session' }

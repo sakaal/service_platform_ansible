@@ -1,0 +1,10 @@
+[Unit]
+Description=Backup Jenkins CI regularly
+
+[Timer]
+OnCalendar=*-*-* 04:45:00
+#AccuracySec=2 h 30 min
+Unit=jenkins_backup.service
+
+[Install]
+WantedBy=multi-user.target

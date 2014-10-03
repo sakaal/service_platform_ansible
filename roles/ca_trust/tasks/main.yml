@@ -1,0 +1,19 @@
+---
+# file: roles/ca_trust
+
+#
+# Add root certificates in the simple trust anchors subdirectory.
+#
+  
+- name: Add Certificate Authority (CA) root certificates
+  when: trusted_ca_certificates is defined
+  with_items: trusted_ca_certificates
+  sudo: yes
+  get_url: url={{ item.url | mandatory }}
+           dest=/etc/pki/ca-trust/source/anchors/{{ item.filename }}
+           sha256sum={{ item.sha256sum | mandatory }}
+
+- name: Update the trusted CA root certificate bundles
+  sudo: yes
+  command: update-ca-trust extract
+  changed_when: False

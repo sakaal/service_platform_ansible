@@ -1,0 +1,5 @@
+---
+# file: roles/http_server/vars/main.yml
+
+public_ipv4_address: "{{ ansible_eth1.ipv4.address | mandatory }}"
+firewall_zone: dmz

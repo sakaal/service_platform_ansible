@@ -1,0 +1,69 @@
+---
+# file: roles/http_server/tasks/main.yml
+
+- name: Apache HTTP Server
+  sudo: yes
+  yum: name=httpd state=present
+
+- name: Set the HTTP server administrator
+  sudo: yes
+  lineinfile: dest=/etc/httpd/conf/httpd.conf
+              regexp='^(\s*)ServerAdmin'
+              line="ServerAdmin {{ admin_email | mandatory }}"
+              insertafter='^#(\s*)ServerAdmin'
+
+- name: Set the HTTP server name
+  sudo: yes
+  lineinfile: dest=/etc/httpd/conf/httpd.conf
+              regexp='^(\s*)ServerName'
+              line="ServerName {{ ansible_fqdn | mandatory }}:80"
+              insertafter='^#(\s*)ServerName'
+
+- name: Websites
+  when: websites is defined
+  sudo: yes
+  with_items: websites
+  copy: src="{{ inventory_dir }}/websites/{{ item }}/htdocs/"
+        dest="/var/www/{{ item }}/htdocs"
+        owner=root group=root mode=0644
+
+- name: Query if the HTTP service has been added to the firewall zone
+  sudo: yes
+  command: firewall-cmd --zone={{ firewall_zone | mandatory }}
+           --query-service=http
+  register: zone_http
+  changed_when: (zone_http.rc != 0) or not zone_http.stdout|bool
+  failed_when: None
+
+- name: Open the firewall for the HTTP service
+  when: zone_http|changed
+  sudo: yes
+  command: firewall-cmd --permanent --zone={{ firewall_zone | mandatory }}
+           --add-service=http
+  notify: Reload the firewall
+
+- name: Make DNS A records
+  with_items: websites
+  when: dynect_session_result|success and
+        public_dns_zone is defined and
+        public_ipv4_address is defined
+  local_action: >
+                command curl -s -X POST -H 'Content-Type: application/json'
+                -H 'Auth-Token: {{ dynect_session_token }}'
+                {{ dynect_api_url }}/ARecord/{{ public_dns_zone }}/{{ item }}.
+                -d '{"rdata":{"address":"{{ public_ipv4_address }}"}}'
+  register: dynect_result
+  changed_when: (dynect_result.stdout|from_json).status == 'success'
+  failed_when: (dynect_result.stdout|from_json).status != 'success' and
+               not 'duplicate' in (dynect_result.stdout|from_json).msgs[0].INFO
+
+- name: Publish DNS zones
+  when: dynect_result|changed
+  local_action: >
+                command curl -s -X PUT -H 'Content-Type: application/json'
+                -H 'Auth-Token: {{ dynect_session_token }}'
+                {{ dynect_api_url }}/Zone/{{ public_dns_zone }} -d '{"publish":true}'
+  register: dynect_result
+  changed_when: (dynect_result.stdout|from_json).status == 'success' and
+                '{{ public_dns_zone }} published' in (dynect_result.stdout|from_json).msgs[0].INFO
+  failed_when: (dynect_result.stdout|from_json).status != 'success'

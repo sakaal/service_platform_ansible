@@ -1,0 +1,64 @@
+---
+# file: roles/https_virtual_proxies/tasks/main.yml
+
+- name: Open source transport layer security tools
+  sudo: yes
+  yum: name=openssl state=present
+
+- name: Tools for managing and generating digital certificates and keys
+  sudo: yes
+  yum: name=crypto-utils state=present
+
+- name: Apache HTTP Server (mod_ssl)
+  sudo: yes
+  yum: name=mod_ssl state=present
+
+- name:  HArdware Volatile Entropy Gathering and Expansion (HAVEGE) daemon
+  sudo: yes
+  yum: name=haveged state=present
+
+- name: SELinux allow the HTTP server to network connect
+  sudo: yes
+  seboolean: name=httpd_can_network_connect state=yes persistent=yes
+
+- name: Comment out default HTTP listener bindings
+  sudo: yes
+  lineinfile: dest=/etc/httpd/conf/httpd.conf
+              regexp='^(\s*)Listen(\s+.*)$' backrefs=yes line='#\1Listen\2'
+
+- name: Name-based SSL virtual hosts global configuration
+  sudo: yes
+  template: src=ssl.conf.j2
+            dest=/etc/httpd/conf.d/ssl.conf
+            owner=root group=root mode=0644
+  notify: Restart the HTTP server
+
+- name: Virtual HTTPS proxies
+  sudo: yes
+  template: src=vhost.conf.j2
+            dest=/etc/httpd/conf.d/{{ item.fqdn }}.conf
+            owner=root group=root mode=0644
+  with_items: virtual_proxies
+  notify: Restart the HTTP server
+
+- name: Enable the entropy service
+  sudo: yes
+  service: name=haveged enabled=yes state=started
+
+- name: Query if the HTTPS service has been added to the firewall zone
+  sudo: yes
+  command: firewall-cmd --zone={{ firewall_zone | mandatory }}
+           --query-service=https
+  register: zone_https
+  changed_when: (zone_https.rc != 0) or not zone_https.stdout|bool
+  failed_when: None
+
+- name: Open the firewall for the HTTPS service
+  when: zone_https|changed
+  sudo: yes
+  command: firewall-cmd --permanent --zone={{ firewall_zone | mandatory }}
+           --add-service=https
+  notify: Reload the firewall
+
+- name: Ensure the HTTP server is running
+  service: name=httpd state=started enabled=yes

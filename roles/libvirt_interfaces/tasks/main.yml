@@ -1,0 +1,36 @@
+---
+# file: roles/libvirt_interfaces
+
+#
+# Attach network interfaces to libvirt guests
+#
+# Configure the libvirt_interfaces in the target inventory
+# host_vars/<host.example.com> file to assign the separate MAC address
+# of each Hetzner single IP to a libvirt guest:
+#
+#libvirt_interfaces:
+#- domain: guest.host.example.com
+#  mac:    00:53:56:00:4A:C5
+#  type:   bridge
+#  source: br0
+#  model:  virtio
+#
+
+- name: Check network interfaces
+  with_items: libvirt_interfaces
+  sudo: yes
+  shell: virsh -q domiflist {{ item.domain | mandatory }} |
+         grep -ioP '([0-9A-F]{2}:){5}([0-9A-F]{2})$'
+  register: domiflist
+  changed_when: not '{{ item.mac.lower() | mandatory }}' in domiflist.stdout.lower()
+
+- name: Attach network interfaces
+  with_items: domiflist.results
+  when: item|changed
+  sudo: yes
+  command: virsh attach-interface --domain {{ item.item.domain }}
+           --type {{ item.item.type | mandatory }}
+           --source {{ item.item.source | mandatory }}
+           --mac '{{ item.item.mac | mandatory }}'
+           --model {{ item.item.model | mandatory }}
+           --persistent

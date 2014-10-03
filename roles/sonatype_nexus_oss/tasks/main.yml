@@ -1,0 +1,262 @@
+---
+# file: roles/sonatype_nexus_oss/tasks/main.yml
+
+#
+# Configuring Sonatype Nexus as a Service
+#
+# http://books.sonatype.com/nexus-book/reference/install-sect-service.html
+#
+# Needs an SMTP service.
+#
+
+- name: Create the Nexus user account
+  sudo: yes
+  user: >
+        name={{ nexus_user | mandatory }} comment="Sonatype Nexus OSS"
+        shell=/bin/bash generate_ssh_key=yes
+        ssh_key_comment={{ nexus_user }}@{{ ansible_fqdn }}-{{ ansible_date_time.iso8601 }}
+        state=present
+
+- name: Download the Sonatype Nexus OSS archive locally
+  run_once: yes
+  local_action: >
+                command chdir="{{ files_dir }}"
+                creates="{{ nexus_archive | mandatory }}"
+                wget -c -nv --no-cookies
+                http://www.sonatype.org/downloads/{{ nexus_archive }}
+                -O {{ nexus_archive }}
+
+- name: Verify the local Sonatype Nexus OSS archive
+  run_once: yes
+  local_action: stat path="{{ files_dir }}/{{ nexus_archive }}"
+  register: nexus_local_archive
+  failed_when: nexus_local_archive.stat.md5 != "{{ nexus_md5sum | mandatory }}"
+
+- name: Verify the remote Sonatype Nexus OSS archive
+  sudo: yes
+  sudo_user: "{{ nexus_user }}"
+  stat: path="~{{ nexus_user }}/{{ nexus_archive }}"
+  register: nexus_remote_archive
+  changed_when: (not nexus_remote_archive.stat.exists) or
+                (nexus_remote_archive.stat.md5 != "{{ nexus_md5sum }}")
+  failed_when: False
+
+- name: Upload the Sonatype Nexus OSS archive
+  when: nexus_remote_archive|changed
+  sudo: yes
+  sudo_user: "{{ nexus_user }}"
+  copy: src="{{ nexus_archive }}" dest="~{{ nexus_user }}/{{ nexus_archive }}"
+
+- name: Extract Sonatype Nexus OSS
+  sudo: yes
+  sudo_user: "{{ nexus_user }}"
+  command: >
+           chdir="~{{ nexus_user }}"
+           tar -xvzf {{ nexus_archive }}
+           creates="~{{ nexus_user }}/nexus-{{ nexus_version }}"
+
+- name: Set the Nexus OSS home directory
+  sudo: yes
+  sudo_user: "{{ nexus_user }}"
+  lineinfile: dest={{ nexus_home }}/bin/nexus
+              regexp='^#?NEXUS_HOME'
+              line='NEXUS_HOME="{{ nexus_home }}"'
+              state=present
+
+- name: Set the Nexus OSS user to run as
+  sudo: yes
+  sudo_user: "{{ nexus_user }}"
+  lineinfile: dest={{ nexus_home }}/bin/nexus
+              regexp='^#?RUN_AS_USER'
+              line='RUN_AS_USER="{{ nexus_user }}"'
+              state=present
+  notify:
+     - Restart Nexus
+
+- name: Create the Nexus OSS PID directory
+  sudo: yes
+  sudo_user: "{{ nexus_user }}"
+  file: state=directory path={{ nexus_home }}/run
+
+- name: Set the Nexus OSS PID directory
+  sudo: yes
+  sudo_user: "{{ nexus_user }}"
+  lineinfile: dest={{ nexus_home }}/bin/nexus
+              regexp='^#?PIDDIR' line='PIDDIR="{{ nexus_home }}/run"'
+              state=present
+
+#
+# In case of upgrades, stop the previous version before configuring new one.
+#
+- name: Stop and disable the Nexus OSS service
+  sudo: yes
+  sudo_user: root
+  service: name=nexus enabled=no state=stopped
+  ignore_errors: yes
+
+#- name: System V init script
+#  sudo: yes
+#  sudo_user: root
+#  template: src=nexus.j2 dest=/etc/init.d/nexus
+#            owner=root group=root mode=0755
+#            state=present
+
+- name: systemd unit file
+  sudo: yes
+  sudo_user: root
+  template: src=nexus.service.j2 dest=/etc/systemd/system/nexus.service
+            owner=root group=root mode=0755
+
+- name: Set Nexus OSS context path
+  sudo: yes
+  sudo_user: "{{ nexus_user }}"
+  lineinfile: >
+              dest={{ nexus_home }}/conf/nexus.properties
+              regexp='^nexus-webapp-context-path'
+              line='nexus-webapp-context-path=/'
+              insertafter='^nexus-webapp' state=present
+  notify:
+     - Restart Nexus
+
+- name: Enable and start Nexus OSS
+  sudo: yes
+  sudo_user: root
+  service: name=nexus enabled=yes state=started
+
+- name: Wait for the Nexus OSS to start
+  wait_for: host=localhost port=8081 timeout=20
+
+#
+# Nexus OSS won't create the security configuration before this call is made.
+#
+- name: Request the Nexus OSS status
+  sudo: yes
+  sudo_user: "{{ nexus_user }}"
+  get_url: url="http://localhost:8081/service/local/status"
+           dest="{{ nexus_home }}/nexus_status.tmp"
+
+- file: path="{{ nexus_home }}/nexus_status.tmp" state=absent
+
+- name: Wait for the security configuration file to appear
+  sudo: yes
+  wait_for: path="{{ nexus_conf }}/security.xml" search_regex="<id>admin</id>"
+
+#
+# You can use Apache Shiro Command Line Hasher to generate an admin password:
+# java -jar shiro-tools-hasher-1.2.3-cli.jar -p -aSHA-512
+#
+- name: Check the current admin password
+  sudo: yes
+  sudo_user: "{{ nexus_user }}"
+  command: >
+           xmllint --xpath "//user[id='admin']/password/text()"
+           {{ nexus_conf }}/security.xml
+  register: admin_result
+  changed_when: admin_result.stdout.strip() != nexus_adminpw
+  failed_when: admin_result.rc != 0 or admin_result.stdout.strip() == ""
+
+- name: Set the admin password
+  when: admin_result|changed
+  sudo: yes
+  sudo_user: "{{ nexus_user }}"
+  command: >
+           sed -i 's|{{ admin_result.stdout.strip() }}|{{ nexus_adminpw | mandatory }}|g'
+           {{ nexus_conf }}/security.xml
+  notify:
+     - Restart Nexus
+
+#
+# Set the REST API base URL to match any HTTP reverse proxy configured
+# in front of the Nexus server.
+#
+#nexus_rest_api_base_url: https://repo.example.com
+#
+
+- name: Unset the REST API base URL
+  when: nexus_rest_api_base_url is not defined or
+        nexus_rest_api_base_url.strip() == ""
+  sudo: yes
+  sudo_user: "{{ nexus_user }}"
+  lineinfile: >
+              dest={{ nexus_conf }}/nexus.xml
+              regexp='^\s*<{{ item }}>.*</{{ item }}>\s*$' state=absent
+  with_items:
+     - forceBaseUrl
+     - baseUrl
+  notify:
+     - Restart Nexus
+
+- name: Set the REST API base URL
+  when: nexus_rest_api_base_url is defined and
+        nexus_rest_api_base_url.strip() != ""
+  sudo: yes
+  sudo_user: "{{ nexus_user }}"
+  lineinfile: dest={{ nexus_conf }}/nexus.xml
+              regexp='^\s*<baseUrl>.*</baseUrl>\s*$'
+              line='    <baseUrl>{{ nexus_rest_api_base_url }}</baseUrl>'
+              insertafter='^\s*<restApi>' state=present
+  notify:
+     - Restart Nexus
+
+- name: Force the REST API base URL
+  when: >
+        nexus_rest_api_base_url is defined and
+        nexus_rest_api_base_url.strip() != ""
+  sudo: yes
+  sudo_user: "{{ nexus_user }}"
+  lineinfile: >
+              dest={{ nexus_conf }}/nexus.xml
+              regexp='^\s*<forceBaseUrl>.*</forceBaseUrl>\s*$'
+              line='    <forceBaseUrl>true</forceBaseUrl>'
+              insertafter='^\s*<baseUrl>' state=present
+  notify:
+     - Restart Nexus
+
+#
+# Secure SMTP over TLS (on port 587 only)
+#
+
+- name: Check the current SMTP configuration
+  with_items:
+  - value: "{{ nexus_smtp_hostname }}"
+    xpath: //smtpConfiguration/hostname/text()
+  - value: "{{ nexus_smtp_port }}"
+    xpath: //smtpConfiguration/port/text()
+  - value: "{{ nexus_smtp_username }}"
+    xpath: //smtpConfiguration/username/text()
+  - value: "{{ nexus_smtp_password }}"
+    xpath: //smtpConfiguration/password/text()
+  - value: "{{ nexus_system_email }}"
+    xpath: //smtpConfiguration/systemEmailAddress/text()
+  when: item.value.strip() != ""
+  sudo: yes
+  sudo_user: "{{ nexus_user }}"
+  command: >
+           xmllint --xpath "{{ item.xpath | mandatory }}"
+           {{ nexus_conf }}/nexus.xml
+  register: smtp_config
+  changed_when: smtp_config.stdout.strip() != item.value
+  failed_when: smtp_config.rc != 0 or smtp_config.stdout.strip() == ""
+
+- name: Set the SMTP configuration
+  with_items: smtp_config.results
+  when: item|changed
+  sudo: yes
+  sudo_user: "{{ nexus_user }}"
+  command: >
+           sed -i 's|>\s*{{ item.stdout.strip() }}\s*<|>{{ item.item.value }}<|g'
+           {{ nexus_conf }}/nexus.xml
+  notify:
+     - Restart Nexus
+
+- name: SMTP over TLS
+  when: nexus_smtp_tls is defined
+  sudo: yes
+  sudo_user: "{{ nexus_user }}"
+  lineinfile: >
+              dest={{ nexus_conf }}/nexus.xml
+              regexp='^\s*<tlsEnabled>.*</tlsEnabled>\s*$'
+              line='    <tlsEnabled>{{ (nexus_smtp_tls|string).lower() }}</tlsEnabled>'
+              insertafter='^\s*<port>{{ nexus_smtp_port | mandatory }}</port>\s*$' state=present
+  notify:
+     - Restart Nexus

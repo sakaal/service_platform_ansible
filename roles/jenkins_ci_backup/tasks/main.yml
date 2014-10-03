@@ -1,0 +1,50 @@
+---
+# file: roles/jenkins_ci_backup/tasks/main.yml
+
+#
+# roles/jenkins_ci sets the jenkins_home variable.
+#
+
+- name: Make sure ~jenkins/backups/ exist
+  sudo: yes
+  file: state=directory dest="{{ jenkins_home | mandatory }}/backups"
+        mode=750 owner=jenkins group=jenkins
+
+#
+# The excludes file itself is included in the backup for later reference. 
+#
+- name: Jenkins backup excludes list
+  sudo: yes
+  copy: src=jenkins_backup_excludes
+        dest="{{ jenkins_home }}/jenkins_backup_excludes"
+        mode=660 owner=jenkins group=jenkins
+
+- name: Jenkins backup script
+  sudo: yes
+  template: src=jenkins_backup.sh.j2
+            dest="{{ jenkins_home }}/backups/jenkins_backup.sh"
+            mode=770 owner=jenkins group=jenkins
+
+- name: Jenkins backup service unit file
+  sudo: yes
+  template: src=jenkins_backup.service.j2
+            dest=/etc/systemd/system/jenkins_backup.service
+            mode=755 owner=root group=root
+
+- name: Jenkins backup timer unit file
+  sudo: yes
+  template: src=jenkins_backup.timer.j2
+            dest=/etc/systemd/system/jenkins_backup.timer
+            mode=755 owner=root group=root
+
+- name: Reload new or changed systemd units
+  sudo: yes
+  command: systemctl daemon-reload
+
+- name: Enable the Jenkins backup timer
+  sudo: yes
+  command: systemctl enable jenkins_backup.timer
+
+- name: Start the Jenkins backup timer
+  sudo: yes
+  command: systemctl start jenkins_backup.timer

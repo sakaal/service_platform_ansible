@@ -1,0 +1,75 @@
+#
+# {{ item.desc }}
+#
+# All name-based SSL virtual hosts get their SSL configuration
+# from whichever of them is loaded first.
+# We don't know in which order the SSL virtual hosts get loaded,
+# so every one of them must contain the same SSL configuration.
+
+<VirtualHost {{ public_ipv4_address }}:80>
+  ServerName "{{ item.fqdn | mandatory }}:80"
+  Redirect / https://{{ item.fqdn }}/
+</VirtualHost>
+
+<VirtualHost {{ public_ipv4_address }}:443>
+
+ServerName {{ item.fqdn | mandatory }}:443
+
+{% if websites is defined and item.fqdn in websites %}
+DocumentRoot "/var/www/{{ item.fqdn }}/htdocs"
+<Directory "/var/www/{{ item.fqdn }}/htdocs">
+    Options None
+    AllowOverride None
+    Require all granted
+</Directory>
+{% endif %}
+
+{% if item.proxies is defined %}
+ProxyRequests Off
+ProxyPreserveHost On
+AllowEncodedSlashes NoDecode
+
+RequestHeader set X-Forwarded-Proto "https"
+RequestHeader set X-Forwarded-Port "443"
+
+{% for proxy in item.proxies %}
+
+#
+# Proxy: https://{{ item.fqdn }}/{{ proxy.context | mandatory }}
+# Backend: http://{{ proxy.backend_host }}/{{ proxy.backend_context }}
+#
+ProxyPass /{{ proxy.context | mandatory }} http://{{ proxy.backend_host | mandatory }}/{{ proxy.backend_context | mandatory }} nocanon
+ProxyPassReverse /{{ proxy.context }} http://{{ proxy.backend_host }}/{{ proxy.backend_context }}
+ProxyPassReverse /{{ proxy.context }} http://{{ item.fqdn }}/{{ proxy.backend_context }}
+{% if proxy.backend_context != proxy.context %}
+ProxyPassReverseCookiePath /{{ proxy.backend_context }} /{{ proxy.context }}
+{% endif %}
+{% endfor %}
+{% endif %}
+
+ErrorLog logs/{{ item.fqdn }}_ssl_error_log
+TransferLog logs/{{ item.fqdn }}_ssl_access_log
+LogLevel warn
+
+CustomLog logs/{{ item.fqdn }}_ssl_request_log \
+          "%t %h %{SSL_PROTOCOL}x %{SSL_CIPHER}x \"%r\" %b"
+
+SSLEngine on
+SSLProtocol all -SSLv2
+SSLCipherSuite ALL:!ADH:!EXPORT:!SSLv2:RC4+RSA:+HIGH:+MEDIUM:+LOW
+
+SSLCertificateFile /etc/pki/tls/certs/{{ x509_cert | mandatory }}
+SSLCertificateKeyFile /etc/pki/tls/private/{{ x509_key | mandatory }}
+
+<Files ~ "\.(cgi|shtml|phtml|php3?)$">
+    SSLOptions +StdEnvVars
+</Files>
+<Directory "/var/www/cgi-bin">
+    SSLOptions +StdEnvVars
+</Directory>
+
+SetEnvIf User-Agent ".*MSIE.*" \
+         nokeepalive ssl-unclean-shutdown \
+         downgrade-1.0 force-response-1.0
+
+</VirtualHost>

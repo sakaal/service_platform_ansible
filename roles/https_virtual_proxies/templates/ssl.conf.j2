@@ -1,0 +1,30 @@
+#
+# When we also provide SSL we have to listen to the
+# the HTTPS port in addition.
+#
+Listen {{ public_ipv4_address | mandatory }}:80
+Listen {{ public_ipv4_address | mandatory }}:443
+
+##
+##  SSL Global Context
+##
+##  All SSL configuration in this context applies both to
+##  the main server and all SSL-enabled virtual hosts.
+##
+
+SSLPassPhraseDialog  builtin
+
+SSLSessionCache         shmcb:/var/cache/mod_ssl/scache(512000)
+SSLSessionCacheTimeout  300
+
+SSLRandomSeed startup file:/dev/random  512
+SSLRandomSeed connect builtin
+
+SSLCryptoDevice builtin
+
+## Name-based SSL Virtual Hosts
+## http://wiki.apache.org/httpd/NameBasedSSLVHosts
+## http://httpd.apache.org/docs/2.4/mod/core.html#namevirtualhost
+
+#NameVirtualHost {{ public_ipv4_address }}:80
+#NameVirtualHost {{ public_ipv4_address }}:443
