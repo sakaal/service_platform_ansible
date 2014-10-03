@@ -82,7 +82,7 @@ Relational Database Management System (RDBMS) | PostgreSQL (coming)
 
 ### Preparing the onsite backup space ###
 
-See the [data backup plan](wiki/Data-backup-plan) in the wiki.
+See the [data backup plan](https://github.com/sakaal/service_platform_ansible/wiki/Data-backup-plan) in the wiki.
 
 Set up the backup access credentials in file
 `/mnt/sensitive_data/etc/ansible/vars/hetzner.yml`:
