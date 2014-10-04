@@ -61,4 +61,5 @@
   notify: Reload the firewall
 
 - name: Ensure the HTTP server is running
+  sudo: yes
   service: name=httpd state=started enabled=yes
