@@ -50,7 +50,7 @@ fi
 nice -n 19 openssl pkeyutl -encrypt\
  -pubin -inkey "{{ backup_keys_path | mandatory }}/backup-service-public.pem"\
  -in ${DBNAME}_${TIMESTAMP}.pass.txt\
- -out ${DBNAME}_${TIMESTAMP}.pass.txt.enc
+ -out ${DBNAME}_${TIMESTAMP}.pass.safe
 EXITVALUE=$?
 if [ $EXITVALUE -eq 0 ]; then
     nice -n 19 shred --iterations=25\
@@ -66,7 +66,7 @@ fi
 #
 OUTBOX="/home/{{ admin_username }}/backups"
 mkdir -p ${OUTBOX}
-mv *.pass.txt.enc ${OUTBOX}/
+mv *.pass.safe ${OUTBOX}/
 mv *.${ALGO} ${OUTBOX}/
 chown -R {{ admin_username }}:{{ admin_username }} ${OUTBOX}
 

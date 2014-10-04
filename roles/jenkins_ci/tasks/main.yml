@@ -48,6 +48,6 @@
 # This requires the encrypted archive password file that
 # changes each time the host key changes.
 #
-# Password files are deployed to:
-# /mnt/sensitive_data/com.example/backups/restore/
+# Archive password files encrypted to backup client public key are deployed to:
+# /mnt/sensitive_data/backups/restore/
 #
