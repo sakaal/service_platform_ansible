@@ -4,20 +4,32 @@
 # https://wiki.jenkins-ci.org/display/JENKINS/Administering+Jenkins
 #
 
+DBPREFIX="jenkins"
+CLIENT_DIR="{{ jenkins_home | mandatory }}"
 TIMESTAMP="$(date -u +'%FT%H%MZ')"
-DBNAME="jenkins_$(hostname)"
-BACKUP="${DBNAME}_${TIMESTAMP}.tgz"
-JENKINS_HOME="{{ jenkins_home | mandatory }}"
 
-cd "${JENKINS_HOME}/backups/"
+DBNAME="${DBPREFIX}_$(hostname)"
+ARCHIVE="${DBNAME}_${TIMESTAMP}.tgz"
+
+#
+# The backup user account has the access keys to Hetzner backup space.
+#
+BACKUP_USER="{{ admin_username | mandatory }}"
+BACKUPS_DIR="/home/${BACKUP_USER}/backups"
+OUTBOUND_QUEUE="${BACKUPS_DIR}/out"
+mkdir -p ${OUTBOUND_QUEUE}
+chown -R ${BACKUP_USER}:${BACKUP_USER} ${BACKUPS_DIR}
+chmod -R o-rwx ${BACKUPS_DIR}
+
+cd "${BACKUPS_DIR}"
 umask 077
 
-nice -n 19 tar --exclude-from="$JENKINS_HOME/jenkins_backup_excludes"\
- -czf ${BACKUP} $JENKINS_HOME
+nice -n 19 tar --exclude-from="${CLIENT_DIR}/${DBPREFIX}_backup_excludes"\
+ -czf ${ARCHIVE} ${CLIENT_DIR}
 
 EXITVALUE=$?
 if [ $EXITVALUE -ne 0 ]; then
-    logger -t jenkins_backup\
+    logger -t backup_${DBPREFIX} -p user.error\
      "ALERT tar exited with [$EXITVALUE] for data set ${DBNAME}"
     exit $EXITVALUE
 fi
@@ -33,13 +45,13 @@ ALGO=aes-256-cbc
 #
 # Encrypt the backup archive with the password:
 #
-nice -n 19 openssl enc -${ALGO}\
- -pass file:${DBNAME}_${TIMESTAMP}.pass.txt -in ${BACKUP} -out ${BACKUP}.${ALGO}
+nice -n 19 openssl enc -${ALGO} -pass file:${DBNAME}_${TIMESTAMP}.pass.txt\
+ -in ${ARCHIVE} -out ${ARCHIVE}.${ALGO}
 EXITVALUE=$?
 if [ $EXITVALUE -eq 0 ]; then
-    nice -n 19 shred --iterations=25 --remove --force --zero ${BACKUP}
+    nice -n 19 shred --iterations=25 --remove --force --zero ${ARCHIVE}
 else
-    logger -t jenkins_backup\
+    logger -t backup_${DBPREFIX} -p user.error\
      "ALERT openssl enc exited with [$EXITVALUE] for data set ${DBNAME}"
     exit $EXITVALUE
 fi
@@ -56,26 +68,24 @@ if [ $EXITVALUE -eq 0 ]; then
     nice -n 19 shred --iterations=25\
      --remove --force --zero ${DBNAME}_${TIMESTAMP}.pass.txt
 else
-    logger -t jenkins_backup\
+    logger -t backup_${DBPREFIX} -p user.error\
      "ALERT openssl pkeyutl exited with [$EXITVALUE] for data set ${DBNAME}"
     exit $EXITVALUE
 fi
 
 #
-# The administrative user account has the access keys to Hetzner backup space.
+# Transfer the encrypted archive and password file to the backup service:
 #
-OUTBOX="/home/{{ admin_username }}/backups"
-mkdir -p ${OUTBOX}
-mv *.pass.safe ${OUTBOX}/
-mv *.${ALGO} ${OUTBOX}/
-chown -R {{ admin_username }}:{{ admin_username }} ${OUTBOX}
+mv *.pass.safe ${OUTBOUND_QUEUE}/
+mv *.${ALGO} ${OUTBOUND_QUEUE}/
+chown -R ${BACKUP_USER}:${BACKUP_USER} ${OUTBOUND_QUEUE}
 
 LFTP="open -u {{ backup_onsite_account | mandatory }}, {{ backup_onsite_protocol | mandatory }}://{{ backup_onsite_service | mandatory }};"
-REMOTE_DIR="`date -u +"%Y-%m"`/`hostname`${JENKINS_HOME}/backups"
+REMOTE_DIR="`date -u +"%Y-%m"`/`hostname`${CLIENT_DIR}"
 
-su - {{ admin_username }} -c\
+su - ${BACKUP_USER} -c\
  "lftp -c '${LFTP} mkdir -p ${REMOTE_DIR}' > /dev/null 2>&1"
-nice -n 19 su - {{ admin_username }} -c\
- "lftp -c '${LFTP} mirror --Remove-source-files -R ${OUTBOX} ${REMOTE_DIR}'"
+nice -n 19 su - ${BACKUP_USER} -c\
+ "lftp -c '${LFTP} mirror --Remove-source-files -R ${OUTBOUND_QUEUE} ${REMOTE_DIR}'"
 
 exit 0
