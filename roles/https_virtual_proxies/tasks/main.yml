@@ -1,21 +1,25 @@
 ---
 # file: roles/https_virtual_proxies/tasks/main.yml
 
+#
+# Apache HTTP Server virtual hosts for SSL/TLS HTTPS reverse proxies
+#
+
 - name: Open source transport layer security tools
   sudo: yes
-  yum: name=openssl state=present
+  yum: name=openssl
 
 - name: Tools for managing and generating digital certificates and keys
   sudo: yes
-  yum: name=crypto-utils state=present
+  yum: name=crypto-utils
 
 - name: Apache HTTP Server (mod_ssl)
   sudo: yes
-  yum: name=mod_ssl state=present
+  yum: name=mod_ssl
 
-- name:  HArdware Volatile Entropy Gathering and Expansion (HAVEGE) daemon
+- name: HArdware Volatile Entropy Gathering and Expansion (HAVEGE) daemon
   sudo: yes
-  yum: name=haveged state=present
+  yum: name=haveged
 
 - name: SELinux allow the HTTP server to network connect
   sudo: yes
