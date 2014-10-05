@@ -10,3 +10,22 @@
   - lftp
   sudo: yes
   yum: name={{ item }}
+
+- name: LFTP settings directory
+  file: path="~/.lftp" state=directory
+
+- name: LFTP settings ~/.lftp/rc
+  lineinfile: dest="~/.lftp/rc" create=yes
+              regexp="^set {{ item.var }} "
+              line="set {{ item.var }} {{ item.val }}"
+  with_items:
+  - var: "net:timeout"
+    val: 4s
+  - var: "net:max-retries"
+    val: 2
+  - var: "net:reconnect-interval-base"
+    val: 4
+  - var: "net:reconnect-interval-max"
+    val: 600
+  - var: "net:reconnect-interval-multiplier"
+    val: 2
