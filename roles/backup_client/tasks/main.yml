@@ -1,0 +1,45 @@
+---
+# file: roles/backup_client/tasks/main.yml
+
+- name: Backup client script
+  sudo: yes
+  template: src=backup_client.sh.j2
+            dest="/usr/local/sbin/backup_client"
+            mode=755 owner=root group=root
+
+- name: Backup directory script
+  sudo: yes
+  template: src=backup_dir.sh.j2
+            dest="/usr/local/sbin/backup_dir"
+            mode=755 owner=root group=root
+
+- name: Backup client configuration directory
+  sudo: yes
+  file: path="/usr/local/etc/backup_client.d" state=directory mode=755
+
+- name: Backup client systemd service unit file
+  sudo: yes
+  template: src=backup_client.service.j2
+            dest=/etc/systemd/system/backup_client.service
+            mode=755 owner=root group=root
+  register: backup_client_service
+
+- name: Backup client systemd timer unit file
+  sudo: yes
+  template: src=backup_client.timer.j2
+            dest=/etc/systemd/system/backup_client.timer
+            mode=755 owner=root group=root
+  register: backup_client_timer
+
+- name: Reload new or changed systemd units
+  when: backup_client_service|changed or backup_client_timer|changed
+  sudo: yes
+  command: systemctl daemon-reload
+
+- name: Enable the backup client timer
+  sudo: yes
+  command: systemctl enable backup_client.timer
+
+- name: Start the backup client timer
+  sudo: yes
+  command: systemctl start backup_client.timer

@@ -1,0 +1,17 @@
+---
+# file: roles/sonatype_nexus_oss_backup/tasks/main.yml
+
+#
+# roles/sonatype_nexus_oss sets the nexus_work variable.
+#
+
+- name: Sonatype Nexus OSS backup excludes list
+  sudo: yes
+  copy: src=sonatype_nexus_oss.backup_excludes
+        dest="{{ nexus_work | mandatory }}/.backup_excludes"
+        mode=660 owner=jenkins group=jenkins
+
+- name: Backup client configuration for Sonatype Nexus OSS
+  sudo: yes
+  template: src=sonatype_nexus_oss.conf.j2
+            dest="/usr/local/etc/backup_client.d/sonatype_nexus_oss.conf"

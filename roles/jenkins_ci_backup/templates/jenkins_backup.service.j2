@@ -1,9 +1,0 @@
-[Unit]
-Description=Backup the Jenkins CI service data
-
-[Service]
-Type=simple
-ExecStart={{ jenkins_home | mandatory }}/backups/jenkins_backup.sh
-
-[Install]
-WantedBy=multi-user.target

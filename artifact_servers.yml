@@ -13,3 +13,5 @@
     - transport_layer_security
     - java_oracle
     - sonatype_nexus_oss
+    - sonatype_nexus_oss_backup
+    

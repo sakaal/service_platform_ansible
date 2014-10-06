@@ -2,5 +2,4 @@
 # file: roles/jenkins_ci_backup/meta/main.yml
 
 dependencies:
-- role: hetzner_backup_authorized_keys
-- role: backup_keys
+- role: backup_client

@@ -1,0 +1,9 @@
+[Unit]
+Description=backup client
+
+[Service]
+Type=simple
+ExecStart=/usr/local/sbin/backup_client
+
+[Install]
+WantedBy=multi-user.target

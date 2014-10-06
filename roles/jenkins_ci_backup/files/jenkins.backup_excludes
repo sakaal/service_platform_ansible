@@ -1,5 +1,4 @@
 .bash_history
-backups
 cache
 config-history/*
 jobs/*/builds/*/archive

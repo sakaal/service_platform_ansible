@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+
+#
+# The backup user account has the access keys to the on-site backup service.
+#
+BACKUP_USER="{{ admin_username | mandatory }}"
+BACKUPS_DIR="/var/local/backup_client"
+OUTBOUND_QUEUE="${BACKUPS_DIR}/out"
+mkdir -p ${OUTBOUND_QUEUE}
+chown -R ${BACKUP_USER}:${BACKUP_USER} ${BACKUPS_DIR}
+chmod -R o-rwx ${BACKUPS_DIR}
+
+cd "${BACKUPS_DIR}"
+umask 077
+
+algorithm=aes-256-cbc
+
+#
+# Create encrypted archives and their password files:
+#
+for filename in /usr/local/etc/backup_client.d/*.conf; do
+(
+    . "${filename}"
+    /usr/local/sbin/backup_dir -n "${name}" -d "${directory}" -a "${algorithm}"
+
+    mkdir -p ${OUTBOUND_QUEUE}/${name}
+    mv ${name}_*.pass.safe ${OUTBOUND_QUEUE}/${name}/
+    mv ${name}_*.${algorithm} ${OUTBOUND_QUEUE}/${name}/
+)
+done
+
+#
+# Remove any leftovers from possibly interrupted tasks:
+#
+ls | grep '^.*\(\.tmp\|\.pass\.txt\|\.tgz\)$'
+if [ $? -eq 0 ]; then
+    rm -f *.tmp *.pass.txt *.tgz
+    echo "Removed the file(s) left behind." >&2
+fi
+
+#
+# Transfer the encrypted archive and password file to the backup service:
+#
+chown -R ${BACKUP_USER}:${BACKUP_USER} ${OUTBOUND_QUEUE}
+
+LFTP="open -u {{ backup_onsite_account | mandatory }}, {{ backup_onsite_protocol | mandatory }}://{{ backup_onsite_service | mandatory }};"
+REMOTE_DIR="`date -u +"%Y-%m"`/`hostname`${clientdir}"
+
+nice -n 19 su - ${BACKUP_USER} -c "lftp -c '${LFTP}\
+ mkdir -p ${REMOTE_DIR};\
+ mirror --Remove-source-files -R ${OUTBOUND_QUEUE} ${REMOTE_DIR}'\
+ > /dev/null 2>&1"
+
+#
+# Print the transfer log destinations and bitrates to standard output: 
+#
+echo Transfers completed
+su - ${BACKUP_USER} -c\
+ "cat ~/.lftp/*_log 2>/dev/null | cut -d ' ' -f2,5- ; rm -f ~/.lftp/*_log"
+echo Finished.
+exit 0
