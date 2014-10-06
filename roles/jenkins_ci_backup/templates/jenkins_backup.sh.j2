@@ -37,7 +37,7 @@ fi
 #
 # Generate a random password:
 #
-head -c{{ backup_password_bytes | mandatory }} /dev/random | base64\
+dd if=/dev/random bs={{ backup_password_bytes | mandatory }} count=1 2>/dev/null | base64\
  > ${DBNAME}_${TIMESTAMP}.pass.txt
 
 ALGO=aes-256-cbc
