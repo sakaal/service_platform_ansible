@@ -10,7 +10,7 @@
   file: state=directory path="{{ archive_keys_path | mandatory }}"
         owner="{{ backup_user }}" group="{{ backup_user }}" mode=750
 
-- name: Backup client private key
+- name: Backup client private key (this may take a while)
   sudo: yes
   sudo_user: "{{ backup_user }}"
   command: chdir={{ archive_keys_path }}
