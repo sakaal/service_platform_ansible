@@ -5,6 +5,9 @@
   sudo: yes
   yum: name=httpd state=present
 
+#
+# TODO: Use a public email address here: 
+#
 - name: Set the HTTP server administrator
   sudo: yes
   lineinfile: dest=/etc/httpd/conf/httpd.conf
@@ -12,6 +15,9 @@
               line="ServerAdmin {{ admin_email | mandatory }}"
               insertafter='^#(\s*)ServerAdmin'
 
+#
+# TODO: Use a public hostname here:
+#
 - name: Set the HTTP server name
   sudo: yes
   lineinfile: dest=/etc/httpd/conf/httpd.conf

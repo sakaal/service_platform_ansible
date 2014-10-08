@@ -1,33 +1,33 @@
-# file: roles/backup_keys/tasks/main.yml
+# file: roles/archive_keys/tasks/main.yml
 
 #
 # PKI-based backup security
 #
 
-- name: Backup keys directory
+- name: Archive keys directory
   sudo: yes
   sudo_user: "{{ backup_user | mandatory }}"
-  file: state=directory path="{{ backup_keys_path | mandatory }}"
+  file: state=directory path="{{ archive_keys_path | mandatory }}"
         owner="{{ backup_user }}" group="{{ backup_user }}" mode=750
 
 - name: Backup client private key
   sudo: yes
   sudo_user: "{{ backup_user }}"
-  command: chdir={{ backup_keys_path }}
+  command: chdir={{ archive_keys_path }}
            creates="{{ ansible_fqdn }}_backup-client-private.pem"
            openssl genrsa -out "{{ ansible_fqdn }}_backup-client-private.pem"
-           {{ backup_key_length | mandatory }}
+           {{ archive_key_length | mandatory }}
 
 - name: Backup client private key permissions
   sudo: yes
   sudo_user: "{{ backup_user }}"
-  file: path="{{ backup_keys_path }}/{{ ansible_fqdn }}_backup-client-private.pem"
+  file: path="{{ archive_keys_path }}/{{ ansible_fqdn }}_backup-client-private.pem"
         owner={{ backup_user }} group={{ backup_user }} mode=0400
 
 - name: Backup client public key
   sudo: yes
   sudo_user: "{{ backup_user }}"
-  command: chdir={{ backup_keys_path }}
+  command: chdir={{ archive_keys_path }}
            creates="{{ ansible_fqdn }}_backup-client-public.pem"
            openssl rsa
            -in "{{ ansible_fqdn }}_backup-client-private.pem"
@@ -37,17 +37,17 @@
 - name: Backup client public key permissions
   sudo: yes
   sudo_user: "{{ backup_user }}"
-  file: path="{{ backup_keys_path }}/{{ ansible_fqdn }}_backup-client-public.pem"
+  file: path="{{ archive_keys_path }}/{{ ansible_fqdn }}_backup-client-public.pem"
         owner={{ backup_user }} group={{ backup_user }} mode=0444
 
-- name: Backup service public key
+- name: Archives public key
   sudo: yes
   sudo_user: "{{ backup_user }}"
-  copy: content="{{ backup_service_public_key | mandatory }}"
-        dest="{{ backup_keys_path }}/backup-service-public.pem"
+  copy: content="{{ archives_public_key | mandatory }}"
+        dest="{{ archive_keys_path }}/archives-public.pem"
         owner={{ backup_user }} group={{ backup_user }} mode=0444
 
 #
-# The backup-service-private.pem is kept offline and generated manually.
-# DO NOT copy the backup service private key to /mnt/sensitive_data/.
+# The archives-private.pem is kept offline and generated manually.
+# DO NOT copy the archives private key to /mnt/sensitive_data/.
 #

@@ -1,0 +1,19 @@
+# file: roles/archive_keys/defaults/main.yml
+
+#
+# ENISA "Algorithms, Key Sizes and Parameters Report - 2013 recommendations"
+# https://www.enisa.europa.eu/activities/identity-and-trust/library/deliverables/algorithms-key-sizes-and-parameters-report
+#
+
+backup_user: "root"
+archive_keys_path: "/etc/pki/archives"
+
+#
+# Strength of random passphrases used for symmetric encryption of the archives: 
+#
+archive_password_bytes: 33
+
+#
+# RSA key length to protect the password files:
+#
+archive_key_length: 15360

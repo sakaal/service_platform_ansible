@@ -4,6 +4,9 @@
 #
 # Apache HTTP Server virtual hosts for SSL/TLS HTTPS reverse proxies
 #
+# http://httpd.apache.org/docs/2.4/ssl/ssl_howto.html
+# http://wiki.apache.org/httpd/NameBasedSSLVHosts
+#
 
 - name: Open source transport layer security tools
   sudo: yes

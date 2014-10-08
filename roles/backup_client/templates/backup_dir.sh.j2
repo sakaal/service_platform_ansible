@@ -62,7 +62,7 @@ stat --format="%n (%s B) %y" ${ARCHIVE}
 #
 # Generate a random password:
 #
-dd if=/dev/random bs={{ backup_password_bytes | mandatory }} count=1 2>/dev/null | base64\
+dd if=/dev/random bs={{ archive_password_bytes | mandatory }} count=1 2>/dev/null | base64\
  > ${DBNAME}_${TIMESTAMP}.pass.txt
 
 #
@@ -82,10 +82,10 @@ fi
 stat --format="%n (%s B) %y" ${ARCHIVE}.${algorithm}
 
 #
-# Encrypt the password file with the backup service public key:
+# Encrypt the password file with the archives public key:
 #
 nice -n 19 openssl pkeyutl -encrypt\
- -pubin -inkey "{{ backup_keys_path | mandatory }}/backup-service-public.pem"\
+ -pubin -inkey "{{ archive_keys_path | mandatory }}/archives-public.pem"\
  -in ${DBNAME}_${TIMESTAMP}.pass.txt\
  -out ${DBNAME}_${TIMESTAMP}.pass.tmp
 EXITVALUE=$?
