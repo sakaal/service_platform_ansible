@@ -1,0 +1,145 @@
+#!/usr/bin/env bash
+
+#
+# Produces an inventory of the on-site backup service
+#
+
+#
+# Command-line usage
+#
+usage() { echo "Usage: $0 [-y year] [-m month] [-h host] [-n dbname]" 1>&2; exit 1; }
+
+while getopts y:m:h:n: o
+do  case "${o}" in
+    y)  # year
+        o_y="${OPTARG}"
+        [ "$o_y" -gt "`date +%Y`" ] && usage
+        ;;
+    m)  # month
+        o_m="${OPTARG}"
+        [ "$o_m" -lt "1" ] && o_m=$(expr $(date +%m) + $o_m)
+        [ "$o_m" -gt "12" ] && usage
+        ;;
+    n)  # application data set name
+        o_n="${OPTARG}"
+        ;;
+    h)  # host
+        o_h="${OPTARG}"
+        [[ "$o_h" =~ ^[^.]+$ ]] && o_h=$o_h.`hostname -d`
+        ;;
+    ?)
+        usage
+        ;;
+    esac
+done
+shift $((OPTIND-1))
+
+#
+# Always include the total and monthly summary lines:
+#
+FILTER="^[0-9]\+\s\+/$\|^[0-9]\+\s\+/[0-9]\{4\}-[0-9]\{2\}$\|"
+
+#
+# Filter by year:
+#
+if [ -z "${o_y}" ]; then
+    o_y=`date +%Y`
+    FILTER="${FILTER}^[0-9]\+\s\+/....-"
+else
+    [ "${o_y}" -lt "2014" ] && usage
+    FILTER="${FILTER}^[0-9]\+\s\+$(printf '/%4d-' $o_y)"
+fi
+
+#
+# Filter by month:
+#
+if [ -z "${o_m}" ]; then
+    o_m=""
+    FILTER="${FILTER}.."
+elif [ "$o_m" -lt "1" ]; then
+    (( o_y += o_m/12 - 1 ))
+    (( o_m = o_m%12 + 12 ))
+    FILTER="${FILTER}$(printf '%02d' $o_m)"
+else
+    FILTER="${FILTER}$(printf '%02d' $o_m)"
+fi
+
+#
+# Filter by host:
+#
+if [ -z "${o_h}" ]; then
+    FILTER="${FILTER}/[^/]\+"
+else
+    FILTER="${FILTER}/${o_h}"
+fi
+
+#
+# Filter by application database name:
+#
+if [ ! -z "${o_n}" ]; then
+    FILTER="${FILTER}/${o_n}"
+fi
+
+#echo "grep '${FILTER}'" # debug print the filter
+
+BACKUP_USER="{{ admin_username | mandatory }}"
+
+if [[ $USER -ne $BACKUP_USER ]]; then
+   echo "This script must be run as ${BACKUP_USER}" 
+   exit 1
+fi
+
+BACKUP_SERV="/var/local/archives"
+sudo mkdir -p ${BACKUP_SERV}
+sudo chown -R ${BACKUP_USER}:${BACKUP_USER} ${BACKUP_SERV}
+chmod -R o-rwx ${BACKUP_SERV}
+
+cd "${BACKUP_SERV}"
+umask 077
+
+TEMP_FILE=$(mktemp --tmpdir backup_inventory.XXX)
+trap "rm -rf ${TEMP_FILE}" EXIT
+
+#
+# Fetch the inventory data
+#
+LFTP="open -u {{ backup_onsite_account | mandatory }}, {{ backup_onsite_protocol | mandatory }}://{{ backup_onsite_service | mandatory }};"
+lftp -c "${LFTP} du --bytes --max-depth=3 /" >${TEMP_FILE} 2>&1
+
+#
+# Report
+#
+echo
+echo ON-SITE BACKUP INVENTORY
+printf '%72s\n' | tr ' ' _
+
+while read line
+do
+    OIFS=$IFS
+    IFS="/"
+    columns=($line)
+    IFS=$OIFS
+
+    bytes=$(echo ${columns[0]} | tr -d ' \t')
+    date=${columns[1]}
+    host=${columns[2]}
+    dbname=${columns[3]}
+
+    [ -z "$date" ] && { # summary information in place of the usual columns
+        host="{{ backup_onsite_service }}"
+        dbname=$(date +'%F %H:%M')
+        date=TOTAL
+    }
+
+    [ -z "$dbname" ] && echo # an empty line before host summary
+
+    # inventory data columns
+    printf "%31s:%-18s %13d|%7s\n" "$host" "$dbname" "$bytes" "$date"
+
+    [ -z "$host" ] && {
+        printf '%72s\n' | tr ' ' _ # a horizontal rule after monthly summary
+    }
+done < <(
+    grep -e "$FILTER" "${TEMP_FILE}"
+)
+echo
