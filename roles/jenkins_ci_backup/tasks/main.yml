@@ -15,36 +15,3 @@
   sudo: yes
   template: src=jenkins_ci.conf.j2
             dest="/usr/local/etc/backup_client.d/jenkins_ci.conf"
-
-#
-# Obsolete the older backup routine:
-#
-
-- name: Remove obsolete Jenkins backup script
-  sudo: yes
-  file: dest="{{ jenkins_home }}/backups/jenkins_backup.sh" state=absent
-  register: obsolete_jenkins_backup
-
-- name: Remove obsolete Jenkins backups directory
-  sudo: yes
-  file: dest="{{ jenkins_home }}/backups" state=absent
-
-- name: Disable the obsolete Jenkins backup timer
-  when: obsolete_jenkins_backup|changed
-  sudo: yes
-  command: systemctl disable jenkins_backup.timer
-  ignore_errors: yes
-
-- name: Stop the obsolete Jenkins backup timer
-  when: obsolete_jenkins_backup|changed
-  sudo: yes
-  command: systemctl stop jenkins_backup.timer
-  ignore_errors: yes
-
-- name: Remove obsolete Jenkins backup service unit file
-  sudo: yes
-  file: dest=/etc/systemd/system/jenkins_backup.service state=absent
-
-- name: Remove obsolete Jenkins backup timer unit file
-  sudo: yes
-  file: dest=/etc/systemd/system/jenkins_backup.timer state=absent
