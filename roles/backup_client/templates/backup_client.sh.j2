@@ -26,6 +26,7 @@ for filename in /usr/local/etc/backup_client.d/*.conf; do
     mkdir -p ${OUTBOUND_QUEUE}/${name}
     mv ${name}_*.pass.safe ${OUTBOUND_QUEUE}/${name}/
     mv ${name}_*.${algorithm} ${OUTBOUND_QUEUE}/${name}/
+    mv ${name}_*.sha256 ${OUTBOUND_QUEUE}/${name}/
 )
 done
 
@@ -34,7 +35,7 @@ done
 #
 ls | grep '^.*\(\.tmp\|\.pass\.txt\|\.tgz\)$'
 if [ $? -eq 0 ]; then
-    rm -f *.tmp *.pass.txt *.tgz
+    rm -f *.tmp *.pass.txt *.tgz *.sha256
     echo "Removed the file(s) left behind." >&2
 fi
 

@@ -31,7 +31,7 @@ fi
 TIMESTAMP="$(date -u +'%FT%H%MZ')"
 
 DBNAME="${name}_$(hostname)"
-ARCHIVE="${DBNAME}_${TIMESTAMP}.tgz"
+ARCHIVE="${DBNAME}_${TIMESTAMP}"
 
 du -sh --time --time-style=full-iso ${clientdir} 
 
@@ -50,52 +50,54 @@ if [[ "${clientdir}" == /* ]]; then
     clientdir="${clientdir:1}"
 fi
 
-nice -n 19 tar ${TAR_OPTS} -czf ${ARCHIVE} ${clientdir}
+nice -n 19 tar ${TAR_OPTS} -czf ${ARCHIVE}.tgz ${clientdir}
 EXITVALUE=$?
 if [ $EXITVALUE -ne 0 ]; then
     logger -t backup_dir -p user.error\
      "ALERT tar exited with [$EXITVALUE] for data set ${DBNAME}"
     exit $EXITVALUE
 fi
-stat --format="%n (%s B) %y" ${ARCHIVE}
+stat --format="%n (%s B) %y" ${ARCHIVE}.tgz
 
 #
 # Generate a random password:
 #
 dd if=/dev/random bs={{ archive_password_bytes | mandatory }} count=1 2>/dev/null | base64\
- > ${DBNAME}_${TIMESTAMP}.pass.txt
+ > ${ARCHIVE}.pass.txt
 
 #
 # Encrypt the backup archive with the password:
 #
-nice -n 19 openssl enc -${algorithm} -pass file:${DBNAME}_${TIMESTAMP}.pass.txt\
- -in ${ARCHIVE} -out ${ARCHIVE}.${algorithm}.tmp
+nice -n 19 openssl enc -${algorithm} -pass file:${ARCHIVE}.pass.txt\
+ -in ${ARCHIVE}.tgz -out ${ARCHIVE}.tgz.${algorithm}.tmp
 EXITVALUE=$?
 if [ $EXITVALUE -eq 0 ]; then
-    mv ${ARCHIVE}.${algorithm}.tmp ${ARCHIVE}.${algorithm}
-    nice -n 19 shred --iterations=25 --remove --force --zero ${ARCHIVE}
+    mv ${ARCHIVE}.tgz.${algorithm}.tmp ${ARCHIVE}.tgz.${algorithm}
+    nice -n 19 shred --iterations=25 --remove --force --zero ${ARCHIVE}.tgz
 else
     logger -t backup_dir -p user.error\
      "ALERT openssl enc exited with [$EXITVALUE] for data set ${DBNAME}"
     exit $EXITVALUE
 fi
-stat --format="%n (%s B) %y" ${ARCHIVE}.${algorithm}
+stat --format="%n (%s B) %y" ${ARCHIVE}.tgz.${algorithm}
 
 #
 # Encrypt the password file with the archives public key:
 #
 nice -n 19 openssl pkeyutl -encrypt\
  -pubin -inkey "{{ archive_keys_path | mandatory }}/archives-public.pem"\
- -in ${DBNAME}_${TIMESTAMP}.pass.txt\
- -out ${DBNAME}_${TIMESTAMP}.pass.tmp
+ -in ${ARCHIVE}.pass.txt\
+ -out ${ARCHIVE}.pass.tmp
 EXITVALUE=$?
 if [ $EXITVALUE -eq 0 ]; then
-    mv ${DBNAME}_${TIMESTAMP}.pass.tmp ${DBNAME}_${TIMESTAMP}.pass.safe
+    mv ${ARCHIVE}.pass.tmp ${ARCHIVE}.pass.safe
     nice -n 19 shred --iterations=25\
-     --remove --force --zero ${DBNAME}_${TIMESTAMP}.pass.txt
+     --remove --force --zero ${ARCHIVE}.pass.txt
 else
     logger -t backup_dir -p user.error\
      "ALERT openssl pkeyutl exited with [$EXITVALUE] for data set ${DBNAME}"
     exit $EXITVALUE
 fi
-stat --format="%n (%s B) %y" ${DBNAME}_${TIMESTAMP}.pass.safe
+stat --format="%n (%s B) %y" ${ARCHIVE}.pass.safe
+
+sha256sum "${ARCHIVE}.tgz.${algorithm}" > "${ARCHIVE}.sha256"
