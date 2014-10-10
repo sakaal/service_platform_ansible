@@ -9,7 +9,7 @@
   sudo: yes
   copy: src=sonatype_nexus_oss.backup_excludes
         dest="{{ nexus_work | mandatory }}/.backup_excludes"
-        mode=660 owner=jenkins group=jenkins
+        mode=660 owner={{ nexus_user }} group={{ nexus_user }}
 
 - name: Backup client configuration for Sonatype Nexus OSS
   sudo: yes

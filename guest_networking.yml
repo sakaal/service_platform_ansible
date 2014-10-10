@@ -1,5 +1,5 @@
 ---
-#file: guest_networking.yml
+# file: guest_networking.yml
 
 #
 # Attach extra interfaces to libvirt guests

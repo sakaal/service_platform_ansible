@@ -1,5 +1,5 @@
 ---
-# file: roles/jenkins_ci_backup/meta/main.yml
+# file: roles/hetzner_backup_authorized_keys/meta/main.yml
 
 dependencies:
 - role: backup_tools
