@@ -6,7 +6,11 @@
 #
 
 backup_user: "root"
-archive_keys_path: "/etc/pki/archives"
+
+#
+# The archive keys path must be relative to the root and not begin with a slash.
+#
+archive_keys_path: "etc/pki/archives"
 
 #
 # Strength of random passphrases used for symmetric encryption of the archives: 

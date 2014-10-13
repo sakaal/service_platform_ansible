@@ -87,6 +87,30 @@
   file: path="/mnt/sensitive_data/archives/restore/{{ item.stdout }}" 
         owner=root group=wheel mode=640
 
+- name: Load the archives and their SHA-256 checksum files on the clients
+  with_fileglob:
+  - /mnt/sensitive_data/archives/restore/*.pass.safe
+  remote_user: "{{ admin_username | mandatory }}"
+  delegate_to: >
+               {{ item |
+               regex_replace(
+               '^.*/([^/]+)_([^/_]+)_([0-9]{4}-[0-9]{2})-[0-9A-Z]+\.pass\.safe$',
+               '\\2') }}
+  shell: >
+         lftp -c "open -u {{ backup_onsite_account | mandatory }},
+         sftp://{{ backup_onsite_service | mandatory }} ;
+         cd /{{ item |
+         regex_replace('^.*/([^/]+)_([^/_]+)_([0-9]{4}-[0-9]{2})-[0-9A-Z]+\.pass\.safe$', '\\3')
+         }}/{{ item |
+         regex_replace('^.*/([^/]+)_([^/_]+)_([0-9]{4}-[0-9]{2})-[0-9A-Z]+\.pass\.safe$', '\\2')
+         }}/{{ item |
+         regex_replace('^.*/([^/]+)_([^/_]+)_([0-9]{4}-[0-9]{2})-[0-9A-Z]+\.pass\.safe$', '\\1')
+         }} ;
+         get -O /var/local/archives/restore/ {{ item
+         | regex_replace('^.*/([^/]+)\.pass\.safe$', '\\1') }}.sha256 ;
+         mget -O /var/local/archives/restore/ {{ item
+         | regex_replace('^.*/([^/]+)\.pass\.safe$', '\\1') }}.tgz.* ;"
+
 #
 # Inventory the destination hosts based on the locally available password files
 #

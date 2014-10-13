@@ -71,12 +71,11 @@
   local_action: copy src="{{ item }}"
                 dest="{{ remov_media_dir }}/archives/restore/" mode=640
 
+- name: Include the script on the removable media
+  run_once: yes
+  local_action: template src="authorize_restore.sh.j2"
+                dest="{{ remov_media_dir }}/authorize_restore.sh" mode=555
+
 - name: Safely remove the media
   run_once: yes
-  local_action: command umount -d {{ remov_media_dir|mandatory }}
-
-#
-# TODO: Start the archive download in a background process on the client.
-# The archives should be ready by the time the service administrator has
-# prepared the keys and returns to restore the data.
-#
+  local_action: shell sync && umount -d {{ remov_media_dir|mandatory }}

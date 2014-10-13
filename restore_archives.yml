@@ -29,6 +29,9 @@
 # destroy the current state of the application (unless you have otherwise
 # backed it up manually) and replace it with the archived state.
 #
+# 5. Currently, there's still an extra step to run the backup_restore script
+# manually on each target node. This will be included in the above step later.
+#
 
 - name: PREPARE THE INVENTORY
   hosts: localhost
@@ -44,5 +47,6 @@
     local_user: "{{ lookup('env', 'USER') }}"
   vars_files:
     - /mnt/sensitive_data/etc/ansible/vars/admin_access.yml
+    - "{{ playbook_dir }}/roles/archive_keys/defaults/main.yml"
   roles:
     - app_data_restore_2

@@ -1,0 +1,62 @@
+---
+# file: roles/app_data_restore_3/tasks/main.yml
+
+#
+# Target inventory for restoring application data from the archives
+#
+
+#
+# Do not use other removable media on the ACS when restoring backups.
+#
+- name: Detect the removable media device
+  run_once: yes
+  local_action: shell ls
+                /run/media/{{ local_user | mandatory }} 2>/dev/null | tail -n1
+  register: detected_media
+
+- name: Prompt the user to insert a removable media device
+  when: detected_media.stdout.strip() == ""
+  fail:
+    msg: "Please insert a removable media device.
+          Make sure it's mounted under /run/media/{{ local_user }}/."
+
+- set_fact:
+    remov_media_label: "{{ detected_media.stdout.strip() }}"
+
+- set_fact:
+    remov_media_dir: "/run/media/{{ local_user }}/{{ remov_media_label }}"
+
+#
+# Inventory the destination hosts based on the locally available password files
+#
+
+- name: Create a temporary file
+  run_once: yes
+  local_action: command mktemp
+  register: temp_file
+  changed_when: False
+
+- when: temp_file|success
+  set_fact:
+    temp_file: "{{ temp_file.stdout | mandatory }}"
+
+- name: Make a list of destination hosts
+  with_fileglob:
+  - "{{ remov_media_dir }}/archives/restore/*.pass.client"
+  lineinfile: dest="{{ temp_file }}"
+              line="{{ item
+              | regex_replace('^(.*)/([^/]+)_([^_]+)_([^_]+).pass.client$',
+              '\\3') }}"
+
+- name: Inventory the destination hosts
+  with_lines:
+  - cat {{ temp_file }}
+  when: not item in play_hosts
+  add_host:
+    hostname: "{{ item }}"
+    groups: "dest_nodes"
+
+- name: Delete the temporary file
+  file: name="{{ temp_file }}" state=absent
+  changed_when: False
+

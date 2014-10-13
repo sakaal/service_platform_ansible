@@ -1,0 +1,142 @@
+#!/bin/sh
+# file: /usr/local/sbin/backup_restore
+
+# A Bourne shell script to restore application data archives
+
+backup_client_private_key="/{{ archive_keys_path | mandatory }}/client/${HOSTNAME}_backup-client-private.pem"
+
+[ -f "$backup_client_private_key" ] || {
+echo Missing file: "${backup_client_private_key}" >&2
+echo Need the backup client private key to open the client password files. >&2
+exit 66 # cannot open input
+}
+
+[ -r "$backup_client_private_key" ] || {
+echo Denied file: "${backup_client_private_key}" >&2
+echo Need permission to read the backup client private key. >&2
+exit 77 # permission denied
+}
+
+RESTORE_DIR=/var/local/archives/restore
+cd "${RESTORE_DIR}"
+
+#
+# Iterate the client password files.
+#
+for client_password_file in `find $RESTORE_DIR -name *.pass.client -type f`
+do
+archive=`echo $client_password_file | sed 's|\.pass\.client$||'`
+
+PATTERN="^$RESTORE_DIR/\(.\+\)_\([^_]\+\)_\([^_]\+\)$"
+   app_db=`echo $archive | sed "s|$PATTERN|\1|"`
+   client=`echo $archive | sed "s|$PATTERN|\2|"`
+timestamp=`echo $archive | sed "s|$PATTERN|\3|"`
+
+[ "${client}" == "${HOSTNAME}" ] || {
+echo Unexpected hostname: "${client_password_file}" >&2
+echo Client password files can only be opened on their destination host. >&2
+continue
+}
+
+backup_client_conf="/usr/local/etc/backup_client.d/${app_db}.conf"
+[ -f "$backup_client_conf" ] || {
+echo Missing file: "$backup_client_conf" >&2
+echo The application backup client configuration file is required. >&2
+exit 66 # cannot open input
+}
+. "${backup_client_conf}"
+
+[ -z "${service_name}" ] && {
+echo Missing service_name in: "${backup_client_conf}" >&2
+echo Configure the name of the systemd service to cycle. >&2
+exit 66 # cannot open input
+}
+
+encrypted_archive=`find ${archive}.tgz.* | head -n1`
+[ -f "$encrypted_archive" ] || {
+echo Missing file: "${archive}.tgz.*" >&2
+echo Retrieve the encrypted archive file from an available storage location. >&2
+exit 66 # cannot open input
+}
+
+[ -r "$encrypted_archive" ] || {
+echo Denied file: "$encrypted_archive" >&2
+echo Need permission to read the encrypted archive file. >&2
+exit 77 # permission denied
+}
+
+archive_sha256=`find ${archive}.sha256`
+[ -f "$archive_sha256" ] || {
+echo Missing file: "${archive}.sha256" >&2
+echo Retrieve the archive SHA-256 checksum file. >&2
+exit 66 # cannot open input
+}
+
+sha256sum -c "${archive_sha256}" || {
+echo "The archive file appears corrupt. Do you have another copy?" >&2
+exit 74 # input/output error
+}
+
+PATTERN="^\(.\+\)_\([^_]\+\)_\([^_.]\+\)\.tgz\.\([^.]\+\)$"
+algorithm=`echo $encrypted_archive | sed "s|$PATTERN|\4|"`
+
+[ -w "$RESTORE_DIR" ] || {
+echo Denied directory: `pwd`/$RESTORE_DIR >&2
+echo Need permission to write the cleartext archive. >&2
+exit 77 # permission denied
+}
+
+echo "Restoring ${app_db} on ${client} to ${timestamp}..."
+
+#
+# Send the cleartext through a pipe to
+# avoid storing the password on the file system.
+#
+nice -n 19 sh -c "\
+openssl pkeyutl -decrypt -inkey '$backup_client_private_key'\
+ -in '$client_password_file' |\
+openssl enc -${algorithm} -d -pass stdin\
+ -in '${encrypted_archive}'\
+ -out '${archive}.tgz.tmp'\
+" && mv -f ${archive}.tgz.tmp ${archive}.tgz
+
+#
+# Detect the application data top level directory from inside the archive:
+#
+app_db_dir="/`tar -tf "${archive}.tgz" | head -n1`"
+[ -w "${app_db_dir}" ] || {
+echo Denied directory: ${app_db_dir} >&2
+echo Need permission to overwrite the archived top level directory. >&2
+exit 77 # permission denied
+}
+
+#
+# Check that directory is the same as configured for the application:
+#
+[ "$(stat -c "%d:%i" "$app_db_dir")" == "$(stat -c "%d:%i" "$directory")" ] || {
+echo Unexpected directory: ${app_db_dir} >&2
+echo The archive did not contain ${directory} that is given in ${backup_client_conf} >&2
+exit 77 # permission denied
+}
+
+#
+# Stops the service.
+#
+systemctl stop ${service_name}
+sync
+
+#
+# Deletes the current application data directory contents.
+#
+cd "${app_db_dir}" && find ! -name '.' ! -name '..' -delete
+
+#
+# Restores the application data from the archive.
+#
+cd "${RESTORE_DIR}" && tar -xf "${archive}.tgz" -C /
+sync
+
+systemctl start ${service_name}
+
+echo "Restored ${app_db_dir} and restarted ${service_name}."
+done

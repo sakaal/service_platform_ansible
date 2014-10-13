@@ -44,10 +44,5 @@
 # Jenkins configuration is best done manually via the web console
 # and then kept regularly backed up.
 #
-# TODO: Restore the jenkins home directory from backups.
-# This requires the encrypted archive password file that
-# changes each time the host key changes.
-#
-# Archive password files encrypted to backup client public key are deployed to:
-# /mnt/sensitive_data/backups/restore/
+# Restore the Jenkins CI home directory from archives after redeployment.
 #

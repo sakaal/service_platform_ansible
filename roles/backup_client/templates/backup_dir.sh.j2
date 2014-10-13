@@ -85,7 +85,7 @@ stat --format="%n (%s B) %y" ${ARCHIVE}.tgz.${algorithm}
 # Encrypt the password file with the archives public key:
 #
 nice -n 19 openssl pkeyutl -encrypt\
- -pubin -inkey "{{ archive_keys_path | mandatory }}/archives-public.pem"\
+ -pubin -inkey "/{{ archive_keys_path | mandatory }}/archives-public.pem"\
  -in ${ARCHIVE}.pass.txt\
  -out ${ARCHIVE}.pass.tmp
 EXITVALUE=$?

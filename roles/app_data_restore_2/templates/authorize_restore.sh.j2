@@ -1,0 +1,84 @@
+#!/bin/sh
+
+# A Bourne shell script to process the keys on the offline host
+
+# WARNING: This is executable code coming from a less secure
+# online environment to a high-security offline environment.
+# Keep this simple and always review it for security when it's
+# copied over.
+
+ARCHIVES_PRIVATE_KEY=/etc/pki/archives/archives-private.pem
+
+[ -f "${ARCHIVES_PRIVATE_KEY}" ] || {
+echo Missing file: "${ARCHIVES_PRIVATE_KEY}" >&2
+echo Run this on a secure offline host that has the archives private key. >&2
+exit 66 # cannot open input
+}
+
+[ -r "${ARCHIVES_PRIVATE_KEY}" ] || {
+echo Denied file: "${ARCHIVES_PRIVATE_KEY}" >&2
+echo Need permission to read the archives private key. >&2
+exit 77 # permission denied
+}
+
+[ -d "/run/media/$USER" ] || {
+echo Missing directory: /run/media/$USER >&2
+echo Removable media is expected to be mounted under this directory. >&2
+exit 66 # cannot open input
+}
+cd /run/media/$USER
+
+REMOVABLE_MEDIA_LABEL="`ls 2>/dev/null | tail -n1`"
+
+[ -d "$REMOVABLE_MEDIA_LABEL" ] || {
+echo Missing directory: /run/media/$USER/* >&2
+echo Removable media is expected to be mounted under this directory. >&2
+exit 66 # cannot open input
+}
+
+[ -w "$REMOVABLE_MEDIA_LABEL" ] || {
+echo Denied directory: /run/media/$USER/$REMOVABLE_MEDIA_LABEL >&2
+echo Need permission to write the client password files. >&2
+exit 77 # permission denied
+}
+cd "$REMOVABLE_MEDIA_LABEL"
+
+#
+# Iterate the safe password files found on the removable media.
+#
+RESTORE_DIR=archives/restore
+for safe_password_file in `find $RESTORE_DIR -name *.pass.safe -type f`
+do
+archive=`echo $safe_password_file | sed 's|\.pass\.safe$||'`
+
+PATTERN="^$RESTORE_DIR/\(.\+\)_\([^_]\+\)_\([^_]\+\)$"
+   app_db=`echo $archive | sed "s|$PATTERN|\1|"`
+   client=`echo $archive | sed "s|$PATTERN|\2|"`
+timestamp=`echo $archive | sed "s|$PATTERN|\3|"`
+
+echo "Restore ${app_db} on ${client} to ${timestamp}."
+
+backup_client_public_key="{{ archive_keys_path | mandatory }}/client/${client}_backup-client-public.pem"
+
+[ -f "$backup_client_public_key" ] || {
+echo Missing file: "${backup_client_public_key}" >&2
+echo Collect the backup client public keys before running this script. >&2
+exit 66 # cannot open input
+}
+
+#
+# Send the cleartext through a pipe between decryption and encryption
+# to avoid storing the password on the file system.
+#
+openssl pkeyutl -decrypt -inkey "${ARCHIVES_PRIVATE_KEY}"\
+ < "${archive}.pass.safe" |\
+openssl pkeyutl -encrypt -pubin -inkey "$backup_client_public_key"\
+ > "${archive}.pass.tmp" \
+&& mv -f ${archive}.pass.tmp ${archive}.pass.client
+done
+
+echo Unmounting the removable media...
+cd ..
+sync
+umount -d "$REMOVABLE_MEDIA_LABEL" \
+&& echo You can now safely remove the media.
