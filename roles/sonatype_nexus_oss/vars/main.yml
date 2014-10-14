@@ -5,5 +5,6 @@ nexus_user: nexus
 nexus_home: "/home/{{ nexus_user | mandatory }}/nexus-{{ nexus_version | mandatory }}"
 nexus_work: "/home/{{ nexus_user }}/sonatype-work"
 nexus_conf: "{{ nexus_work }}/nexus/conf"
+nexus_download: "http://download.sonatype.com/nexus/oss"
 nexus_archive: "nexus-{{ nexus_version }}-bundle.tar.gz"
 files_dir: "{{ playbook_dir }}/roles/sonatype_nexus_oss/files"

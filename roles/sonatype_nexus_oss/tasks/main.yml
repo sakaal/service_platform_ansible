@@ -23,7 +23,7 @@
                 command chdir="{{ files_dir }}"
                 creates="{{ nexus_archive | mandatory }}"
                 wget -c -nv --no-cookies
-                http://www.sonatype.org/downloads/{{ nexus_archive }}
+                {{ nexus_download | mandatory }}/{{ nexus_archive }}
                 -O {{ nexus_archive }}
 
 - name: Verify the local Sonatype Nexus OSS archive
