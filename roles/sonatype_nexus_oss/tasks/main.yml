@@ -212,6 +212,19 @@
   notify:
      - Restart Nexus
 
+- name: Open firewall port 8081 access from within the libvirt default network
+  sudo: yes
+  command: firewall-cmd --permanent
+           --add-rich-rule='rule family="ipv4"
+           source address="192.168.122.0/24"
+           port port="8081" protocol="tcp" accept'
+  changed_when: False
+
+- name: Reload the firewall
+  sudo: yes
+  command: firewall-cmd --reload
+  changed_when: False
+
 #
 # Secure SMTP over TLS (on port 587 only)
 #

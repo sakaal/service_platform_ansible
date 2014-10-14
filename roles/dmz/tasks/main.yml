@@ -17,23 +17,23 @@
   template: src=ifcfg-eth1.j2 dest=/etc/sysconfig/network-scripts/ifcfg-eth1
             force=no mode=644
 
-- name: Get the default zone
+- name: Get the eth0 interface zone
   sudo: yes
-  command: firewall-cmd --get-default-zone
-  register: default_zone
+  command: firewall-cmd --get-zone-of-interface=eth0
+  register: eth0_zone
 
-- name: Query if there's another interface in the default zone
+- name: Query if there's another interface in the eth0 interface zone
   sudo: yes
-  command: firewall-cmd --zone={{ default_zone.stdout | mandatory }}
+  command: firewall-cmd --zone={{ eth0_zone.stdout | mandatory }}
            --query-interface=eth1
   register: another_interface
   changed_when: (another_interface.rc == 0) and another_interface.stdout|bool
   failed_when: None
 
-- name: Remove the other interface from the default zone
+- name: Remove the other interface from the eth0 interface zone
   when: another_interface|changed
   sudo: yes
-  command: firewall-cmd --permanent --zone={{ default_zone.stdout }}
+  command: firewall-cmd --permanent --zone={{ eth0_zone.stdout }}
            --remove-interface=eth1
   notify: Restart the firewall
 
