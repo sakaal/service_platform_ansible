@@ -13,6 +13,8 @@
 #
 # jenkins-ci.org key fingerprint: 150fde3f7787e7d11ef4e12a9b7d32f2d50582e6
 # https://gist.github.com/kohsuke/10025805
+# Note that there must be a newline after the --END PGP PUBLIC KEY BLOCK--
+# marker in the key file. Otherwise rpm_key import will fail.
 #
 - name: Upload the Jenkins RPM repository GPG key
   sudo: yes

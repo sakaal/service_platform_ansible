@@ -13,5 +13,6 @@
   roles:
     - dmz
     - dmz_bastion
+    - libvirt_guest_network_service
     - transport_layer_security
     - https_virtual_proxies

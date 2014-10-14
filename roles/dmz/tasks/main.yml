@@ -5,6 +5,18 @@
 # Configures the other network interface of a guest to the DMZ.
 #
 
+- name: Check if eth1 interface exists
+  command: ip link show eth1
+  register: link_eth1
+  changed_when: link_eth1.rc == 2 
+  failed_when: False
+
+- name: Create the eth1 interface configuration file
+  when: link_eth1|changed
+  sudo: yes
+  template: src=ifcfg-eth1.j2 dest=/etc/sysconfig/network-scripts/ifcfg-eth1
+            force=no mode=644
+
 - name: Get the default zone
   sudo: yes
   command: firewall-cmd --get-default-zone
@@ -17,12 +29,6 @@
   register: another_interface
   changed_when: (another_interface.rc == 0) and another_interface.stdout|bool
   failed_when: None
-
-- name: Create the interface configuration file
-  when: another_interface|changed
-  sudo: yes
-  template: src=ifcfg-eth1.j2 dest=/etc/sysconfig/network-scripts/ifcfg-eth1
-            force=no mode=644
 
 - name: Remove the other interface from the default zone
   when: another_interface|changed
@@ -43,9 +49,14 @@
               regexp='^\s*DEFROUTE=' line='DEFROUTE=no'
 
 - name: Restart the network
-  when: another_interface|changed
+  when: link_eth1|changed or another_interface|changed
   sudo: yes
   service: name=network state=restarted
+  register: network_status
+
+- name: Gather facts
+  when: network_status|changed
+  setup:
 
 #
 # The permanent FirewallD configuration should be now fine, but an extra step

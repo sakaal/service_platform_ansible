@@ -1,5 +1,5 @@
 ---
-# file: roles/libvirt_interfaces
+# file: roles/libvirt_interfaces/tasks/main.yml
 
 #
 # Attach network interfaces to libvirt guests
@@ -34,3 +34,4 @@
            --mac '{{ item.item.mac | mandatory }}'
            --model {{ item.item.model | mandatory }}
            --persistent
+           
