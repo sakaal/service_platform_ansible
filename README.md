@@ -142,19 +142,44 @@ Substitute your service management domain name for `example.com` (and
 
 1. Deploy public network interfaces:
 
+        ansible-playbook guest_networking.yml -i ../com.example.ansible_main/development
         ansible-playbook guest_networking.yml -i ../com.example.ansible_main/production
 
-1. Deploy web servers:
+1. Deploy mail services:
+
+        ansible-playbook web_servers.yml -i ../com.example.ansible_main/production
+
+1. Deploy web services:
 
         ansible-playbook web_servers.yml -i ../com.example.ansible_main/production
 
 1. Deploy software artifact management services:
 
-        ansible-playbook artifact_servers.yml -i ../com.example.ansible_main/production
+        ansible-playbook artifact_servers.yml -i ../com.example.ansible_main/development
 
 1. Deploy continuous integration services:
 
-        ansible-playbook ci_servers.yml -i ../com.example.ansible_main/production
+        ansible-playbook ci_servers.yml -i ../com.example.ansible_main/development
+
+## Application data restoration from archives
+
+1. Insert a secure removable media device.
+
+1. Begin restoration by collecting the keys:
+
+        ansible-playbook restore_archives.yml -i ../com.example.ansible_main/development
+
+1. Take the removable media to the secure offline host and process the keys.
+
+        authorize_restore.sh
+
+1. Bring the removable media back to the ACS.
+
+1. Proceed with restoration:
+
+        ansible-playbook restore_commit.yml -i ../com.example.ansible_main/development
+
+Currently, some manual steps are still needed. See the source code for details.
 
 ## Continual improvement
 
