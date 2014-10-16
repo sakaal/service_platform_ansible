@@ -1,0 +1,70 @@
+---
+# file: roles/dynect_mx_records/tasks/main.yml
+#
+# Creates DNS MX records via the DynECT API.
+#
+
+- name: Check if DNS zones already have MX records
+  local_action: >
+                uri url="{{ dynect_api_url }}/MXRecord/{{
+                public_dns_zone | mandatory }}/{{ public_dns_zone }}"/
+                HEADER_Content-Type="application/json"
+                HEADER_Auth-Token="{{ dynect_session_token }}"
+  register: zone_mx_records
+
+- name: Examine the DNS zone existing MX records
+  when: zone_mx_records|success
+  with_items: zone_mx_records.json.data
+  local_action: >
+                uri url="{{ dynect_api_url }}/MXRecord/{{
+                public_dns_zone | mandatory }}/{{ public_dns_zone
+                }}/{{ item|basename }}"
+                HEADER_Content-Type="application/json"
+                HEADER_Auth-Token="{{ dynect_session_token }}"
+  register: current_mx_records
+
+- name: Update DNS zone MX records
+  with_items: current_mx_records.results
+  when: (item.json.data.rdata.exchange == "{{ public_hostname }}.") and
+        (item.json.data.rdata.preference != dns_mx_preference)
+  local_action: >
+                uri method=PUT url="{{ dynect_api_url }}/MXRecord/{{
+                public_dns_zone | mandatory }}/{{ public_dns_zone
+                }}/{{ item.json.data.record_id }}"
+                HEADER_Content-Type="application/json"
+                HEADER_Auth-Token="{{ dynect_session_token }}"
+                body='{ "rdata": {
+                "exchange": "{{ public_hostname | mandatory }}",
+                "preference": "{{ dns_mx_preference | mandatory }}"
+                }, "ttl": "0" }'
+  register: updated_mx_records
+  changed_when: True
+
+- name: Determine if any DNS MX records have changed
+  with_items: current_mx_records.results
+  when: (item.json.data.rdata.exchange == "{{ public_hostname }}.") and
+        (item.json.data.rdata.preference == "{{ dns_mx_preference }}")
+  debug: msg="Unchanged"
+  register: existing_mx_record
+  changed_when: False
+
+- name: Make DNS zone MX records
+  when: existing_mx_record|skipped
+  local_action: >
+                uri method=POST url="{{ dynect_api_url }}/MXRecord/{{
+                public_dns_zone | mandatory }}/{{ public_dns_zone }}"/
+                HEADER_Content-Type="application/json"
+                HEADER_Auth-Token="{{ dynect_session_token }}"
+                body='{ "rdata": {
+                "exchange": "{{ public_hostname | mandatory }}",
+                "preference": "{{ dns_mx_preference | mandatory }}"
+                } }'
+
+- name: Publish DNS zones
+  when: updated_mx_records|changed or existing_mx_record|skipped
+  local_action: >
+                uri method=PUT url="{{ dynect_api_url }}/Zone/{{
+                public_dns_zone | mandatory }}"
+                HEADER_Content-Type="application/json"
+                HEADER_Auth-Token="{{ dynect_session_token }}"
+                body='{"publish":true}'
