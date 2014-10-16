@@ -1,0 +1,11 @@
+---
+# file: roles/postfix_standalone/handlers/main.yml
+
+- name: Reload Postfix
+  service: name=postfix state=reloaded
+
+- name: Restart Postfix
+  service: name=postfix state=restarted
+
+- name: Restart clamd@amavisd
+  service: name=clamd@amavisd state=restarted
