@@ -1,7 +1,0 @@
----
-# file: roles/transport_layer_security/defaults/main.yml
-#
-# A default naming policy for wildcard certificates
-#
-x509_cert: "_.{{ public_dns_zone }}-crt.pem"
-x509_key: "_.{{ public_dns_zone }}-key.pem"
