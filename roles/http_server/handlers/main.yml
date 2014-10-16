@@ -1,10 +1,6 @@
 ---
 # file: roles/http_server/handlers/main.yml
 
-- name: Reload the firewall
-  sudo: yes
-  command: firewall-cmd --reload
-
 - name: Restart the HTTP server
   sudo: yes
   service: name=httpd state=restarted

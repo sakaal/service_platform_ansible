@@ -11,7 +11,7 @@
     - /mnt/sensitive_data/etc/ansible/vars/dynect.yml
     - /mnt/sensitive_data/etc/ansible/vars/hetzner.yml
   roles:
-    - dmz
+    - ca_trust
     - dmz_bastion
     - libvirt_guest_network_service
     - transport_layer_security

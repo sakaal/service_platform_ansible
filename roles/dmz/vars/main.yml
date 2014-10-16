@@ -1,0 +1,4 @@
+---
+# file: roles/dmz/vars/main.yml
+
+firewall_zone: dmz

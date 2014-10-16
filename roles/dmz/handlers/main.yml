@@ -1,9 +1,6 @@
 ---
 # file: roles/dmz/handlers/main.yml
 
-- name: Restart the firewall
-  with_items:
-  - dbus
-  - firewalld
+- name: Reload the firewall
   sudo: yes
-  service: name={{ item }} state=restarted
+  command: firewall-cmd --reload

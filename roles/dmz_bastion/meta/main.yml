@@ -2,4 +2,5 @@
 # file: roles/dmz/meta/main.yml
 
 dependencies:
+- role: dmz
 - role: "{{ playbook_dir | dirname }}/service_infra_ansible/roles/admin_bastion"
