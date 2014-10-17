@@ -55,9 +55,11 @@ Software Artifact Management                  | Sonatype Nexus OSS
 Continuous Integration (CI)                   | Jenkins CI
 Release Management                            | Apache Maven (coming)
 Application Server                            | Wildfly (coming)
-Mail Transfer Agent (MTA)                     | Postfix (coming)
-Electronic Mail Filtering                     | Amavis (coming)
-Email Virus Scanning                          | ClamAV (coming)
+Mail Transfer Agent (MTA)                     | Postfix
+Electronic Mail Filtering                     | Amavis
+Email virus scanning                          | ClamAV
+Virus definition updates                      | Freshclam
+Unsolicited mail filtering                    | SpamAssassin (currently inactive)
 Relational Database Management System (RDBMS) | PostgreSQL (coming)
 
 ## Prerequisites
@@ -142,24 +144,24 @@ Substitute your service management domain name for `example.com` (and
 
 1. Deploy public network interfaces:
 
-        ansible-playbook guest_networking.yml -i ../com.example.ansible_main/development
-        ansible-playbook guest_networking.yml -i ../com.example.ansible_main/production
+        ansible-playbook guest_networking.yml -i ../com.example_ansible_main/development
+        ansible-playbook guest_networking.yml -i ../com.example_ansible_main/production
 
 1. Deploy mail services:
 
-        ansible-playbook web_servers.yml -i ../com.example.ansible_main/production
+        ansible-playbook web_servers.yml -i ../com.example_ansible_main/production
 
 1. Deploy web services:
 
-        ansible-playbook web_servers.yml -i ../com.example.ansible_main/production
+        ansible-playbook web_servers.yml -i ../com.example_ansible_main/production
 
 1. Deploy software artifact management services:
 
-        ansible-playbook artifact_servers.yml -i ../com.example.ansible_main/development
+        ansible-playbook artifact_servers.yml -i ../com.example_ansible_main/development
 
 1. Deploy continuous integration services:
 
-        ansible-playbook ci_servers.yml -i ../com.example.ansible_main/development
+        ansible-playbook ci_servers.yml -i ../com.example_ansible_main/development
 
 ## Application data restoration from archives
 
@@ -167,7 +169,7 @@ Substitute your service management domain name for `example.com` (and
 
 1. Begin restoration by collecting the keys:
 
-        ansible-playbook restore_archives.yml -i ../com.example.ansible_main/development
+        ansible-playbook restore_archives.yml -i ../com.example_ansible_main/development
 
 1. Take the removable media to the secure offline host and process the keys.
 
@@ -177,7 +179,7 @@ Substitute your service management domain name for `example.com` (and
 
 1. Proceed with restoration:
 
-        ansible-playbook restore_commit.yml -i ../com.example.ansible_main/development
+        ansible-playbook restore_commit.yml -i ../com.example_ansible_main/development
 
 Currently, some manual steps are still needed. See the source code for details.
 
