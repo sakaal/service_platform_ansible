@@ -5,11 +5,12 @@
 # Amavisd-new pulls clamav, clamd and spamassassin as its dependencies
 # The clamav-update package provides freshclam antivirus database updates
 #
-- name: Postfix, Amavisd-new, and Alpine packages
+- name: Postfix, Amavisd-new, OpenDKIM, and Alpine packages
   with_items:
   - postfix
   - amavisd-new
   - clamav-update
+  - opendkim
   - alpine
   yum: name={{ item }}
 
@@ -19,15 +20,15 @@
 
 - name: Freshclam configuration
   lineinfile:
-    dest:   /etc/freshclam.conf
-    regexp: '^#?\s*Example'
-    line:   '#Example'
+    dest=/etc/freshclam.conf
+    regexp="^#?\s*Example"
+    line="#Example"
 
 - name: Freshclam database mirror
   lineinfile:
-    dest:   /etc/freshclam.conf
-    regexp: '^#?\s*DatabaseMirror\s*db\.[A-Za-z]+\.clamav\.net$'
-    line:   'DatabaseMirror db.{{ network_country_code | mandatory }}.clamav.net'
+    dest=/etc/freshclam.conf
+    regexp="^#?\s*DatabaseMirror\s*db\.[A-Za-z]+\.clamav\.net$"
+    line="DatabaseMirror db.{{ network_country_code | mandatory }}.clamav.net"
 
 #
 # Amavisd configuration
@@ -35,38 +36,188 @@
 
 - name: Amavisd concurrency
   lineinfile:
-    dest:   /etc/amavisd/amavisd.conf
-    regexp: ^\\$max_servers
-    line:   $max_servers = '{{ amavis_max_servers | mandatory }}';
+    dest=/etc/amavisd/amavisd.conf
+    regexp="^\$max_servers"
+    line="$max_servers = '{{ amavis_max_servers | mandatory }}';"
   notify:
     - Restart Postfix
     - Restart clamd@amavisd
 
 - name: Amavisd domain
   lineinfile:
-    dest:   /etc/amavisd/amavisd.conf
-    regexp: ^\\$mydomain
-    line:   $mydomain = '{{ postfix_mydomain | mandatory }}';
+    dest=/etc/amavisd/amavisd.conf
+    regexp="^\$mydomain"
+    line="$mydomain = '{{ postfix_mydomain | mandatory }}';"
   notify:
     - Restart clamd@amavisd
 
 - name: Amavisd hostname
   lineinfile:
-    dest:        /etc/amavisd/amavisd.conf
-    regexp:      ^\\$myhostname
-    line:        $myhostname = '{{ postfix_myhostname | mandatory }}';
-    insertafter: ^#\s+\\$myhostname
+    dest=/etc/amavisd/amavisd.conf
+    regexp="^\$myhostname"
+    line="$myhostname = '{{ postfix_myhostname | mandatory }}';"
+    insertafter="^#\s+\$myhostname"
   notify:
     - Restart clamd@amavisd
 
 - name: Amavisd helpers home
   lineinfile:
-    dest:        /etc/amavisd/amavisd.conf
-    regexp:      ^\\$helpers_home
-    line:        $helpers_home = "$MYHOME/var";
-    insertafter: ^#\s+\\$helpers_home
+    dest=/etc/amavisd/amavisd.conf
+    regexp="^\$helpers_home"
+    line='$helpers_home = "$MYHOME/var";'
+    insertafter="^#\s+\$helpers_home"
   notify:
     - Restart clamd@amavisd
+
+#
+# OpenDKIM configuration
+#
+
+- name: OpenDKIM keys directory for the public DNS zone
+  file: state=directory
+        path=/etc/opendkim/keys/{{ public_dns_zone }}
+        owner=root group=opendkim mode=750
+
+- name: OpenDKIM keys
+  command: creates=/etc/opendkim/keys/{{ public_dns_zone }}/default.private
+           opendkim-genkey -d {{ public_dns_zone }}
+           -D /etc/opendkim/keys/{{ public_dns_zone }}/ -s default
+  notify: Restart OpenDKIM
+
+- name: Permission to the OpenDKIM key files
+  with_items:
+  - 'private'
+  - 'txt'
+  file: state=file
+        path=/etc/opendkim/keys/{{ public_dns_zone }}/default.{{ item }}
+        owner=root group=opendkim mode=640
+
+- name: OpenDKIM key table file
+  lineinfile: dest='/etc/opendkim/KeyTable'
+              regexp='^default\._domainkey\.{{ public_dns_zone }}\s'
+              line='default._domainkey.{{ public_dns_zone }} {{ public_dns_zone }}:default:/etc/opendkim/keys/{{ public_dns_zone }}/default.private'
+              insertafter='^#default\.'
+  notify: Restart OpenDKIM
+
+- name: OpenDKIM signing table file
+  lineinfile: dest='/etc/opendkim/SigningTable'
+              regexp='^\*@{{ public_dns_zone }}\s'
+              line='*@{{ public_dns_zone }} default._domainkey.{{ public_dns_zone }}'
+              insertafter='^#\*@.+\sdefault._domainkey.+$'
+  notify: Restart OpenDKIM
+
+- name: OpenDKIM trusted hosts file
+  with_items:
+  - "{{ public_dns_zone }}"
+  - "{{ public_hostname }}"
+  - "192.168.122.0/24"
+  lineinfile: dest=/etc/opendkim/TrustedHosts
+              regexp='^{{ item }}$'
+              line='{{ item.strip() }}'
+              insertafter='^#'
+  notify: Restart OpenDKIM
+
+- name: Produce the DKIM DNS TXT record data
+  command: cat /etc/opendkim/keys/{{ public_dns_zone }}/default.txt
+  register: dns_txt_raw
+
+- set_fact:
+    dns_txt_raw: "{{ dns_txt_raw.stdout.split() | join(' ') }}"
+
+- set_fact: dns_txt_attr_name="{{ dns_txt_raw | regex_replace('^([^\\s]+).*$', '\\1') }}"
+            dns_txt_data_v="{{ dns_txt_raw | regex_replace('^.*v=([^;]+);.*$', '\\1') }}"
+            dns_txt_data_k="{{ dns_txt_raw | regex_replace('^.*k=([^;]+);.*$', '\\1') }}"
+            dns_txt_data_p="{{ dns_txt_raw | regex_replace('^.*p=([+/0-9A-Za-z]+).*$', '\\1') }}"
+
+- set_fact:
+    dns_txt_data: "v={{ dns_txt_data_v }}; k={{ dns_txt_data_k }}; p={{ dns_txt_data_p }}"
+
+- name: Sender Policy Framework DNS SPF record data
+  set_fact:
+    dns_spf_data: "v=spf1 ip4:192.168.122.0/24 a mx ~all"
+
+- name: OpenDKIM auto restart
+  lineinfile:
+    dest=/etc/opendkim.conf
+    regexp='^AutoRestart\s'
+    line='AutoRestart yes'
+    insertafter='^#.*CONFIG.+OPTIONS'
+  notify: Restart OpenDKIM
+
+- name: OpenDKIM operating mode (sign and verify)
+  lineinfile:
+    dest=/etc/opendkim.conf
+    regexp='^Mode\s'
+    line='Mode sv'
+    insertafter='^#.*Mode'
+  notify: Restart OpenDKIM
+
+- name: OpenDKIM canonicalization
+  lineinfile:
+    dest=/etc/opendkim.conf
+    regexp='^Canonicalization\s'
+    line='Canonicalization relaxed/simple'
+    insertafter='^#.*canonicalization'
+  notify: Restart OpenDKIM
+
+#- name: OpenDKIM external hosts may send mail through the server
+#  lineinfile:
+#    dest=/etc/opendkim.conf
+#    regexp='^ExternalIgnoreList\s'
+#    line='ExternalIgnoreList refile:/etc/opendkim/ExternalHosts'
+#    insertafter='^#.*ExternalIgnoreList'
+
+- name: OpenDKIM 'internal' hosts whose mail should be signed
+  lineinfile:
+    dest=/etc/opendkim.conf
+    regexp='^InternalHosts\s'
+    line='InternalHosts refile:/etc/opendkim/TrustedHosts'
+    insertafter='^#.*InternalHosts'
+  notify: Restart OpenDKIM
+
+- name: OpenDKIM key table
+  lineinfile:
+    dest=/etc/opendkim.conf
+    regexp='^KeyTable\s'
+    line='KeyTable refile:/etc/opendkim/KeyTable'
+    insertafter='^#\s*KeyTable\s'
+  notify: Restart OpenDKIM
+
+- name: OpenDKIM signing table
+  lineinfile:
+    dest=/etc/opendkim.conf
+    regexp='^SigningTable\s'
+    line='SigningTable refile:/etc/opendkim/SigningTable'
+    insertafter='^#\s*SigningTable\s'
+  notify: Restart OpenDKIM
+
+- name: OpenDKIM signature algorithm
+  lineinfile:
+    dest=/etc/opendkim.conf
+    regexp='^SignatureAlgorithm\s'
+    line='SignatureAlgorithm rsa-sha256'
+  notify: Restart OpenDKIM
+
+#
+# Postfix OpenDKIM milter
+# TODO: This will break if also other milters are in use.
+#
+- name: Postfix OpenDKIM
+  with_items:
+  - key: "smtpd_milters"
+    val: "inet:127.0.0.1:8891"
+  - key: "non_smtpd_milters"
+    val: "$smtpd_milters"
+  - key: "milter_default_action"
+    val: "accept"
+  - key: "milter_protocol"
+    val: "2"
+  lineinfile:
+    dest=/etc/postfix/main.cf
+    regexp='^{{ item.key|mandatory }}\s'
+    line='{{ item.key|mandatory }} = {{ item.val|mandatory }}'
+  notify:
+    - Restart Postfix
 
 #
 # Postfix configuration
@@ -74,85 +225,85 @@
 
 - name: Postfix disable soft_bounce
   lineinfile:
-    dest:        /etc/postfix/main.cf
-    regexp:      '^soft_bounce'
-    line:        'soft_bounce = no'
-    insertafter: '^#soft_bounce'
+    dest=/etc/postfix/main.cf
+    regexp='^soft_bounce'
+    line='soft_bounce = no'
+    insertafter='^#soft_bounce'
   notify:
     - Reload Postfix
 
 - name: Postfix hostname
   lineinfile:
-    dest:        /etc/postfix/main.cf
-    regexp:      '^myhostname'
-    line:        'myhostname = {{ postfix_myhostname | mandatory }}'
-    insertafter: '^#myhostname'
+    dest=/etc/postfix/main.cf
+    regexp='^myhostname'
+    line='myhostname = {{ postfix_myhostname | mandatory }}'
+    insertafter='^#myhostname'
   notify:
     - Reload Postfix
 
 - name: Postfix domain
   lineinfile:
-    dest:        /etc/postfix/main.cf
-    regexp:      '^mydomain'
-    line:        'mydomain = {{ postfix_mydomain | mandatory }}'
-    insertafter: '^#mydomain'
+    dest=/etc/postfix/main.cf
+    regexp='^mydomain'
+    line='mydomain = {{ postfix_mydomain | mandatory }}'
+    insertafter='^#mydomain'
   notify:
     - Reload Postfix
 
 - name: Postfix interfaces
   lineinfile:
-    dest:        /etc/postfix/main.cf
-    regexp:      '^inet_interfaces'
-    line:        'inet_interfaces = all'
-    insertafter: '^#inet_interfaces'
+    dest=/etc/postfix/main.cf
+    regexp='^inet_interfaces'
+    line='inet_interfaces = all'
+    insertafter='^#inet_interfaces'
   notify:
     - Reload Postfix
 
 - name: Postfix destination
   when: postfix_mydestination is defined
   lineinfile:
-    dest:        /etc/postfix/main.cf
-    regexp:      '^mydestination'
-    line:        'mydestination = {{ postfix_mydestination | mandatory }}'
-    insertafter: '^#mydestination'
+    dest=/etc/postfix/main.cf
+    regexp='^mydestination'
+    line='mydestination = {{ postfix_mydestination | mandatory }}'
+    insertafter='^#mydestination'
   notify:
     - Reload Postfix
 
 - name: Postfix networks style
   lineinfile:
-    dest:         /etc/postfix/main.cf
-    regexp:       '^mynetworks_style'
-    line:         'mynetworks_style = host'
-    insertafter:  '^#mynetworks_style'
+    dest=/etc/postfix/main.cf
+    regexp='^mynetworks_style'
+    line='mynetworks_style = host'
+    insertafter='^#mynetworks_style'
   notify:
     - Reload Postfix
 
 - name: Postfix origin
   lineinfile:
-    dest:         /etc/postfix/main.cf
-    regexp:       '^myorigin'
-    line:         'myorigin = $mydomain'
-    insertafter:  '^#myorigin'
+    dest=/etc/postfix/main.cf
+    regexp='^myorigin'
+    line='myorigin = $mydomain'
+    insertafter='^#myorigin'
   notify:
     - Reload Postfix
 
 - name: Postfix networks
   when: postfix_mynetworks is defined
   lineinfile:
-    dest:         /etc/postfix/main.cf
-    regexp:       '^mynetworks'
-    line:         'mynetworks = {{ postfix_mynetworks | mandatory }}'
-    insertafter:  '^#mynetworks'
+    dest=/etc/postfix/main.cf
+    regexp='^mynetworks'
+    line='mynetworks = {{ postfix_mynetworks | mandatory }}'
+    insertafter='^#mynetworks'
   notify:
     - Reload Postfix
 
 - name: Postfix relay host
   when: postfix_relayhost is defined
   lineinfile:
-    dest:         /etc/postfix/main.cf
-    regexp:       '^relayhost'
-    line:         'relayhost = {{ postfix_relayhost | mandatory }}'
-    insertafter:  '^#relayhost'
+    dest=/etc/postfix/main.cf
+    regexp='^relayhost'
+    line='relayhost = {{ postfix_relayhost | mandatory }}'
+    insertafter='^#relayhost'
   notify:
     - Reload Postfix
 
@@ -171,33 +322,33 @@
 
 - name: Postfix TLS RSA certificate
   lineinfile:
-    dest:   /etc/postfix/main.cf
-    regexp: '^smtpd_tls_cert_file'
-    line:   'smtpd_tls_cert_file = /etc/pki/tls/certs/{{ public_hostname | mandatory }}-crt.pem'
+    dest=/etc/postfix/main.cf
+    regexp='^smtpd_tls_cert_file'
+    line='smtpd_tls_cert_file = /etc/pki/tls/certs/{{ public_hostname | mandatory }}-crt.pem'
   notify:
     - Reload Postfix
 
 - name: Postfix TLS RSA key
   lineinfile:
-    dest:   /etc/postfix/main.cf
-    regexp: '^smtpd_tls_key_file'
-    line:   'smtpd_tls_key_file = /etc/pki/tls/private/{{ public_hostname | mandatory }}-key.pem'
+    dest=/etc/postfix/main.cf
+    regexp='^smtpd_tls_key_file'
+    line='smtpd_tls_key_file = /etc/pki/tls/private/{{ public_hostname | mandatory }}-key.pem'
   notify:
     - Reload Postfix
 
 - name: Postfix TLS mandatory ciphers
   lineinfile:
-    dest:   /etc/postfix/main.cf
-    regexp: '^smtpd_tls_mandatory_ciphers'
-    line:   'smtpd_tls_mandatory_ciphers = high'
+    dest=/etc/postfix/main.cf
+    regexp='^smtpd_tls_mandatory_ciphers'
+    line='smtpd_tls_mandatory_ciphers = high'
   notify:
     - Reload Postfix
 
 - name: Postfix TLS mandatory exclude ciphers
   lineinfile:
-    dest:   /etc/postfix/main.cf
-    regexp: '^smtpd_tls_mandatory_exclude_ciphers'
-    line:   'smtpd_tls_mandatory_exclude_ciphers = aNULL, MD5'
+    dest=/etc/postfix/main.cf
+    regexp='^smtpd_tls_mandatory_exclude_ciphers'
+    line='smtpd_tls_mandatory_exclude_ciphers = aNULL, MD5'
   notify:
     - Reload Postfix
 
@@ -206,17 +357,17 @@
 #
 - name: Postfix TLS security level
   lineinfile:
-    dest:   /etc/postfix/main.cf
-    regexp: '^smtpd_tls_security_level'
-    line:   'smtpd_tls_security_level = may'
+    dest=/etc/postfix/main.cf
+    regexp='^smtpd_tls_security_level'
+    line='smtpd_tls_security_level = may'
   notify:
     - Reload Postfix
 
 - name: Postfix TLS mandatory protocols
   lineinfile:
-    dest:   /etc/postfix/main.cf
-    regexp: '^smtpd_tls_mandatory_protocols'
-    line:   'smtpd_tls_mandatory_protocols = !SSLv2, !SSLv3'
+    dest=/etc/postfix/main.cf
+    regexp='^smtpd_tls_mandatory_protocols'
+    line='smtpd_tls_mandatory_protocols = !SSLv2, !SSLv3'
   notify:
     - Reload Postfix
 
@@ -242,6 +393,9 @@
 - name: Enable the amavisd service
   service: name=amavisd enabled=yes state=started
 
+- name: Enable the OpenDKIM service
+  service: name=opendkim enabled=yes state=started
+
 - name: Enable the Postfix service
   service: name=postfix enabled=yes state=started
 
@@ -250,9 +404,9 @@
 #
 - name: Postfix content filter
   lineinfile:
-    dest:   /etc/postfix/main.cf
-    regexp: '^content_filter'
-    line:   'content_filter = amavisfeed:[127.0.0.1]:10024'
+    dest=/etc/postfix/main.cf
+    regexp='^content_filter'
+    line='content_filter = amavisfeed:[127.0.0.1]:10024'
   notify:
     - Restart Postfix
 

@@ -38,28 +38,31 @@ Administrative mail transfer | Any SMTP provider ([RFC 5321](http://tools.ietf.o
 
 Platform component                            | Supported alternatives
 --------------------------------------------- | ---------------------------
-Operating System                              | CentOS
+Operating System (OS)                         | CentOS
 Management access                             | SSH
 Revision Control                              | Git
 Configuration security and audit trail        | GnuPG, OpenPGP, [RFC 4880](http://tools.ietf.org/html/rfc4880)
 Configuration Management                      | Ansible
+Job scheduling                                | Systemd Calendar Timers, Cron
 Network security                              | FirewallD
 Backup data encryption                        | OpenSSL
 Backup data storage, online, on-site          | Hetzner server backup space
 Backup data storage, offline, off-site        | Private (service administrators)
 Digital certificates                          | ITU-T Recommendation X.509
 Certificate Authority (CA)                    | Any
-Web Server                                    | Apache HTTP Server
-Application Virtual Machine                   | Oracle Java
-Software Artifact Management                  | Sonatype Nexus OSS
-Continuous Integration (CI)                   | Jenkins CI
-Release Management                            | Apache Maven (coming)
-Application Server                            | Wildfly (coming)
-Mail Transfer Agent (MTA)                     | Postfix
-Electronic Mail Filtering                     | Amavis
+Mail submission and transfer (MSA, MTA)       | Postfix
+Electronic mail filtering                     | Amavis
 Email virus scanning                          | ClamAV
+Sender Policy Framework (SPF)                 | DynECT API to manage SPF TXT records
+Domain Keys Identified Mail (DKIM)            | OpenDKIM
 Virus definition updates                      | Freshclam
 Unsolicited mail filtering                    | SpamAssassin (currently inactive)
+Web server                                    | Apache HTTP Server
+Application Virtual Machine                   | Oracle Java
+Software artifact management                  | Sonatype Nexus OSS
+Continuous Integration (CI)                   | Jenkins CI
+Release management                            | Apache Maven (coming)
+Application server                            | Wildfly (coming)
 Relational Database Management System (RDBMS) | PostgreSQL (coming)
 
 ## Prerequisites
@@ -84,7 +87,8 @@ Relational Database Management System (RDBMS) | PostgreSQL (coming)
 
 ### Preparing the onsite backup space ###
 
-See the [data backup plan](https://github.com/sakaal/service_platform_ansible/wiki/Data-backup-plan) in the wiki.
+See the [data backup plan](https://github.com/sakaal/service_platform_ansible/wiki/Data-backup-plan)
+in the wiki.
 
 Set up the backup access credentials in file
 `/mnt/sensitive_data/etc/ansible/vars/hetzner.yml`:
@@ -150,6 +154,11 @@ Substitute your service management domain name for `example.com` (and
 1. Deploy mail services:
 
         ansible-playbook web_servers.yml -i ../com.example_ansible_main/production
+   * Use the Sender Policy Framework (SPF)
+     [testing tools](http://www.openspf.org/Tools)
+     and Port25 Solutions
+     [email verification service](http://www.port25.com/support/authentication-center/email-verification/)
+     to test the results.
 
 1. Deploy web services:
 

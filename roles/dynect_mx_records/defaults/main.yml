@@ -1,0 +1,7 @@
+---
+# file: roles/dynect_mx_records/defaults/main.yml
+
+#
+# Hosts which do not send mail get an SPF TXT record to indicate that.
+#
+dns_spf_data: "v=spf1 -all"

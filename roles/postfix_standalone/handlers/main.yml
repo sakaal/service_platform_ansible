@@ -9,3 +9,6 @@
 
 - name: Restart clamd@amavisd
   service: name=clamd@amavisd state=restarted
+
+- name: Restart OpenDKIM
+  service: name=opendkim state=restarted
