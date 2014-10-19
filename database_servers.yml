@@ -1,0 +1,15 @@
+---
+# file: database_servers.yml
+
+#
+# Relational database management system (RDBMS)
+#
+
+- hosts: database_servers
+  sudo: yes
+  vars_files:
+    - /mnt/sensitive_data/etc/ansible/vars/admin_access.yml
+    - /mnt/sensitive_data/etc/ansible/vars/hetzner.yml
+  roles:
+    - libvirt_guest_network_service
+    - postgresql

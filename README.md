@@ -62,9 +62,9 @@ Web server                                    | Apache HTTP Server
 Application Virtual Machine                   | Oracle Java
 Software artifact management                  | Sonatype Nexus OSS
 Continuous Integration (CI)                   | Jenkins CI
+Relational Database Management System (RDBMS) | PostgreSQL
 Release management                            | Apache Maven (coming)
 Application server                            | Wildfly (coming)
-Relational Database Management System (RDBMS) | PostgreSQL (coming)
 
 ## Prerequisites
 
