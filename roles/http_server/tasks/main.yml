@@ -3,27 +3,7 @@
 
 - name: Apache HTTP Server
   sudo: yes
-  yum: name=httpd state=present
-
-#
-# TODO: Use a public email address here: 
-#
-- name: Set the HTTP server administrator
-  sudo: yes
-  lineinfile: dest=/etc/httpd/conf/httpd.conf
-              regexp='^(\s*)ServerAdmin'
-              line="ServerAdmin {{ admin_email | mandatory }}"
-              insertafter='^#(\s*)ServerAdmin'
-
-#
-# TODO: Use a public hostname here:
-#
-- name: Set the HTTP server name
-  sudo: yes
-  lineinfile: dest=/etc/httpd/conf/httpd.conf
-              regexp='^(\s*)ServerName'
-              line="ServerName {{ ansible_fqdn | mandatory }}:80"
-              insertafter='^#(\s*)ServerName'
+  yum: name=httpd
 
 - name: Websites
   when: websites is defined
@@ -32,6 +12,49 @@
   copy: src="{{ inventory_dir }}/websites/{{ item }}/htdocs/"
         dest="/var/www/{{ item }}/htdocs"
         owner=root group=root mode=0644
+
+#
+# On the list of websites the first item is considered the default.
+#
+- when: websites is defined
+  set_fact: http_server_name="{{ websites.0 }}"
+
+#
+# The public hostname (that also has reverse DNS resolution) may be the same
+# as the domain name (just example.com). A wildcard certificate does not match
+# that, so the default website should be different, usually www.example.com.
+#
+- when: (websites is not defined) and
+        public_hostname is defined and (public_hostname != public_dns_zone) 
+  set_fact: http_server_name="{{ public_hostname }}"
+
+#
+# When all else fails, use the FQDN. Note that this may be an internal name
+# that is not necessarily found in the DNS.
+#
+- when: (http_server_name is not defined) or http_server_name.strip() == ""
+  set_fact: http_server_name="{{ ansible_fqdn | mandatory }}"
+
+- name: HTTP server name
+  sudo: yes
+  lineinfile: dest=/etc/httpd/conf/httpd.conf
+              regexp='^\s*ServerName\s'
+              line="ServerName {{ http_server_name | mandatory }}:80"
+              insertafter='^#\s*ServerName'
+
+- name: HTTP server administrator public email address conforming to RFC 2142
+  sudo: yes
+  lineinfile: dest=/etc/httpd/conf/httpd.conf
+              regexp='^\s*ServerAdmin\s'
+              line="ServerAdmin webmaster@{{ public_dns_zone }}"
+              insertafter='^#\s*ServerAdmin'
+
+- name: HTTP server document root
+  sudo: yes
+  lineinfile: dest=/etc/httpd/conf/httpd.conf
+              regexp='^\s*DocumentRoot\s'
+              line="DocumentRoot "/var/www/{{ http_server_name }}/htdocs""
+              insertafter='^#\s*DocumentRoot'
 
 - name: Query if the HTTP service has been added to the firewall zone
   sudo: yes
