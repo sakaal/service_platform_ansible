@@ -57,6 +57,7 @@ Sender Policy Framework (SPF)                 | DynECT API to manage SPF TXT rec
 Domain Keys Identified Mail (DKIM)            | OpenDKIM
 Virus definition updates                      | Freshclam
 Unsolicited mail filtering                    | SpamAssassin (currently inactive)
+Email client for administrative and test use  | Alpine
 Web server                                    | Apache HTTP Server
 Application Virtual Machine                   | Oracle Java
 Software artifact management                  | Sonatype Nexus OSS
