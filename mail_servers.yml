@@ -3,7 +3,7 @@
 
 #
 # Postfix MTA and MSA, TLS, Amavisd-new, ClamAV and database updates,
-# MX records, and firewall
+# MX records, firewall, and Alpine email client
 #
 
 - hosts: mail_servers
@@ -18,3 +18,4 @@
     - transport_layer_security
     - postfix_standalone
     - dynect_mx_records
+    - alpine
