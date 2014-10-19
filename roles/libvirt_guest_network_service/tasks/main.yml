@@ -5,7 +5,13 @@
 # Disable NetworkManager
 #
 
+- name: Remove NetworkManager
+  sudo: yes
+  yum: name=NetworkManager state=absent
+  register: NetworkManager
+
 - name: Stop NetworkManager related services
+  when: NetworkManager|changed
   with_items:
   - NetworkManager-wait-online.service
   - NetworkManager.service
@@ -14,38 +20,35 @@
   failed_when: False
 
 - name: Disable NetworkManager related services
+  when: NetworkManager|changed
   with_items:
   - NetworkManager-wait-online.service
   - NetworkManager.service
   sudo: yes
   shell: systemctl disable {{ item }}
 
-- name: /etc/sysconfig/network-scripts/ifcfg-X NM_CONTROLLED=no
+- name: Network interfaces NM_CONTROLLED=no
   with_items:
   - eth0
   - eth1
   sudo: yes
   lineinfile:
-    dest: "/etc/sysconfig/network-scripts/ifcfg-{{ item }}"
-    regexp: "^NM_CONTROLLED="
-    line: "NM_CONTROLLED=no"
-  failed_when: False
+    dest="/etc/sysconfig/network-scripts/ifcfg-{{ item }}"
+    regexp="^NM_CONTROLLED="
+    line="NM_CONTROLLED=no"
+  failed_when: no
 
-- name: /etc/sysconfig/network-scripts/ifcfg-X ONBOOT=yes
+- name: Network interfaces ONBOOT=yes
   with_items:
   - eth0
   - eth1
   sudo: yes
   lineinfile:
-    dest: "/etc/sysconfig/network-scripts/ifcfg-{{ item }}"
-    regexp: "^ONBOOT="
-    line: "ONBOOT=yes"
-  failed_when: False
+    dest="/etc/sysconfig/network-scripts/ifcfg-{{ item }}"
+    regexp="^ONBOOT="
+    line="ONBOOT=yes"
+  failed_when: no
 
-- name: Remove NetworkManager
+- name: Enable the network service
   sudo: yes
-  yum: name=NetworkManager state=absent
-
-- name: Restart the network service
-  sudo: yes
-  service: name=network enabled=yes state=restarted
+  service: name=network enabled=yes state=started
