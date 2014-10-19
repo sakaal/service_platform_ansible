@@ -65,12 +65,6 @@ SSLCipherSuite      ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:EC
 SSLHonorCipherOrder on
 SSLCompression      off
 
-# OCSP Stapling
-SSLUseStapling                   on
-SSLStaplingResponderTimeout      5
-SSLStaplingReturnResponderErrors off
-SSLStaplingCache                 shmcb:/var/run/ocsp(128000)
-
 # HSTS
 Header add Strict-Transport-Security "max-age=15768000"
 

@@ -22,6 +22,12 @@ SSLRandomSeed connect builtin
 
 SSLCryptoDevice builtin
 
+# OCSP Stapling
+SSLUseStapling                   on
+SSLStaplingResponderTimeout      5
+SSLStaplingReturnResponderErrors off
+SSLStaplingCache                 shmcb:/var/run/ocsp(128000)
+
 ## Name-based SSL Virtual Hosts
 ## http://wiki.apache.org/httpd/NameBasedSSLVHosts
 ## http://httpd.apache.org/docs/2.4/mod/core.html#namevirtualhost
