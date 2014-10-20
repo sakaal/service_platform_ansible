@@ -13,3 +13,4 @@
   roles:
     - libvirt_guest_network_service
     - postgresql
+    - postgresql_databases

@@ -1,0 +1,24 @@
+---
+# file: roles/postgresql_databases/tasks/main.yml
+
+#
+# Database security is based on network separation and firewall rules.
+# The purpose of the database user password is to avoid accidentally connecting
+# to the wrong database. Staging and production databases should have different
+# user names and passwords.
+#
+- name: Roles (users)
+  sudo: yes
+  sudo_user: postgres
+  with_items: postgresql_roles
+  postgresql_user: name='{{ item.name }}'
+                   password='{{ item.pw }}'
+                   role_attr_flags=NOSUPERUSER,NOCREATEROLE,NOCREATEDB
+
+- name: Databases
+  sudo: yes
+  sudo_user: postgres
+  with_items: postgresql_databases
+  postgresql_db: name='{{ item.name }}'
+                 encoding='UTF-8'
+                 owner='{{ item.owner }}'
