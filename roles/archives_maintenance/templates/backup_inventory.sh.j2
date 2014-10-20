@@ -131,14 +131,14 @@ do
         date=TOTAL
     }
 
-    [ -z "$dbname" ] && echo # an empty line before host summary
-
     # inventory data columns
     printf "%31s:%-18s %13d|%7s\n" "$host" "$dbname" "$bytes" "$date"
 
     [ -z "$host" ] && {
         printf '%72s\n' | tr ' ' _ # a horizontal rule after monthly summary
     }
+    [ -z "$dbname" ] && echo # an empty line after host summary
+
 done < <(
     grep -e "$FILTER" "${TEMP_FILE}"
 )
