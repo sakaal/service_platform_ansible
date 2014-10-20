@@ -32,17 +32,27 @@ This Git repository contains Ansible playbooks for
 the provision of a managed service platform based on the
 following external services, software applications and components:
 
+* See the
+  [application portfolio](https://github.com/sakaal/service_platform_ansible/wiki/Application-portfolio)
+  for an exhaustive list of the applied specifications and implementations.
+
 Infrastructure service       | Supported alternatives
 ---------------------------- | ----------------------
-Administrative mail transfer | Any SMTP provider ([RFC 5321](http://tools.ietf.org/html/rfc5321), [RFC 6409](http://tools.ietf.org/html/rfc6409))
+Administrative mail transfer | Any SMTP provider
 
 Platform component                            | Supported alternatives
 --------------------------------------------- | ---------------------------
 Operating System (OS)                         | CentOS
 Management access                             | SSH
 Revision Control                              | Git
-Configuration security and audit trail        | GnuPG, OpenPGP, [RFC 4880](http://tools.ietf.org/html/rfc4880)
+Configuration security and audit trail        | GnuPG
+Command-line interpreter                      | Bash
+Command-line plain-text search                | Grep
+Text stream editing                           | Sed
+Data compression                              | Gzip
 Configuration Management                      | Ansible
+Data transfer                                 | cURL
+Data transfer                                 | LFTP
 Job scheduling                                | Systemd Calendar Timers, Cron
 Network security                              | FirewallD
 Backup data encryption                        | OpenSSL
@@ -56,7 +66,7 @@ Email virus scanning                          | ClamAV
 Sender Policy Framework (SPF)                 | DynECT API to manage SPF TXT records
 Domain Keys Identified Mail (DKIM)            | OpenDKIM
 Virus definition updates                      | Freshclam
-Unsolicited mail filtering                    | SpamAssassin (currently inactive)
+Unsolicited mail filtering                    | Apache SpamAssassin (currently inactive)
 Email client for administrative and test use  | Alpine
 Web server                                    | Apache HTTP Server
 Application Virtual Machine                   | Oracle Java
