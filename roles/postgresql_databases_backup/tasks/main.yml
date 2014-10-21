@@ -1,0 +1,51 @@
+---
+# file: roles/postgresql_databases_backup/tasks/main.yml
+
+#
+# Backup client configuration for PostgreSQL databases
+#
+
+- name: Create a temporary file
+  command: mktemp
+  register: temp_file
+  changed_when: False
+
+- when: temp_file|success
+  set_fact:
+    temp_file: "{{ temp_file.stdout | mandatory }}"
+
+- name: List earlier backup client configurations
+  sudo: yes
+  shell: chdir="/usr/local/etc/backup_client.d"
+         ls -A | grep "^pgsql-.*\.conf$" > "{{ temp_file | mandatory }}"
+  register: pgsql_current_backups
+  changed_when: no
+  ignore_errors: yes
+
+- name: Keep current backup client configuration items
+  when: postgres_home is defined
+  with_items: postgresql_databases
+  lineinfile: dest="{{ temp_file }}"
+              line="pgsql-{{ item.name }}.conf"
+              state=absent
+  changed_when: False
+
+- name: Remove obsolete backup client configuration items
+  when: pgsql_current_backups|success
+  sudo: yes
+  shell: chdir="/usr/local/etc/backup_client.d"
+         xargs -I{} sh -c 'rm {}' < "{{ temp_file | mandatory }}"
+  changed_when: no
+
+- name: Delete the temporary file
+  when: temp_file is defined
+  file: name="{{ temp_file }}" state=absent
+  changed_when: no
+
+- name: Backup client configuration for PostgreSQL databases
+  when: postgres_home is defined
+  with_items: postgresql_databases
+  sudo: yes
+  template: src=pgsql-.conf.j2
+            dest="/usr/local/etc/backup_client.d/pgsql-{{
+                 item.name | mandatory }}.conf"

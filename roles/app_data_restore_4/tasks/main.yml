@@ -17,3 +17,7 @@
   template: src=backup_restore.sh.j2
             dest=/usr/local/sbin/backup_restore
             mode=755 owner=root group=root
+
+#
+# TODO: A script to restore PostgreSQL database from archives
+#

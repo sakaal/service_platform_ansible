@@ -7,10 +7,27 @@
             dest="/usr/local/sbin/backup_client"
             mode=755 owner=root group=root
 
-- name: Backup directory script
+- name: Obsolete backup directory script
   sudo: yes
-  template: src=backup_dir.sh.j2
-            dest="/usr/local/sbin/backup_dir"
+  file: path="/usr/local/sbin/backup_dir" state=absent
+
+- name: Archive script for PostgreSQL databases
+  when: postgres_home is defined
+  sudo: yes
+  template: src=archive_pgsql_db.sh.j2
+            dest="/usr/local/sbin/archive_pgsql_db"
+            mode=755 owner=root group=root
+
+- name: Archive script for file system directories
+  sudo: yes
+  template: src=archive_dir.sh.j2
+            dest="/usr/local/sbin/archive_dir"
+            mode=755 owner=root group=root
+
+- name: Archive file encryption script
+  sudo: yes
+  template: src=archive_encrypt.sh.j2
+            dest="/usr/local/sbin/archive_encrypt"
             mode=755 owner=root group=root
 
 - name: Backup client configuration directory

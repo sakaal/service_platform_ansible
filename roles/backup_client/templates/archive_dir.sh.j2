@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+
+#
+# Archives a given directory to a given name.
+#
+
+usage() { echo "Usage: $0 [-n <string>] [-d <path>]" 1>&2; exit 1; }
+
+while getopts d:n: o
+do  case "${o}" in
+    d)
+        clientdir="${OPTARG}"
+        ;;
+    n)
+        archive=$(echo "${OPTARG}" | sed 's/\.t?gz$//')
+        ;;
+    *)
+        usage
+        ;;
+    esac
+done
+shift $((OPTIND-1))
+
+if [ -z "${archive}" ] || [ -z "${clientdir}" ]; then
+    usage
+fi
+
+du -sh --time --time-style=full-iso ${clientdir} 
+
+if [ -f "${clientdir}/.backup_excludes" ]; then
+    TAR_OPTS="--exclude-from=${clientdir}/.backup_excludes"
+else
+    TAR_OPTS=""
+fi
+
+if [[ "${clientdir}" == /* ]]; then
+    TAR_OPTS="${TAR_OPTS} -C /"
+    clientdir="${clientdir:1}"
+fi
+
+nice -n 19 tar ${TAR_OPTS} -czf ${archive}.tgz ${clientdir}
+EXITVALUE=$?
+if [ $EXITVALUE -ne 0 ]; then
+    logger -t archive_dir -p user.error\
+     "ALERT tar exited with [$EXITVALUE] for data set ${DBNAME}"
+    exit $EXITVALUE
+fi
+stat --format="%n (%s B) %y" ${archive}.tgz

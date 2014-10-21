@@ -1,0 +1,5 @@
+# file: /usr/local/etc/backup_client.d/pgsql-{{ item.name }}.conf
+
+name="pgsql-{{ item.name | mandatory }}"
+database="{{ item.name }}"
+service_name=

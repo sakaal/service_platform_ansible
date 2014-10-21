@@ -20,22 +20,33 @@ algorithm=aes-256-cbc
 #
 for filename in /usr/local/etc/backup_client.d/*.conf; do
 (
+    unset database directory name service_name
     . "${filename}"
-    /usr/local/sbin/backup_dir -n "${name}" -d "${directory}" -a "${algorithm}"
+    timestamp="$(date -u +'%FT%H%MZ')"
+    archive="${name}_${HOSTNAME}_${timestamp}"
+
+    if [ -n "$database" ]; then
+        echo Archiving the PostgreSQL database: ${database}
+        /usr/local/sbin/archive_pgsql_db -n "${archive}" -d "${database}"
+    elif [ -n "$directory" ]; then
+        echo Archiving the file system directory: ${directory}
+        /usr/local/sbin/archive_dir -n "${archive}" -d "${directory}"
+    fi
+
+    /usr/local/sbin/archive_encrypt -n "${archive}" -a "${algorithm}"
 
     mkdir -p ${OUTBOUND_QUEUE}/${name}
-    mv ${name}_*.pass.safe ${OUTBOUND_QUEUE}/${name}/
-    mv ${name}_*.${algorithm} ${OUTBOUND_QUEUE}/${name}/
-    mv ${name}_*.sha256 ${OUTBOUND_QUEUE}/${name}/
+    mv --force --target-directory="${OUTBOUND_QUEUE}/${name}/"\
+     ${name}_*.{pass.safe,${algorithm},sha256}
 )
 done
 
 #
 # Remove any leftovers from possibly interrupted tasks:
 #
-ls | grep '^.*\(\.tmp\|\.pass\.txt\|\.tgz\)$'
+ls | grep -P '^.*\.(tmp|pass\.txt|tgz|gz|sha256)$'
 if [ $? -eq 0 ]; then
-    rm -f *.tmp *.pass.txt *.tgz *.sha256
+    rm -f *.tmp *.pass.txt *.tgz *.gz *.sha256
     echo "Removed the file(s) left behind." >&2
 fi
 
@@ -43,6 +54,11 @@ fi
 # Transfer the encrypted archive and password file to the backup service:
 #
 chown -R ${BACKUP_USER}:${BACKUP_USER} ${OUTBOUND_QUEUE}
+
+#
+# Delete any old transfer logs:
+#
+su - ${BACKUP_USER} -c "rm -f ~/.lftp/*_log"
 
 LFTP="open -u {{ backup_onsite_account | mandatory }}, {{ backup_onsite_protocol | mandatory }}://{{ backup_onsite_service | mandatory }};"
 REMOTE_DIR="`date -u +"%Y-%m"`/`hostname`${clientdir}"

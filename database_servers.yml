@@ -2,7 +2,7 @@
 # file: database_servers.yml
 
 #
-# Relational database management system (RDBMS)
+# Relational database management system (RDBMS) nodes
 #
 
 - hosts: database_servers
@@ -14,3 +14,5 @@
     - libvirt_guest_network_service
     - postgresql
     - postgresql_databases
+    - postgresql_databases_backup
+    - archives_maintenance

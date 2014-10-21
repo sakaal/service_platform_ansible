@@ -1,0 +1,5 @@
+---
+# file: roles/postgresql_databases_backup/meta/main.yml
+
+dependencies:
+- role: backup_client

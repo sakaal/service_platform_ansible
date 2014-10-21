@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+
+#
+# Archives a given PostgreSQL database to a given name.
+#
+
+usage() { echo "Usage: $0 [-n <string>] [-d <path>]" 1>&2; exit 1; }
+
+while getopts d:n: o
+do  case "${o}" in
+    d)
+        database="${OPTARG}"
+        ;;
+    n)
+        archive=$(echo "${OPTARG}" | sed 's/\.t?gz$//')
+        ;;
+    *)
+        usage
+        ;;
+    esac
+done
+shift $((OPTIND-1))
+
+if [ -z "${archive}" ] || [ -z "${database}" ]; then
+    usage
+fi
+
+pgsql_backups_dir="{{ (postgres_home.stdout|mandatory).strip() }}/backups"
+
+#
+# PostgreSQL development documentation
+# http://www.postgresql.org/docs/devel/static/app-pgdump.html
+#
+umask 077
+
+su - postgres --shell=/bin/bash --session-command="export TERM=dumb;\
+ pg_dump --lock-wait-timeout=500 --file=${pgsql_backups_dir}/${archive}.sql ${database}"
+EXITVALUE=$?
+if [ $EXITVALUE -ne 0 ]; then
+    logger -t archive_pgsql_db -p user.error\
+     "ALERT pg_dump exited abnormally with [$EXITVALUE] for database ${database}"
+fi
+
+mv "${pgsql_backups_dir}/${archive}.sql" "${archive}.sql"
+gzip --best ${archive}.sql
+EXITVALUE=$?
+if [ $EXITVALUE -ne 0 ]; then
+    logger -t archive_pgsql_db -p user.error\
+     "ALERT gzip exited with [$EXITVALUE] for ${archive}.sql"
+    exit $EXITVALUE
+fi

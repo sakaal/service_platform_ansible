@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+
+#
+# Encrypts the given archive.
+#
+
+usage() { echo "Usage: $0 [-n <string>] [-a <algorithm>]" 1>&2; exit 1; }
+
+while getopts a:n: o
+do  case "${o}" in
+    a)
+        algorithm="${OPTARG}"
+        ;;
+    n)
+        archive=$(echo "${OPTARG}" | sed 's/\.t?gz$//')
+        ;;
+    *)
+        usage
+        ;;
+    esac
+done
+shift $((OPTIND-1))
+
+if [ -z "${archive}" ] || [ -z "${algorithm}" ]; then
+    usage
+fi
+
+if [ -f "${archive}.sql.gz" ]; then
+    ext=".sql.gz"
+elif [ -f "${archive}.tgz" ]; then
+    ext=".tgz"
+elif [ -f "${archive}.gz" ]; then
+    ext=".gz"
+else
+    logger -t archive_encrypt -p user.error\
+     "ALERT Couldn't find the archive file ${archive}.t?gz"
+    exit 66 # cannot open input
+fi
+
+#
+# Generate a random password:
+#
+dd if=/dev/random bs={{ archive_password_bytes | mandatory }} count=1 2>/dev/null | base64\
+ > ${archive}.pass.txt
+
+#
+# Encrypt the backup archive with the password:
+#
+nice -n 19 openssl enc -${algorithm} -pass file:${archive}.pass.txt\
+ -in ${archive}${ext} -out ${archive}${ext}.${algorithm}.tmp
+EXITVALUE=$?
+if [ $EXITVALUE -eq 0 ]; then
+    mv ${archive}${ext}.${algorithm}.tmp ${archive}${ext}.${algorithm}
+    nice -n 19 shred --iterations=25 --force --zero --remove "${archive}${ext}"
+else
+    logger -t archive_encrypt -p user.error\
+     "ALERT openssl enc exited with [$EXITVALUE] for archive ${archive}"
+    exit $EXITVALUE
+fi
+stat --format="%n (%s B) %y" ${archive}${ext}.${algorithm}
+
+#
+# Encrypt the password file with the archives public key:
+#
+nice -n 19 openssl pkeyutl -encrypt\
+ -pubin -inkey "/{{ archive_keys_path | mandatory }}/archives-public.pem"\
+ -in ${archive}.pass.txt\
+ -out ${archive}.pass.tmp
+EXITVALUE=$?
+if [ $EXITVALUE -eq 0 ]; then
+    mv ${archive}.pass.tmp ${archive}.pass.safe
+    nice -n 19 shred --iterations=25\
+     --force --zero --remove "${archive}.pass.txt"
+else
+    logger -t archive_encrypt -p user.error\
+     "ALERT openssl pkeyutl exited with [$EXITVALUE] for archive ${archive}"
+    exit $EXITVALUE
+fi
+stat --format="%n (%s B) %y" ${archive}.pass.safe
+
+sha256sum "${archive}${ext}.${algorithm}" > "${archive}.sha256"
