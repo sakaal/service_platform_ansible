@@ -164,12 +164,16 @@ Substitute your service management domain name for `example.com` (and
 
 1. Deploy mail services:
 
-        ansible-playbook web_servers.yml -i ../com.example_ansible_main/production
+        ansible-playbook mail_servers.yml -i ../com.example_ansible_main/production
    * Use the Sender Policy Framework (SPF)
      [testing tools](http://www.openspf.org/Tools)
      and Port25 Solutions
      [email verification service](http://www.port25.com/support/authentication-center/email-verification/)
      to test the results.
+
+1. Deploy relational database management services:
+
+        ansible-playbook database_servers.yml -i ../com.example_ansible_main/production
 
 1. Deploy web services:
 
@@ -182,6 +186,11 @@ Substitute your service management domain name for `example.com` (and
 1. Deploy continuous integration services:
 
         ansible-playbook ci_servers.yml -i ../com.example_ansible_main/development
+
+1. Deploy application servers:
+
+        ansible-playbook wildfly8_servers.yml -i ../com.example_ansible_main/development
+        ansible-playbook wildfly8_servers.yml -i ../com.example_ansible_main/production
 
 ## Application data restoration from archives
 
