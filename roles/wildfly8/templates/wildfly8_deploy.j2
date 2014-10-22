@@ -1,0 +1,49 @@
+#!/bin/sh
+#
+# Deploys a package to the local WildFly 8 standalone server.
+#
+# This script may be used either manually or from a Continuous Integration job.  
+#
+
+usage() { echo "Usage: $0 <package_file>" 1>&2; exit 64; }
+
+if [[ $# -ne 1 ]]; then 
+    usage
+fi
+
+if [[ $EUID -ne 0 ]]; then
+   echo "This script must be run as root." 1>&2
+   exit 4
+fi
+
+WILDFLY_USER={{ wildfly8_user | mandatory }}
+WILDFLY_GROUP={{ wildfly8_user }}
+eval WILDFLY_HOME={{ wildfly8_home }}
+STANDALONE=$WILDFLY_HOME/bin/standalone.sh
+JBOSS_CLI=$WILDFLY_HOME/bin/jboss-cli.sh
+
+test -x $STANDALONE || {
+    echo "$STANDALONE not installed";
+    exit 5;
+}
+
+test -f $1 || {
+    echo "No such file: $1";
+    exit 1;
+}
+
+#
+# Moves the package to the application server user home directory, if necessary.
+#
+PKG_SRC=`python -c "import os,sys; print os.path.realpath(sys.argv[1])" "$1"`
+eval PACKAGE=~$WILDFLY_USER
+PACKAGE=`python -c "import os,sys; print os.path.realpath(sys.argv[1])" "$PACKAGE/$1"`
+if [[ "$PKG_SRC" != "$PACKAGE" ]]; then
+    mv --force "$PKG_SRC" "$PACKAGE"
+    chown $WILDFLY_USER:$WILDFLY_GROUP "$PACKAGE"
+    echo "Moved the package to: $PACKAGE"
+fi
+
+SU="su -l $WILDFLY_USER -c "
+
+$SU "$JBOSS_CLI --connect --command='deploy $PACKAGE --force'"

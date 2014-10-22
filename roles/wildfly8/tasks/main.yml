@@ -1,0 +1,66 @@
+# file: roles/wildfly8/tasks/main.yml
+
+#
+# WildFly 8 Jave EE Application Server deployment
+#
+
+#
+# WildFly 8.1.0.Final was not available in CentOS repositories at the time
+# of this writing, so we will download it from jboss.org. 
+#
+- name: Download the WildFly 8 archive locally
+  run_once: yes
+  local_action:
+    get_url dest="{{ files_dir }}/{{ wildfly8_archive }}"
+            force=no validate_certs=no
+            sha256sum="{{ wildfly8_sha256sum | mandatory }}"
+            url="http://download.jboss.org/wildfly/{{ wildfly8_version
+            | mandatory }}/{{ wildfly8_archive | mandatory }}"
+
+- name: Create the WildFly user account
+  sudo: yes
+  sudo_user: root
+  user: name={{ wildfly8_user | mandatory }}
+        comment="WildFly" shell=/bin/bash
+        generate_ssh_key=yes
+        ssh_key_comment={{ wildfly8_user }}@{{ ansible_fqdn
+                        }}-{{ ansible_date_time.iso8601 }}
+
+- name: Upload the WildFly 8 archive
+  sudo: yes
+  copy: src="{{ wildfly8_archive }}" dest="/opt/{{ wildfly8_archive }}"
+
+- name: Extract WildFly 8
+  sudo: yes
+  sudo_user: "{{ wildfly8_user }}"
+  unarchive: creates="{{ wildfly8_home | mandatory }}" copy=no
+             src="/opt/{{ wildfly8_archive }}"
+             dest="/home/{{ wildfly8_user }}/"
+
+- name: WildFly 8 management user
+  sudo: yes
+  sudo_user: "{{ wildfly8_user }}"
+  command: chdir="{{ wildfly8_home }}"
+           bin/add-user.sh --silent
+           --user "{{ wildfly8_user }}"
+           --password "{{ wildfly8_password | mandatory }}"
+
+- name: WildFly 8 deployment script
+  sudo: yes
+  template: src=wildfly8_deploy.j2
+            dest=/usr/local/sbin/wildfly8_deploy
+            owner=root group=root mode=0750
+
+- name: WildFly8 System V initialization script
+  sudo: yes
+  template: src=wildfly8.j2
+            dest=/etc/init.d/wildfly8
+            owner=root group=root mode=0755
+
+- name: Add the WildFly 8 service
+  sudo: yes
+  command: chkconfig --add wildfly8 creates="/etc/rc3.d/S50wildfly8"
+
+- name: Enable and start the WildFly 8 service
+  sudo: yes
+  service: name=wildfly8 enabled=yes state=started

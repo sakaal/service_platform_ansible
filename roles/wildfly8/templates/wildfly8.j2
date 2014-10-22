@@ -1,0 +1,57 @@
+#!/bin/sh
+
+### BEGIN INIT INFO
+# Provides:          wildfly8
+# Required-Start:    $remote_fs $named $network $time
+# Required-Stop:     $remote_fs
+# Default-Start:     3 4 5
+# Default-Stop:      0 1 2 6
+# Short-Description: WildFly 8
+# Description:       WildFly 8 Java EE Application Server
+### END INIT INFO
+
+if [[ $EUID -ne 0 ]]; then
+   echo "This script must be run as root." 1>&2
+   exit 4
+fi
+
+WILDFLY_USER={{ wildfly8_user }}
+WILDFLY_HOME={{ wildfly8_home }}
+STANDALONE=$WILDFLY_HOME/bin/standalone.sh
+JBOSS_CLI=$WILDFLY_HOME/bin/jboss-cli.sh
+
+test -x $STANDALONE || {
+    echo "$STANDALONE not installed";
+    if [ "$1" = "stop" ]; then exit 0;
+    else exit 5; fi;
+}
+
+WF8_OPTS="$WF8_OPTS -Dorg.apache.tomcat.util.http.ServerCookie.ALLOW_HTTP_SEPARATORS_IN_V0=true" ## See AS7-1625
+WF8_OPTS="$WF8_OPTS -Djboss.bind.address.management=0.0.0.0"  
+WF8_OPTS="$WF8_OPTS -Djboss.bind.address=0.0.0.0"
+
+SU="su -l $WILDFLY_USER -c "
+
+case "$1" in
+start)
+    $SU "$STANDALONE $WF8_OPTS &"
+    ;;
+stop)
+    $SU "$JBOSS_CLI --connect --command=':shutdown' --timeout=200"
+    ;;
+restart|force-reload)
+    $SU "$JBOSS_CLI --connect --command=':shutdown(restart=true)' --timeout=200 2>/dev/null"
+    if [ $? -ne 0 ]; then
+        $SU "$STANDALONE $WF8_OPTS &"
+    fi
+    ;;
+status)
+    $SU "$JBOSS_CLI --connect --command='read-attribute server-state' --timeout=200 2>/dev/null"
+    if [ $? -ne 0 ]; then
+        echo "not running"
+        exit 3
+    fi
+    ;;
+\*)
+    echo "usage: $0 (start|stop|restart|status|help)"
+esac
