@@ -1,0 +1,13 @@
+---
+# file: roles/archive_deployment/tasks/main.yml
+
+- name: Archivers and data transfer tools
+  with_items:
+  - 'bzip2'
+  - 'curl'
+  - 'gzip'
+  - 'p7zip'
+  - 'unzip'
+  - 'wget'
+  sudo: yes
+  yum: name=wget
