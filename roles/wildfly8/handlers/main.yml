@@ -1,0 +1,12 @@
+---
+# file: roles/wildfly8/handlers/main.yml
+
+- name: Reload WildFly8
+  sudo: yes
+  sudo_user: "{{ wildfly8_user }}"
+  command: chdir="{{ wildfly8_home | mandatory }}"
+           {{ wildfly8_cli | mandatory }} --connect --command=':reload'
+
+- name: Restart WildFly8
+  sudo: yes
+  service: name=wildfly8 state=restarted

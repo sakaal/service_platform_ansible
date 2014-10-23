@@ -17,3 +17,4 @@
   - wildfly8
   - wildfly8_logging
   - wildfly8_postgresql_drivers
+  - wildfly8_mail

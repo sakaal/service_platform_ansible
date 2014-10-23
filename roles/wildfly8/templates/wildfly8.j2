@@ -39,6 +39,9 @@ start)
 stop)
     $SU "$JBOSS_CLI --connect --command=':shutdown' --timeout=200"
     ;;
+reload)
+    $SU "$JBOSS_CLI --connect --command=':reload' --timeout=200"
+    ;;
 restart|force-reload)
     $SU "$JBOSS_CLI --connect --command=':shutdown(restart=true)' --timeout=200 2>/dev/null"
     if [ $? -ne 0 ]; then
@@ -53,5 +56,5 @@ status)
     fi
     ;;
 \*)
-    echo "usage: $0 (start|stop|restart|status|help)"
+    echo "usage: $0 (start|stop|reload|restart|status|help)"
 esac
