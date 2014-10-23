@@ -7,12 +7,13 @@
 
 - hosts: wildfly8_servers
   vars_files:
-    - /mnt/sensitive_data/etc/ansible/vars/admin_access.yml
+  - /mnt/sensitive_data/etc/ansible/vars/admin_access.yml
   roles:
-    - libvirt_guest_network_service
-    - transport_layer_security
-    - java_oracle
-    - ca_trust
-    - java_keystore
-    - wildfly8
-    - wildfly8_postgresql_drivers
+  - libvirt_guest_network_service
+  - transport_layer_security
+  - java_oracle
+  - ca_trust
+  - java_keystore
+  - wildfly8
+  - wildfly8_logging
+  - wildfly8_postgresql_drivers

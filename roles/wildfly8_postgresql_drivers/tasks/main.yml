@@ -59,7 +59,7 @@
   sudo: yes
   sudo_user: "{{ wildfly8_user }}"
   command: chdir="{{ wildfly8_home | mandatory }}"
-           {{ wildfly8_cli | mandatory }}  --connect
+           {{ wildfly8_cli | mandatory }} --connect
            --command='/subsystem=datasources/jdbc-driver=postgresql-{{
            item.version }}-{{ item.build }}.{{ item.spec
            }}:add(driver-name=postgresql-{{
