@@ -57,7 +57,7 @@
 - name: PostgreSQL configuration
   with_items:
   - key: listen_addresses
-    val: "\\'{{ postgresql_listen | mandatory }}\\'"
+    val: "\\'{{ postgresql_listen | mandatory }},localhost\\'"
   - key: max_connections
     val: 40
   - key: shared_buffers
