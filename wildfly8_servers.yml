@@ -11,10 +11,12 @@
   roles:
   - libvirt_guest_network_service
   - transport_layer_security
+  - hosts_aliases
   - java_oracle
   - ca_trust
   - java_keystore
   - wildfly8
   - wildfly8_logging
   - wildfly8_postgresql_drivers
+  - wildfly8_datasources
   - wildfly8_mail

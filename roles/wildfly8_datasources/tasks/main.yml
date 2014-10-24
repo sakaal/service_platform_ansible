@@ -1,0 +1,37 @@
+---
+# file: roles/wildfly8_datasources/tasks/main.yml
+
+#
+# WildFly 8 Java Database Connectivity (JDBC) data sources
+#
+
+- name: Check JDBC data sources
+  sudo: yes
+  sudo_user: "{{ wildfly8_user | mandatory }}"
+  command: chdir="{{ wildfly8_home | mandatory }}"
+           {{ wildfly8_cli | mandatory }} --connect
+           --command='/subsystem=datasources:read-children-names(child-type=data-source)'
+  register: wildfly8_datasources_result
+
+- name: JDBC data sources
+  with_items: wildfly8_datasources|default([])
+  when: not '{{ item.name | mandatory }}' in wildfly8_datasources_result.stdout
+  sudo: yes
+  sudo_user: "{{ wildfly8_user }}"
+  command: chdir="{{ wildfly8_home | mandatory }}"
+           {{ wildfly8_cli | mandatory }} --connect
+           --command='/subsystem=datasources/data-source={{
+           item.name | mandatory }}:add( jndi-name=java:/jdbc/{{ item.name }},
+           driver-name={{
+           item.driver_name | default(wf8_ds_driver_name) }},
+           connection-url=\"{{ item.connection_url | mandatory }}\",
+           user-name={{ item.user_name | mandatory }},
+           password=\"{{ item.password | mandatory }}\",
+           use-ccm={{ item.use_ccm | default(wf8_ds_use_ccm) }},
+           max-pool-size={{
+           item.max_pool_size | default(wf8_ds_max_pool_size) }},
+           blocking-timeout-wait-millis={{
+           item.blocking_timeout_wait_millis | mandatory }},
+           new-connection-sql=\"{{
+           item.new_connection_sql | default(wf8_ds_new_connection_sql) }}\"
+           )'
