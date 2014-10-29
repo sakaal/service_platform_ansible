@@ -41,11 +41,11 @@
   notify: Restart the HTTP server
 
 - name: Virtual HTTPS proxies
+  with_items: virtual_proxies|default([])
   sudo: yes
   template: src=vhost.conf.j2
             dest=/etc/httpd/conf.d/{{ item.fqdn }}.conf
             owner=root group=root mode=0644
-  with_items: virtual_proxies
   notify: Restart the HTTP server
 
 - name: Enable the entropy service

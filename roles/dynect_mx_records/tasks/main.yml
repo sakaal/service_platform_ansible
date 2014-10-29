@@ -24,7 +24,7 @@
   register: current_mx_records
 
 - name: Update DNS zone MX records
-  with_items: current_mx_records.results
+  with_items: current_mx_records.results|default([])
   when: (item.json.data.rdata.exchange == "{{ public_hostname }}.") and
         (item.json.data.rdata.preference != dns_mx_preference)
   local_action: >
@@ -41,7 +41,7 @@
   changed_when: True
 
 - name: Determine if any DNS MX records have changed
-  with_items: current_mx_records.results
+  with_items: current_mx_records.results|default([])
   when: (item.json.data.rdata.exchange == "{{ public_hostname }}.") and
         (item.json.data.rdata.preference == "{{ dns_mx_preference }}")
   debug: msg="MX record unchanged"

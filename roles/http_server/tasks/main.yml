@@ -8,7 +8,7 @@
 - name: Websites
   when: websites is defined
   sudo: yes
-  with_items: websites
+  with_items: websites|default([])
   copy: src="{{ inventory_dir }}/websites/{{ item }}/htdocs/"
         dest="/var/www/{{ item }}/htdocs"
         owner=root group=root mode=0644
@@ -72,7 +72,7 @@
   notify: Reload the firewall
 
 - name: Make DNS A records
-  with_items: websites
+  with_items: websites|default([])
   when: dynect_session_result|success and
         public_dns_zone is defined and
         public_ipv4_address is defined
