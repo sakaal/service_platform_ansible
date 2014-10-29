@@ -73,8 +73,8 @@ Application Virtual Machine                   | Oracle Java
 Software artifact management                  | Sonatype Nexus OSS
 Continuous Integration (CI)                   | Jenkins CI
 Relational Database Management System (RDBMS) | PostgreSQL
+Application server                            | WildFly
 Release management                            | Apache Maven (coming)
-Application server                            | Wildfly (coming)
 
 ## Prerequisites
 
@@ -122,6 +122,17 @@ with the following naming policy for wildcard certificates and their keys:
 
      /mnt/sensitive_data/etc/pki/tls/certs/_.example.com-crt.pem
      /mnt/sensitive_data/etc/pki/tls/private/_.example.com-key.pem
+
+The public service domain certificate has the following naming policy:
+
+     /mnt/sensitive_data/etc/pki/tls/certs/public.test-crt.pem
+     /mnt/sensitive_data/etc/pki/tls/private/public.test-key.pem
+
+You may need to validate that you control a domain before you can request a
+Certificate Authority (CA) to issue a certificate for it. If you are deploying
+a new domain with a mail server, you may have to use a self-signed certificate
+to get the mail server deployed first. Then you can use the mail server to
+receive the domain validation emails sent by your CA.
 
 ## Deployment procedure
 
