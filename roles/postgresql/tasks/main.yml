@@ -68,7 +68,7 @@
     line="{{ item.key|mandatory }} = {{ item.val|mandatory }}"
     insertafter='^#+\s*{{ item.key|mandatory }}'
   notify:
-    - Restart PostgreSQL
+  - Restart PostgreSQL
 
 #
 # TODO: Further reduce the need of manual configuration. Manage apps, not CIDRs. 
@@ -78,7 +78,13 @@
             dest={{ postgresql_pgdata }}/pg_hba.conf
             owner=postgres group=postgres mode=0600
   notify:
-   - Restart PostgreSQL
+  - Restart PostgreSQL
 
 - name: Enable the PostgreSQL service
   service: name=postgresql enabled=yes state=started
+
+- name: Open the internal firewall for PostgreSQL
+  sudo: yes
+  command: firewall-cmd --permanent --zone=internal --add-service=postgresql
+  notify:
+  - Reload firewall
