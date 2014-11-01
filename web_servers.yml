@@ -12,7 +12,7 @@
     - /mnt/sensitive_data/etc/ansible/vars/hetzner.yml
   roles:
     - ca_trust
-    - dmz_bastion
+    - dmz
     - libvirt_guest_network_service
     - transport_layer_security
     - https_virtual_proxies

@@ -1,0 +1,20 @@
+---
+# file: roles/http_server_content/tasks/main.yml
+
+#
+# The Ansible synchronize module does not work well with the custom ssh_config.
+# We need to call rsync directly.
+#
+- name: Websites
+  when: websites is defined
+  with_items: websites|default([])
+  local_action: command rsync --delay-updates -FF --compress
+           --recursive --links --perms
+           --delete-after --delete-excluded --exclude=".git/"
+           --times --one-file-system
+           --rsh 'ssh -F /mnt/sensitive_data/etc/ssh/ssh_config
+                  -o Port={{ admin_ssh_port|mandatory }}'
+           --rsync-path="sudo rsync" --out-format="<<CHANGED>>%i %n%L"
+           "{{ inventory_dir }}/websites/{{ item }}/htdocs/"
+           "{{ admin_username|mandatory }}@{{
+           inventory_hostname }}:/var/www/{{ item }}/htdocs"

@@ -5,14 +5,6 @@
   sudo: yes
   yum: name=httpd
 
-- name: Websites
-  when: websites is defined
-  sudo: yes
-  with_items: websites|default([])
-  copy: src="{{ inventory_dir }}/websites/{{ item }}/htdocs/"
-        dest="/var/www/{{ item }}/htdocs"
-        owner=root group=root mode=0644
-
 #
 # On the list of websites the first item is considered the default.
 #

@@ -189,6 +189,9 @@ Substitute your service management domain name for `example.com` (and
 1. Deploy web services:
 
         ansible-playbook web_servers.yml -i ../com.example_ansible_main/production
+   * To only update static web content on existing web servers:
+
+        ansible-playbook websites.yml -i ../com.example_ansible_main/production
 
 1. Deploy software artifact management services:
 
