@@ -1,0 +1,10 @@
+#!/bin/bash
+#
+# Moves an image file to the Diaspora static web content delivery node.
+#
+
+filename=`basename "$2"`
+
+scp -P {{ admin_ssh_port|mandatory }} "$1" "{{ admin_username|mandatory
+}}@{{ diaspora_uploads_host|mandatory }}:/var/www/{{ public_hostname|mandatory
+}}/htdocs/uploads/images/$filename"

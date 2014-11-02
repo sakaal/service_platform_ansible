@@ -1,0 +1,14 @@
+---
+# file: roles/diaspora_pod/handlers/main.yml
+
+- name: Reload firewall
+  sudo: yes
+  service: name=firewalld state=reloaded
+
+- name: Reload incron
+  sudo: yes
+  service: name=incrond state=restarted
+
+- name: Restart Diaspora
+  sudo: yes
+  service: name=diaspora state=restarted

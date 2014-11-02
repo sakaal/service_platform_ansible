@@ -1,0 +1,18 @@
+---
+# file: diaspora_servers.yml
+
+- hosts: diaspora_servers
+  vars_files:
+  - /mnt/sensitive_data/etc/ansible/vars/admin_access.yml
+  - /mnt/sensitive_data/etc/ansible/vars/hetzner.yml
+  roles:
+  - libvirt_guest_network_service
+  - transport_layer_security
+  - hosts_aliases
+  - diaspora_pod
+  #
+  # The diaspora known SSH identity is used for transferring user uploaded
+  # content between nodes. This would not be needed, if uploads directly to
+  # the reverse proxy web server were supported.
+  #
+  - { role: ssh_identity, ssh_user: "{{ diaspora_user | mandatory }}" }

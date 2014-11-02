@@ -54,6 +54,7 @@ Configuration Management                      | Ansible
 Data transfer                                 | cURL
 Data transfer                                 | LFTP
 Job scheduling                                | Systemd Calendar Timers, Cron
+File system event monitoring                  | Incron (inotify cron)
 Network security                              | FirewallD
 Backup data encryption                        | OpenSSL
 Backup data storage, online, on-site          | Hetzner server backup space
@@ -205,6 +206,20 @@ Substitute your service management domain name for `example.com` (and
 
         ansible-playbook wildfly8_servers.yml -i ../com.example_ansible_main/development
         ansible-playbook wildfly8_servers.yml -i ../com.example_ansible_main/production
+
+1. Diaspora is a similar open source project that is currently
+   used for reference and to start building a pilot user base.
+   The new concept will later replace many of the features
+   currently provided by Diaspora.
+   Deploy Diaspora servers:
+
+        ansible-playbook diaspora_servers.yml -i ../com.example_ansible_main/production
+   * Do read the `roles/diaspora_pod` sources and follow the instructions.
+     You need to at least copy the static web content under the main inventory
+     websites directory.
+
+1. Use the [Qualys SSL Labs](https://www.ssllabs.com/ssltest/) or similar
+   analyzer to test that the SSL/TLS server configuration is in order.
 
 ## Application data restoration from archives
 

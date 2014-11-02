@@ -1,0 +1,151 @@
+#! /bin/sh
+# chkconfig: - 86 30
+# Author: FABIAN Tamas Laszlo <giganetom@gmail.com>
+# Source: https://github.com/netom/diaspora-init/blob/master/init/diaspora
+
+PATH=/sbin:/usr/sbin:/bin:/usr/bin
+DESC="Diaspora application server"
+NAME=diaspora
+DIASPORA_HOME="{{ diaspora_dir | mandatory }}"
+STARTSCRIPT="RAILS_ENV=production ./script/server"
+LOGFILE=$DIASPORA_HOME/log/startscript.log
+SCRIPTNAME=$0
+USER={{ diaspora_user }}
+STARTUP_TIMEOUT=100
+
+check_unicorn() {
+    pgrep -f "unicorn_rails master"
+}
+
+check_sidekiq() {
+    pgrep -f "sidekiq 2"
+}
+
+do_start()
+{
+    if ! touch $LOGFILE; then
+        echo "Could not touch logfile"
+        return 2
+    fi
+
+    if ! chown $USER $LOGFILE; then
+        echo "Could not chown logfile"
+        return 2
+    fi
+
+    if check_unicorn && check_sidekiq; then
+        echo "Diaspora is already running"
+        return 1
+    fi
+
+    if ! su -l $USER -c "cd $DIASPORA_HOME; $STARTSCRIPT >> $LOGFILE 2>&1 &"; then
+        echo "Could not run start script"
+        return 2
+    fi
+
+    [ "$VERBOSE" != no ] && echo "Waiting for Diaspora processes... "
+    c=0
+    while ! check_unicorn > /dev/null || ! check_sidekiq > /dev/null; do
+        if [ $c -gt $STARTUP_TIMEOUT ]; then
+            echo "Timeout waiting for Diaspora processes"
+            return 2
+        fi
+        c=`expr $c + 1`
+        sleep 1
+        [ "$VERBOSE" != no ] && echo -n "."
+    done
+    [ "$VERBOSE" != no ] && echo 0
+}
+
+do_stop()
+{
+    for i in `check_unicorn`; do
+        [ "$VERBOSE" != no ] && echo "Killing unicorn master with PID $i"
+        kill -TERM $i
+        [ "$VERBOSE" != no ] && echo $?
+    done
+
+    for i in `check_sidekiq`; do
+        [ "$VERBOSE" != no ] && echo "Killing sidekiq with PID $i"
+        kill -TERM $i
+        [ "$VERBOSE" != no ] && echo $?
+    done
+
+    return 0
+}
+
+case "$1" in
+  start)
+    [ "$VERBOSE" != no ] && echo "Starting $DESC" "$NAME"
+    do_start
+    case "$?" in
+        0|1) [ "$VERBOSE" != no ] && echo 0 ;;
+        *) [ "$VERBOSE" != no ] && echo 1 ;;
+    esac
+    ;;
+  stop)
+    [ "$VERBOSE" != no ] && echo "Stopping $DESC" "$NAME"
+    do_stop
+    case "$?" in
+        0|1) [ "$VERBOSE" != no ] && echo 0 ;;
+        2) [ "$VERBOSE" != no ] && echo 1 ;;
+    esac
+    ;;
+  status)
+    echo 'Checking for running Diaspora processes'
+
+    unicorn_running=false
+    for i in `check_unicorn`; do
+        echo "Found unicorn master qith PID $i"
+        unicorn_running=true
+    done
+
+    sidekiq_running=false
+    for i in `check_sidekiq`; do
+        echo "Found sidekiq with PID $i"
+        sidekiq_running=true
+    done
+
+    if $unicorn_running && $sidekiq_running; then
+        echo "Diaspora health is OK"
+        echo 0
+    else
+        if $unicorn_running; then
+            echo "Unicorn is RUNNING, but sidekiq is DOWN!"
+            echo 1
+            return 1
+        fi
+        if $sidekiq_running; then
+            echo "Sidekiq is RUNNING, but unicorn is DOWN!"
+            echo 1
+            return 1
+        fi
+        echo "All Diaspora processes are DOWN"
+        echo 0
+    fi
+    ;;
+  restart|force-reload)
+    [ "$VERBOSE" != no ] && echo "Restarting $DESC" "$NAME"
+    do_stop
+    case "$?" in
+      0|1)
+        do_start
+        case "$?" in
+            0) [ "$VERBOSE" != no ] && echo 0 ;;
+            1) [ "$VERBOSE" != no ] && echo "old process is still running" && echo 1 ;;
+            *) [ "$VERBOSE" != no ] && echo "failed to start" && echo 1 ;;
+        esac
+        ;;
+      *)
+        [ "$VERBOSE" != no ] && echo "failed to stop"
+        [ "$VERBOSE" != no ] && echo 1
+        ;;
+    esac
+    ;;
+  *)
+    echo "Usage: $SCRIPTNAME {start|stop|status|restart|force-reload}" >&2
+    exit 3
+    ;;
+esac
+
+:

@@ -1,0 +1,48 @@
+#!/bin/bash
+# Based on:
+# http://unix.stackexchange.com/questions/33030/process-files-in-a-directory-as-they-appear
+
+#
+# Note that this approach to handling Diaspora image uploads is suboptimal:
+# First the files arrive through a reverse proxy to the backend application
+# server and are then sent back to the proxy. An optimal solution would store
+# the images immediately on the host that first receives them or would at least
+# forward them directly to the correct node. There shouldn't be any need to
+# send them back and forth like this. This script only exists, because it was
+# a quick (and dirty) solution to get the service working for test use.
+#
+
+parent_dir="{{ diaspora_dir|mandatory }}/public/uploads"
+input_dir="images"
+
+#
+# TODO: DNSSEC validating resolver for the servers
+# TODO: Separate web content deployment user
+#
+ssh -o VerifyHostKeyDNS=yes -o StrictHostKeyChecking=no "{{ admin_username|mandatory
+}}@{{ diaspora_uploads_host|mandatory }}" -p {{ admin_ssh_port|mandatory }} \
+"sudo mkdir -p /var/www/{{ public_hostname|mandatory }}/htdocs/uploads/images;\
+ sudo chown -R root:wheel /var/www/{{ public_hostname|mandatory }}/htdocs/uploads;\
+ sudo chmod -R g+w /var/www/{{ public_hostname|mandatory }}/htdocs/uploads;"
+
+cd "$parent_dir"
+
+for filename in "${input_dir}"/*.{png,jpg,gif}; do
+    # is the file non-empty AND is it still there or caught by another process
+    if [ -s "${filename}" ]; then
+        mkdir -p ".queue"
+
+        # Append pid just in case another input with the same name comes in
+        tempname=".queue/`basename $filename`.$$"
+        mv -f "$filename" "$tempname"
+
+        diaspora_transfer_image "$tempname" "$filename" > "$tempname.output" 2>&1
+        rc=$?
+        if [ $rc -eq 0 ]; then
+            rm -f "${tempname}" "${tempname}.output"
+        else
+            echo "Error processing ${filename}; rc=${rc}" >&2
+            echo "File in ${tempname}" >&2
+        fi
+    fi
+done
