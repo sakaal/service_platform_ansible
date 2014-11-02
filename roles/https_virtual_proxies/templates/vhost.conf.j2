@@ -38,6 +38,22 @@ RequestHeader set X-Forwarded-Port "443"
 # Proxy: https://{{ item.fqdn }}/{{ proxy.context | mandatory }}
 # Backend: http://{{ proxy.backend_host }}/{{ proxy.backend_context }}
 #
+{% if proxy.exclude_locations is defined %}
+{% for location in proxy.exclude_locations %}
+<Location "{{ location }}">
+    ProxyPass !
+</Location>
+{% endfor %}
+
+{% endif %}
+{% if proxy.exclude_patterns is defined %}
+{% for pattern in proxy.exclude_patterns %}
+<LocationMatch "{{ pattern }}">
+    ProxyPass !
+</LocationMatch>
+{% endfor %}
+
+{% endif %}
 ProxyPass /{{ proxy.context | mandatory }} http://{{ proxy.backend_host | mandatory }}/{{ proxy.backend_context | mandatory }} nocanon
 ProxyPassReverse /{{ proxy.context }} http://{{ proxy.backend_host }}/{{ proxy.backend_context }}
 ProxyPassReverse /{{ proxy.context }} http://{{ item.fqdn }}/{{ proxy.backend_context }}
@@ -59,6 +75,9 @@ CustomLog logs/{{ item.fqdn }}_ssl_request_log \
 SSLEngine on
 SSLCertificateFile    /etc/pki/tls/certs/_.{{ public_dns_zone | mandatory }}-crt.pem
 SSLCertificateKeyFile /etc/pki/tls/private/_.{{ public_dns_zone | mandatory }}-key.pem
+{% if tls_certificate_chain_file is defined %}
+SSLCertificateChainFile /etc/pki/tls/certs/{{ tls_certificate_chain_file }}
+{% endif %}
 
 SSLProtocol         all -SSLv2 -SSLv3 -TLSv1
 SSLCipherSuite      ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:DHE-RSA-AES256-SHA:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!3DES:!MD5:!PSK
