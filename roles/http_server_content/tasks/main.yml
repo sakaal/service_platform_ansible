@@ -9,8 +9,7 @@
   when: websites is defined
   with_items: websites|default([])
   local_action: command rsync --delay-updates -FF --compress
-           --recursive --links --perms
-           --delete-after --delete-excluded --exclude=".git/"
+           --recursive --links --perms --exclude=".git/"
            --times --one-file-system
            --rsh 'ssh -F /mnt/sensitive_data/etc/ssh/ssh_config
                   -o Port={{ admin_ssh_port|mandatory }}'
