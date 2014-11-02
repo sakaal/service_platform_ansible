@@ -1,0 +1,15 @@
+---
+# file: roles/access_control/tasks/main.yml
+
+#
+# Grant or remove SSH access
+#
+
+- name: Authorize SSH keys
+  when: ssh_access is defined
+  with_subelements:
+  - ssh_access|default([])
+  - authorized_keys
+  authorized_key: user="{{ item.0.user | mandatory }}"
+                  key="{{ item.1.key | mandatory }}"
+                  state="{{ item.1.state | default('present')}}"
