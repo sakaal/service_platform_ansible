@@ -1,0 +1,10 @@
+---
+# file: roles/ldap_server/handlers/main.yml
+
+- name: Restart the directory server
+  sudo: yes
+  service: name=slapd state=restarted
+
+- name: Restart firewall
+  sudo: yes
+  service: name=firewalld state=restarted

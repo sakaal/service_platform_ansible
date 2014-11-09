@@ -1,0 +1,11 @@
+# file: people.ldif
+#
+dn: ou=people,{{ ldap_olc_suffix | mandatory }}
+objectClass: organizationalUnit
+description: All users
+ou: people
+
+dn: ou=groups,{{ ldap_olc_suffix | mandatory }}
+objectClass: organizationalUnit
+description: All groups
+ou: groups

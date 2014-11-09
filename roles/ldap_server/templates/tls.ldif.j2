@@ -1,0 +1,18 @@
+# file: tls.ldif
+#
+dn: cn=config
+changetype: modify
+replace: olcTLSCACertificateFile
+olcTLSCACertificateFile: /etc/pki/tls/certs/{{ tls_certificate_chain_file | mandatory }}
+-
+replace: olcTLSCACertificatePath
+olcTLSCACertificatePath: /etc/openldap/tls
+-
+replace: olcTLSCertificateFile
+olcTLSCertificateFile: /etc/pki/tls/certs/{{ public_hostname | mandatory }}-crt.pem
+-
+replace: olcTLSCertificateKeyFile
+olcTLSCertificateKeyFile: /etc/pki/tls/certs/{{ public_hostname | mandatory }}-key.pem
+-
+replace: olcTLSCipherSuite
+olcTLSCipherSuite: {{ ldap_tls_cipher_suite | mandatory }}

@@ -1,0 +1,29 @@
+# file: hdb.ldif
+#
+dn: olcDatabase={2}hdb,cn=config
+objectClass: olcDatabaseConfig
+objectClass: olcHdbConfig
+olcDatabase: {2}hdb
+olcDbDirectory: /var/lib/ldap
+olcSuffix: {{ ldap_olc_suffix | mandatory }}
+olcRootDN: {{ ldap_root_dn | mandatory }}
+olcRootPW: {{ ldap_root_password | mandatory }}
+olcDbConfig: set_cachesize 0 268435456 1
+olcDbConfig: set_lg_regionmax 262144
+olcDbConfig: set_lg_bsize 2097152
+olcDbConfig: set_lk_max_objects 2000
+olcDbConfig: set_lk_max_locks 2000
+olcDbConfig: set_lk_max_lockers 2000
+olcDbCheckpoint: 1024 10
+olcDbIndex: objectClass eq,pres
+olcDbIndex: ou,cn,mail,surname,givenname eq,pres,sub
+olcAccess: to attrs=userPassword
+  by self write
+  by dn="{{ ldap_root_dn }}" write
+  by anonymous auth
+  by * none
+olcAccess: to *
+  by self write
+  by dn="{{ ldap_root_dn }}" write
+  by users read
+  by * none

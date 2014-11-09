@@ -1,0 +1,18 @@
+---
+# file: directory_servers.yml
+
+#
+# Directory service nodes
+#
+
+- hosts: directory_servers
+  vars_files:
+    - /mnt/sensitive_data/etc/ansible/vars/admin_access.yml
+    - /mnt/sensitive_data/etc/ansible/vars/hetzner.yml
+  roles:
+    - libvirt_guest_network_service
+    - ca_trust
+    - transport_layer_security
+    - { role: ldap_server, firewall_zone: dmz }
+
+# TODO: LDAP backup

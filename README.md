@@ -70,6 +70,7 @@ Virus definition updates                      | Freshclam
 Unsolicited mail filtering                    | Apache SpamAssassin (currently inactive)
 Email client for administrative and test use  | Alpine
 Web server                                    | Apache HTTP Server
+Directory service                             | OpenLDAP
 Application Virtual Machine                   | Oracle Java
 Software artifact management                  | Sonatype Nexus OSS
 Continuous Integration (CI)                   | Jenkins CI
@@ -89,6 +90,7 @@ Release management                            | Apache Maven (coming)
     * Continuous integration (basic)
     * Release management (basic)
     * Mail server administration (basic)
+    * Directory administration (basic)
     * Database administration (basic)
 1. [Administrative Client System (ACS)](https://github.com/sakaal/admin_client)
    ready for use
@@ -193,6 +195,10 @@ Substitute your service management domain name for `example.com` (and
    * To only update static web content on existing web servers:
 
         ansible-playbook websites.yml -i ../com.example_ansible_main/production
+
+1. Deploy directory services:
+
+        ansible-playbook directory_servers.yml -i ../com.example_ansible_main/production
 
 1. Deploy software artifact management services:
 
