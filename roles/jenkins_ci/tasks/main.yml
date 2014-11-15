@@ -38,6 +38,69 @@
 - set_fact:
     jenkins_home: "{{ jenkins_home.stdout.strip() }}"
 
+- name: Generate SSH key for the jenkins user
+  sudo: yes
+  user: name=jenkins createhome=no
+        generate_ssh_key=yes
+        ssh_key_comment=jenkins@{{ ansible_fqdn }}-{{ ansible_date_time.iso8601 }}
+
+- name: Copy admin known_hosts to jenkins user
+  sudo: yes
+  shell: cp -f /home/{{ admin_username }}/.ssh/known_hosts
+         "{{ jenkins_home }}/.ssh/known_hosts"
+
+- name: Jenkins known_hosts permissions
+  sudo: yes
+  file: dest="{{ jenkins_home }}/.ssh/known_hosts"
+        owner=jenkins group=jenkins mode=600
+
+#
+# This allows Jenkins E-mail Notifications to use a TLS enabled SMTP server.
+#
+- name: Enable SMTP TLS for Jenkins
+  sudo: yes
+  lineinfile:
+    dest: /etc/sysconfig/jenkins
+    regexp: "^\\s*JENKINS_JAVA_OPTIONS\\s*=.*$"
+    line: 'JENKINS_JAVA_OPTIONS="-Djava.awt.headless=true -Dmail.smtp.starttls.enable={{ jenkins_smtp_tls | default("true") }}"'
+  notify: Restart Jenkins
+
+- name: Jenkins location configuration
+  with_items:
+  - tag: adminAddress
+    val: "Jenkins &lt;{{ jenkins_system_email | mandatory }}&gt;"
+  - tag: jenkinsUrl
+    val: "https://{{ public_hostname | mandatory }}/"
+  sudo: yes
+  lineinfile:
+    dest: "{{ jenkins_home }}/jenkins.model.JenkinsLocationConfiguration.xml"
+    regexp: "^(\\s*<{{ item.tag | mandatory }}>).*(</{{ item.tag }}>)\\s*$"
+    backrefs: yes
+    line: "\\1{{ item.val | mandatory }}\\2"
+  notify: Restart Jenkins
+
+- name: Mailer configuration
+  with_items:
+  - tag: smtpAuthUsername
+    val: "{{ jenkins_smtp_username | mandatory }}"
+  - tag: smtpAuthPassword
+    val: "{{ jenkins_smtp_password | mandatory }}"
+  - tag: smtpHost
+    val: "{{ jenkins_smtp_hostname | mandatory }}"
+  - tag: useSsl
+    val: "{{ jenkins_smtp_ssl | default('false') }}"
+  - tag: smtpPort
+    val: "{{ jenkins_smtp_port | mandatory }}"
+  - tag: charset
+    val: "UTF-8"
+  sudo: yes
+  lineinfile:
+    dest: "{{ jenkins_home }}/hudson.tasks.Mailer.xml"
+    regexp: "^(\\s*<{{ item.tag | mandatory }})>.*<(/{{ item.tag }}>)\\s*$"
+    backrefs: yes
+    line: "\\1>{{ item.val | mandatory }}<\\2"
+  notify: Restart Jenkins
+
 - name: Open firewall port 8080 access from within the libvirt default network
   sudo: yes
   command: firewall-cmd --permanent

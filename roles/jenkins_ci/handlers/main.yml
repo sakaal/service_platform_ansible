@@ -1,0 +1,7 @@
+---
+# file: roles/jenkins_ci/handlers/main.yml
+
+- name: Restart Jenkins
+  sudo: yes
+  sudo_user: root
+  service: name=jenkins state=restarted
