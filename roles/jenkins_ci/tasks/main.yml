@@ -54,6 +54,58 @@
   file: dest="{{ jenkins_home }}/.ssh/known_hosts"
         owner=jenkins group=jenkins mode=600
 
+- name: Plugins
+  with_items:
+  - name: analysis-collector              # Analysis Collector
+  - name: analysis-core                   # Static Code Analysis
+  - name: ant                             # Ant
+  - name: build-monitor-plugin            # Build Monitor
+  - name: build-pipeline-plugin           # Build Pipeline
+  - name: build-token-root                # Build Token Root
+  - name: checkstyle                      # Checkstyle
+  - name: credentials                     # Credentials
+  - name: dashboard-view                  # Dashboard View
+  - name: delivery-pipeline-plugin        # Delivery Pipeline
+  - name: dependency-check-jenkins-plugin # OWASP Dependency Check
+  - name: depgraph-view                   # Dependency Graph View
+  - name: deploy                          # Deploy
+  - name: disk-usage                      # Disk Usage
+  - name: downstream-buildview            # Downstream buildview
+  - name: emotional-jenkins-plugin        # Emotional Jenkins
+  - name: external-monitor-job            # Monitoring external jobs
+  - name: git-client                      # Git Client
+  - name: git                             # Git
+  - name: http_request                    # HTTP Request
+  - name: javadoc                         # Javadoc
+  - name: jquery                          # jQuery
+  - name: jquery-ui                       # jQuery UI
+  - name: junit                           # JUnit
+  - name: ldap                            # LDAP
+  - name: locale                          # Locale
+  - name: m2release                       # M2 Release
+  - name: mailer                          # Mailer
+  - name: matrix-auth                     # Matrix Authorization Strategy
+  - name: matrix-project                  # Matrix Project
+  - name: maven-info                      # Maven Info
+  - name: maven-plugin                    # Maven Project
+  - name: monitoring                      # Monitoring
+  - name: parameterized-trigger           # Parameterized Trigger
+  - name: promoted-builds                 # Promoted Builds
+  - name: publish-over-ssh                # Publish Over SSH
+  - name: scm-api                         # SCM API
+  - name: shelve-project-plugin           # Shelve Project
+  - name: sitemonitor                     # SiteMonitor
+  - name: ssh-credentials                 # SSH Credentials
+  - name: subversion                      # Subversion
+  - name: token-macro                     # Token Macro
+  - name: zapper                          # OWASP Zed Attack Proxy (ZAP)
+  sudo: yes
+  sudo_user: jenkins
+  get_url: dest="{{ jenkins_home }}/plugins/{{ item.name | mandatory }}.jpi"
+           url="https://updates.jenkins-ci.org/latest/{{ item.name }}.hpi"
+           owner=jenkins group=jenkins mode=0644
+  notify: Restart Jenkins
+
 #
 # This allows Jenkins E-mail Notifications to use a TLS enabled SMTP server.
 #
