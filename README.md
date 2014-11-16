@@ -76,7 +76,7 @@ Software artifact management                  | Sonatype Nexus OSS
 Continuous Integration (CI)                   | Jenkins CI
 Relational Database Management System (RDBMS) | PostgreSQL
 Application server                            | WildFly
-Release management                            | Apache Maven (coming)
+Release management                            | Apache Maven
 
 ## Prerequisites
 
