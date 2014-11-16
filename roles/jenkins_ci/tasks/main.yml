@@ -100,7 +100,6 @@
   - name: token-macro                     # Token Macro
   - name: zapper                          # OWASP Zed Attack Proxy (ZAP)
   sudo: yes
-  sudo_user: jenkins
   get_url: dest="{{ jenkins_home }}/plugins/{{ item.name | mandatory }}.jpi"
            url="https://updates.jenkins-ci.org/latest/{{ item.name }}.hpi"
            owner=jenkins group=jenkins mode=0644
