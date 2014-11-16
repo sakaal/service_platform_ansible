@@ -1,0 +1,15 @@
+---
+# file: local_dev_client.yml
+
+#
+# Development tools and keys for the service management domain
+#
+
+- hosts: localhost
+  vars_files:
+  - /mnt/sensitive_data/etc/ansible/vars/admin_access.yml
+  roles:
+  - transport_layer_security
+  - ca_trust
+  - java_keystore
+  - maven
