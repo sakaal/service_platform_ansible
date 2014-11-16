@@ -12,8 +12,10 @@
   get_url: url={{ item.url | mandatory }}
            dest=/etc/pki/ca-trust/source/anchors/{{ item.filename }}
            sha256sum={{ item.sha256sum | mandatory }}
+  register: trusted_ca_result
 
 - name: Update the trusted CA root certificate bundles
+  when: trusted_ca_result|changed
   sudo: yes
   command: update-ca-trust extract
   changed_when: False
