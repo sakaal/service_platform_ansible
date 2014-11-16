@@ -14,13 +14,27 @@
 # Note that /etc/pki/java/cacerts is managed by roles/ca_trust.
 #
 
+- name: Check if Oracle JDK is present
+  when: java_oracle_home is defined
+  stat: path="{{ java_oracle_home }}/bin"
+  register: java_oracle_bin
+
+- name: Use Oracle JDK if present
+  when: not java_oracle_bin|skipped and java_oracle_bin.stat.exists
+  set_fact: java_home_bin="{{ java_oracle_home }}/bin/"
+
+- name: Use default Java
+  when: java_home_bin is not defined
+  set_fact: java_home_bin=""
+
 - name: Check Java keystores
+  when: java_certificates is defined
   with_nested:
-  - java_keystores
+  - java_keystores|default([])
   - java_certificates
   sudo: yes
   shell: >
-         chdir="/etc/pki/java" "{{ java_oracle_home | mandatory }}/bin/keytool"
+         chdir="/etc/pki/java" "{{ java_home_bin }}keytool"
          -keystore "{{ item.0.keystore | mandatory }}"
          -list -alias "{{ item.1.alias | mandatory }}"
          -storepass "{{ item.0.storepass | default('changeit') }}"
@@ -30,11 +44,11 @@
   failed_when: False
 
 - name: Import certificates to Java keystores
-  with_items: java_keystore.results
+  with_items: java_keystore.results|default([])
   when: item|changed
   sudo: yes
   shell: >
-         chdir="/etc/pki/java" "{{ java_oracle_home | mandatory }}/bin/keytool"
+         chdir="/etc/pki/java" "{{ java_home_bin }}keytool"
          -keystore "{{ item.item.0.keystore }}"
          -import -alias "{{ item.item.1.alias }}"
          -file "{{ item.item.1.cert | mandatory }}"

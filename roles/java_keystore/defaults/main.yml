@@ -4,3 +4,4 @@
 java_keystores:
 - keystore: "{{ java_oracle_home }}/jre/lib/security/jssecacerts"
 - keystore: "{{ java_oracle_home }}/jre/lib/security/cacerts"
+- keystore: cacerts

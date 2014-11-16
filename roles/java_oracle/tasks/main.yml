@@ -19,15 +19,11 @@
 
 - name: Upload the Oracle Java RPM
   sudo: yes
-  copy: >
-        src="{{ java_oracle_archive }}"
-        dest="/opt/{{ java_oracle_archive }}"
+  copy: src="{{ java_oracle_archive }}" dest="/opt/{{ java_oracle_archive }}"
 
 - name: Install the Oracle Java RPM
   sudo: yes
-  command: >
-           chdir=/opt
-           creates="{{ java_oracle_home | mandatory }}"
+  command: chdir=/opt creates="{{ java_oracle_home | mandatory }}"
            rpm -U {{ java_oracle_archive }}
   register: java_oracle_installed
 
