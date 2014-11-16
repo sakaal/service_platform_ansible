@@ -142,25 +142,50 @@
   wait_for: path="{{ nexus_conf }}/security.xml" search_regex="<id>admin</id>"
 
 #
-# You can use Apache Shiro Command Line Hasher to generate an admin password:
+# Access security
+#
+# You can use Apache Shiro Command Line Hasher to generate the passwords:
 # java -jar shiro-tools-hasher-1.2.3-cli.jar -p -aSHA-512
 #
-- name: Check the current admin password
-  sudo: yes
-  sudo_user: "{{ nexus_user }}"
-  command: >
-           xmllint --xpath "//user[id='admin']/password/text()"
-           {{ nexus_conf }}/security.xml
-  register: admin_result
-  changed_when: admin_result.stdout.strip() != nexus_adminpw
-  failed_when: admin_result.rc != 0 or admin_result.stdout.strip() == ""
+# You must set different email addresses and passwords for different accounts
+# for this configuration method to work. Set the Nexus accounts as follows in:
+# /mnt/sensitive_data/etc/ansible/vars/admin_access.yml
+#
+#nexus_admin_password: $shiro1$SHA-512$500000$ZXER...W2iDUMMYwzjzNZw==
+#nexus_admin_email: "Nexus admin \\&lt;user@domain.test\\&gt;"
+#nexus_deployment_password: $shiro1$SHA-512$500000$MEuegRG7nsP...QS7DUMMYU6Q==
+#nexus_deployment_email: "Nexus deployment \\&lt;user@domain.test\\&gt;"
+#
 
-- name: Set the admin password
-  when: admin_result|changed
+- name: Check access
+  with_items:
+
+  - value: "{{ nexus_admin_password | mandatory }}"
+    xpath: "//user[id='admin']/password/text()"
+  - value: "{{ nexus_admin_email | mandatory }}"
+    xpath: "//user[id='admin']/email/text()"
+
+  - value: "{{ nexus_deployment_password | mandatory }}"
+    xpath: "//user[id='deployment']/password/text()"
+  - value: "{{ nexus_deployment_email | mandatory }}"
+    xpath: "//user[id='deployment']/email/text()"
+
+  when: item.value.strip() != ""
   sudo: yes
   sudo_user: "{{ nexus_user }}"
-  command: >
-           sed -i 's|{{ admin_result.stdout.strip() }}|{{ nexus_adminpw | mandatory }}|g'
+  command: xmllint --xpath "{{ item.xpath | mandatory }}"
+           {{ nexus_conf }}/security.xml
+  register: nexus_security
+  changed_when: nexus_security.stdout.strip() != item.value
+  failed_when: nexus_security.rc != 0 or
+               nexus_security.stdout.strip() == ""
+
+- name: Control access
+  with_items: nexus_security.results
+  when: item|changed
+  sudo: yes
+  sudo_user: "{{ nexus_user }}"
+  command: sed -i 's|>\s*{{ item.stdout.strip() }}\s*<|>{{ item.item.value }}<|g'
            {{ nexus_conf }}/security.xml
   notify:
      - Restart Nexus
