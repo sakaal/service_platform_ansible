@@ -31,7 +31,8 @@
            max-pool-size={{
            item.max_pool_size | default(wf8_ds_max_pool_size) }},
            blocking-timeout-wait-millis={{
-           item.blocking_timeout_wait_millis | mandatory }},
+           item.blocking_timeout_wait_millis
+           | default(wf8_ds_blocking_timeout_wait_millis) }},
            new-connection-sql=\"{{
            item.new_connection_sql | default(wf8_ds_new_connection_sql) }}\"
            )'
