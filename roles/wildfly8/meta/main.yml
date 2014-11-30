@@ -1,3 +1,4 @@
+---
 # file: roles/wildfly8/meta/main.yml
 
 dependencies:

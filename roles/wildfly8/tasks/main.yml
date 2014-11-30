@@ -1,7 +1,8 @@
+---
 # file: roles/wildfly8/tasks/main.yml
 
 #
-# WildFly 8 Jave EE Application Server deployment
+# WildFly 8 Java EE Application Server deployment
 #
 
 #
