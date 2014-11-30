@@ -92,7 +92,7 @@ Release management                            | Apache Maven
     * Mail server administration (basic)
     * Directory administration (basic)
     * Database administration (basic)
-1. [Administrative Client System (ACS)](https://github.com/sakaal/admin_client)
+1. [Administrative Client System (ACS)](https://github.com/sakaal/admin_client_ansible)
    ready for use
 1. Previously deployed, operational [service infrastructure](https://github.com/sakaal/service_infra_ansible)
 1. Service Platform configuration repository (this CMDB)
@@ -140,7 +140,7 @@ receive the domain validation emails sent by your CA.
 ## Deployment procedure
 
 The playbooks are run on an
-[Administrative Client System (ACS)](https://github.com/sakaal/admin_client)
+[Administrative Client System (ACS)](https://github.com/sakaal/admin_client_ansible)
 that has access to the service infrastructure nodes and external services
 via a secure private channel over the Internet.
 
