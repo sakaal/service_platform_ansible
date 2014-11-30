@@ -1,0 +1,25 @@
+---
+# file: roles/continuous_delivery/tasks/main.yml
+
+#
+# Deploys continuous delivery configuration data on controller nodes
+#
+
+- name: Configuration tools
+  with_items:
+  - ansible
+  - git
+  sudo: yes
+  yum: name={{ item }}
+
+- name: Continuous delivery playbooks
+  sudo: yes
+  sudo_user: jenkins
+  git: repo="{{ continuous_delivery_playbook_repo | mandatory }}"
+       dest="{{ jenkins_home | mandatory }}/continuous_delivery_ansible"
+       recursive=no
+
+#
+# The Continuous Delivery inventory is backed up along with the Jenkins CI
+# application data.
+#

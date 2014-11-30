@@ -2,7 +2,7 @@
 # file: ci_servers.yml
 
 #
-# Continuous Integration (CI) services
+# Continuous Integration (CI) and Delivery (CD) services
 #
 
 - hosts: ci_servers
@@ -17,3 +17,4 @@
     - java_keystore
     - jenkins_ci
     - jenkins_ci_backup
+    - continuous_delivery
