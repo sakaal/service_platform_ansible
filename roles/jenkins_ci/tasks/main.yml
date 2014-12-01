@@ -63,6 +63,7 @@
   - name: build-pipeline-plugin           # Build Pipeline
   - name: build-token-root                # Build Token Root
   - name: checkstyle                      # Checkstyle
+  - name: config-file-provider            # Config File Provider
   - name: credentials                     # Credentials
   - name: dashboard-view                  # Dashboard View
   - name: delivery-pipeline-plugin        # Delivery Pipeline
