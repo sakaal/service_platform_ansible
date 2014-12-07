@@ -13,6 +13,6 @@
     - libvirt_guest_network_service
     - ca_trust
     - transport_layer_security
-    - { role: ldap_server, firewall_zone: dmz }
+    - ldap_server
 
 # TODO: LDAP backup

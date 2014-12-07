@@ -24,6 +24,59 @@ olcAccess: to attrs=userPassword
   by * none
 olcAccess: to *
   by self write
+  by dn.exact=gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth manage
   by dn="{{ ldap_root_dn }}" write
   by users read
   by * none
+
+#
+# Enable the unique module
+#
+dn: cn=module{0},cn=config
+objectClass: olcModuleList
+cn: module
+olcModulePath: /usr/lib64/openldap
+olcModuleLoad: unique
+
+#
+# Enable the memberof and refint modules
+#
+dn: cn=module{1},cn=config
+objectClass: olcModuleList
+cn: module
+olcModulePath: /usr/lib64/openldap
+olcModuleLoad: memberof
+olcModuleLoad: refint
+
+#
+# Unique overlay
+#
+dn: olcOverlay={0}unique,olcDatabase={2}hdb,cn=config
+objectClass: olcOverlayConfig
+objectClass: olcUniqueConfig
+olcOverlay: {0}unique
+olcUniqueBase: {{ ldap_olc_suffix | mandatory }}
+olcUniqueAttribute: mail
+
+#
+# Reverse group membership maintenance overlay
+#  
+dn: olcOverlay={1}memberof,olcDatabase={2}hdb,cn=config
+objectClass: olcConfig
+objectClass: olcMemberOf
+objectClass: olcOverlayConfig
+olcOverlay: {1}memberof
+olcMemberOfRefInt: TRUE
+olcMemberOfGroupOC: groupOfNames
+olcMemberOfMemberAD: member
+olcMemberOfMemberOfAD: memberOf
+
+#
+# Referential integrity overlay to maintain group memberships on object renames
+#
+dn: olcOverlay={2}refint,olcDatabase={2}hdb,cn=config
+objectClass: olcConfig
+objectClass: olcOverlayConfig
+objectClass: olcRefintConfig
+olcOverlay: {2}refint
+olcRefintAttribute: memberOf member manager owner seeAlso roleOccupant
