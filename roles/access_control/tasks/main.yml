@@ -5,11 +5,26 @@
 # Grant or remove SSH access
 #
 
+- name: User accounts
+  with_items: ssh_access|default([])
+  when: item.fullname is defined
+  sudo: yes
+  user: name={{ item.user | mandatory }}
+        comment="{{ item.fullname }}"
+        append=yes
+        groups="{{ item.groups | default([]) }}"
+        shell="{{ item.shell | default('/bin/bash') }}"
+        generate_ssh_key=yes
+        ssh_key_comment="{{ item.user }}@{{ ansible_fqdn }}-{{ ansible_date_time.iso8601 }}"
+        state="{{ item.state | default('present') }}"
+
 - name: Authorize SSH keys
   when: ssh_access is defined
   with_subelements:
   - ssh_access|default([])
   - authorized_keys
+  sudo: yes
   authorized_key: user="{{ item.0.user | mandatory }}"
                   key="{{ item.1.key | mandatory }}"
                   state="{{ item.1.state | default('present')}}"
+
