@@ -1,12 +1,16 @@
 ---
 # file: roles/http_server_content/tasks/main.yml
 
+- name: Website document directories
+  with_items: websites|default([])
+  sudo: yes
+  file: state=directory dest=/var/www/{{ item }}/htdocs
+
 #
 # The Ansible synchronize module does not work well with the custom ssh_config.
 # We need to call rsync directly.
 #
 - name: Websites
-  when: websites is defined
   with_items: websites|default([])
   local_action: command rsync --delay-updates -FF --compress
            --recursive --links --perms --exclude=".git/"
