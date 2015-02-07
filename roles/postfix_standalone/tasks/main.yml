@@ -29,6 +29,13 @@
     regexp="^#?\s*DatabaseMirror\s*db\.[A-Za-z]+\.clamav\.net$"
     line="DatabaseMirror db.{{ network_country_code | mandatory }}.clamav.net"
 
+- name: Freshclam update delay
+  lineinfile:
+    dest=/etc/sysconfig/freshclam
+    regexp="^#?\s*FRESHCLAM_DELAY=(.*)$"
+    line="#FRESHCLAM_DELAY=\1"
+    backrefs=yes
+
 #
 # Amavisd configuration
 #
