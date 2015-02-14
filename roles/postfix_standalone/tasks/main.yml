@@ -37,6 +37,19 @@
     backrefs=yes
 
 #
+# ClamAV configuration
+#
+
+- name: ClamAV SELinux booleans
+  with_items:
+  - name: antivirus_use_jit
+    state: yes
+  sudo: yes
+  seboolean: persistent=yes
+             name={{ item.name | mandatory }}
+             state={{ item.state | mandatory }}
+
+#
 # Amavisd configuration
 #
 
