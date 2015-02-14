@@ -151,7 +151,7 @@ Substitute your service management domain name for `example.com` (and
 
         git clone git@github.com:sakaal/service_platform_ansible.git
     * Your local copy of the platform configuration repository
-      must be located next to the `service_infra_ansible` repository
+      must be located next to the `service_commons_ansible` repository
       in the same parent directory.
 
 1. Examine until you understand the configuration files.

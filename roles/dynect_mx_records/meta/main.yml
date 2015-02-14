@@ -2,4 +2,4 @@
 # file: roles/dynect_mx_records/meta/main.yml
 
 dependencies:
-- role: "{{ playbook_dir | dirname }}/service_infra_ansible/roles/dynect_session"
+- role: "../../service_commons_ansible/roles/dynect_session"

@@ -3,4 +3,4 @@
 
 dependencies:
 - role: dmz
-- role: "{{ playbook_dir | dirname }}/service_infra_ansible/roles/admin_bastion"
+- role: "../../service_commons_ansible/roles/admin_bastion"

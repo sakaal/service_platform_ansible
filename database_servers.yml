@@ -12,6 +12,7 @@
     - /mnt/sensitive_data/etc/ansible/vars/hetzner.yml
   roles:
     - libvirt_guest_network_service
+    - ../../service_commons_ansible/roles/updates_auto
     - postgresql
     - postgresql_databases
     - postgresql_databases_backup

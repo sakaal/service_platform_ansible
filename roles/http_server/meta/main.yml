@@ -3,4 +3,4 @@
 
 dependencies:
 - role: http_server_content
-- role: "{{ playbook_dir|dirname }}/service_infra_ansible/roles/dynect_session"
+- role: "../../service_commons_ansible/roles/dynect_session"

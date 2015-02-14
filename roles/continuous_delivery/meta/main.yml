@@ -2,4 +2,4 @@
 # file: roles/continuous_delivery/meta/main.yml
 
 dependencies:
-- role: "{{ playbook_dir|dirname }}/service_infra_ansible/roles/ssh_known_hosts"
+- role: "../../service_commons_ansible/roles/ssh_known_hosts"

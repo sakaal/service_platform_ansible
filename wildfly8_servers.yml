@@ -9,9 +9,11 @@
   vars_files:
   - /mnt/sensitive_data/etc/ansible/vars/admin_access.yml
   roles:
+  - access_control
   - libvirt_guest_network_service
   - transport_layer_security
   - hosts_aliases
+  - ../../service_commons_ansible/roles/updates_auto
   - java_oracle
   - ca_trust
   - java_keystore
@@ -20,3 +22,4 @@
   - wildfly8_postgresql_drivers
   - wildfly8_datasources
   - wildfly8_mail
+  - wildfly8_ldap
