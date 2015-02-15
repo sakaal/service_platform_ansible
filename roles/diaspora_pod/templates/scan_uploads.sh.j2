@@ -36,13 +36,15 @@ for filename in "${input_dir}"/*.{png,jpg,gif}; do
         tempname=".queue/`basename $filename`.$$"
         mv -f "$filename" "$tempname"
 
-        diaspora_transfer_image "$tempname" "$filename" > "$tempname.output" 2>&1
+        diaspora_transfer_image "$tempname" "$filename" > "${tempname}.output" 2>&1
         rc=$?
         if [ $rc -eq 0 ]; then
-            rm -f "${tempname}" "${tempname}.output"
+            rm -f "${tempname}"
         else
             echo "Error processing ${filename}; rc=${rc}" >&2
             echo "File in ${tempname}" >&2
+            cat "${tempname}.output" >&2
         fi
+        rm -f "${tempname}.output"
     fi
 done

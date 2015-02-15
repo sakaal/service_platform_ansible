@@ -1,0 +1,5 @@
+---
+# file: roles/diaspora_uploads_backup/meta/main.yml
+
+dependencies:
+- role: backup_client
