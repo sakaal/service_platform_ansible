@@ -13,6 +13,91 @@
   - opendkim
   yum: name={{ item }}
 
+- name: Dovecot
+  with_items:
+  - dovecot
+  - dovecot-pigeonhole
+  - mailx
+  yum: name={{ item }}
+
+- name: Dovecot lda
+  with_items:
+  - key: "postmaster_address"
+    val: "postmaster@{{ postfix_mydomain | mandatory }}"
+  - key: "hostname"
+    val: "{{ postfix_myhostname | mandatory }}"
+  - key: "lda_mailbox_autocreate"
+    val: "yes"
+  - key: "lda_mailbox_autosubscribe"
+    val: "yes"
+  lineinfile:
+    dest=/etc/dovecot/conf.d/15-lda.conf
+    regexp='^{{ item.key|mandatory }}\s'
+    line='{{ item.key|mandatory }} = {{ item.val|mandatory }}'
+  notify:
+    - Restart Dovecot
+
+- name: Dovecot mail
+  with_items:
+  - key: "mail_location"
+    val: "mbox:~/mail:INBOX=/var/mail/%u"
+  - key: "mail_privileged_group"
+    val: "mail"
+  lineinfile:
+    dest=/etc/dovecot/conf.d/10-mail.conf
+    regexp='^{{ item.key|mandatory }}\s'
+    line='{{ item.key|mandatory }} = {{ item.val|mandatory }}'
+  notify:
+    - Restart Dovecot
+
+# http://security.stackexchange.com/questions/48300/why-should-the-dh-keylength-match-rsa-length-in-tls
+
+- name: Dovecot TLS
+  with_items:
+  - key: "ssl"
+    val: "required"
+  - key: "ssl_cert"
+    val: "</etc/pki/tls/certs/{{ public_hostname | mandatory }}-crt.pem"
+  - key: "ssl_key"
+    val: "</etc/pki/tls/private/{{ public_hostname | mandatory }}-key.pem"
+  - key: "ssl_dh_parameters_length"
+    val: "2048" # should match the certificate RSA key length
+  - key: ssl_protocols
+    val: "!SSLv2 !SSLv3"
+  - key: ssl_cipher_list
+    val: "ALL:!LOW:!SSLv2:!EXP:!aNULL"
+  lineinfile:
+    dest=/etc/dovecot/conf.d/10-ssl.conf
+    regexp="^{{ item.key|mandatory }}\s"
+    line="{{ item.key|mandatory }} = {{ item.val|mandatory }}"
+  notify:
+    - Restart Dovecot
+
+#
+# http://wiki2.dovecot.org/MailLocation/mbox
+#
+- name: Dovecot /var/mail/* permissions
+  sudo: yes
+  file: state=directory follow=yes recurse=yes path=/var/mail mode=0600
+
+- name: Dovecot LDA /var/mail/ dotlocks
+  sudo: yes
+  file: state=directory follow=yes path=/var/mail mode="a+rwxt"
+
+#
+# Postfix Dovecot integration
+#
+- name: Postfix Dovecot
+  with_items:
+  - key: "mailbox_command"
+    val: "/usr/libexec/dovecot/deliver"
+  lineinfile:
+    dest=/etc/postfix/main.cf
+    regexp='^{{ item.key|mandatory }}\s'
+    line='{{ item.key|mandatory }} = {{ item.val|mandatory }}'
+  notify:
+    - Restart Postfix
+
 #
 # freshclam - virus database updates configuration
 #
@@ -339,35 +424,33 @@
         not public_hostname_certificate.stat.exists
   fail: msg="Need a X.509 certificate for {{ public_hostname }}"
 
-- name: Postfix TLS RSA certificate
+- name: Postfix TLS RSA certificate and key
+  with_items:
+  - key: smtpd_tls_cert_file
+    val: /etc/pki/tls/certs/{{ public_hostname | mandatory }}-crt.pem
+  - key: smtpd_tls_key_file
+    val: /etc/pki/tls/private/{{ public_hostname | mandatory }}-key.pem
   lineinfile:
     dest=/etc/postfix/main.cf
-    regexp='^smtpd_tls_cert_file'
-    line='smtpd_tls_cert_file = /etc/pki/tls/certs/{{ public_hostname | mandatory }}-crt.pem'
+    regexp="^{{ item.key|mandatory }}\s"
+    line="{{ item.key|mandatory }} = {{ item.val|mandatory }}"
   notify:
     - Reload Postfix
 
-- name: Postfix TLS RSA key
+- name: Postfix TLS mandatory protocols and ciphers
+  with_items:
+  - key: smtpd_tls_mandatory_ciphers
+    val: high
+  - key: smtpd_tls_mandatory_exclude_ciphers
+    val: "aNULL, MD5"
+  - key: smtpd_tls_mandatory_protocols
+    val: "!SSLv2, !SSLv3"
+  - key: smtpd_tls_eecdh_grade
+    val: strong
   lineinfile:
     dest=/etc/postfix/main.cf
-    regexp='^smtpd_tls_key_file'
-    line='smtpd_tls_key_file = /etc/pki/tls/private/{{ public_hostname | mandatory }}-key.pem'
-  notify:
-    - Reload Postfix
-
-- name: Postfix TLS mandatory ciphers
-  lineinfile:
-    dest=/etc/postfix/main.cf
-    regexp='^smtpd_tls_mandatory_ciphers'
-    line='smtpd_tls_mandatory_ciphers = high'
-  notify:
-    - Reload Postfix
-
-- name: Postfix TLS mandatory exclude ciphers
-  lineinfile:
-    dest=/etc/postfix/main.cf
-    regexp='^smtpd_tls_mandatory_exclude_ciphers'
-    line='smtpd_tls_mandatory_exclude_ciphers = aNULL, MD5'
+    regexp="^{{ item.key|mandatory }}"
+    line="{{ item.key|mandatory }} = {{ item.val|mandatory }}"
   notify:
     - Reload Postfix
 
@@ -379,14 +462,6 @@
     dest=/etc/postfix/main.cf
     regexp='^smtpd_tls_security_level'
     line='smtpd_tls_security_level = may'
-  notify:
-    - Reload Postfix
-
-- name: Postfix TLS mandatory protocols
-  lineinfile:
-    dest=/etc/postfix/main.cf
-    regexp='^smtpd_tls_mandatory_protocols'
-    line='smtpd_tls_mandatory_protocols = !SSLv2, !SSLv3'
   notify:
     - Reload Postfix
 
@@ -433,28 +508,20 @@
 # Firewall zone services and ports
 #
 
-- name: Query if the SMTP service has been added to the firewall zone
-  command: firewall-cmd --zone={{ firewall_zone | mandatory }}
-           --query-service=smtp
-  register: zone_smtp
-  changed_when: (zone_smtp.rc != 0) or not zone_smtp.stdout|bool
-  failed_when: None
+- name: Configure the firewall for SMTP, IMAPS, and POP3S
+  with_items:
+  - smtp
+  - imaps
+  - pop3s
+  firewalld: permanent=true zone={{ firewall_zone | mandatory }}
+             service={{ item }} state=enabled
+  notify:
+    - Restart Firewalld
 
-- name: Open the firewall for the SMTP service
-  when: zone_smtp|changed
-  command: firewall-cmd --permanent --zone={{ firewall_zone | mandatory }}
-           --add-service=smtp
-  notify: Reload the firewall
-
-- name: Query if the Message Submission service has been added to the firewall zone
-  command: firewall-cmd --zone={{ firewall_zone | mandatory }}
-           --query-port=587/tcp
-  register: zone_submission
-  changed_when: (zone_submission.rc != 0) or not zone_submission.stdout|bool
-  failed_when: None
-
-- name: Open the firewall for the Message Submission service
-  when: zone_submission|changed
-  command: firewall-cmd --permanent --zone={{ firewall_zone | mandatory }}
-           --add-port=587/tcp
-  notify: Reload the firewall
+- name: Configure the firewall for Message Submission
+  with_items:
+  - "587/tcp" # submission
+  firewalld: permanent=true zone={{ firewall_zone | mandatory }}
+             port={{ item }} state=enabled
+  notify:
+    - Restart Firewalld

@@ -12,3 +12,9 @@
 
 - name: Restart OpenDKIM
   service: name=opendkim state=restarted
+
+- name: Restart Dovecot
+  service: name=dovecot state=restarted
+
+- name: Restart Firewalld
+  service: name=firewalld state=restarted
