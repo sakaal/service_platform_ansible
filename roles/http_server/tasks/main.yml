@@ -61,7 +61,7 @@
   sudo: yes
   command: firewall-cmd --permanent --zone={{ firewall_zone | mandatory }}
            --add-service=http
-  notify: Reload the firewall
+  notify: Restart firewalld
 
 - name: Make DNS A records
   with_items: websites|default([])

@@ -10,8 +10,13 @@
 # ==========================================================================
 smtp      inet  n       -       n       -       -       smtpd
 submission inet n       -       n       -       -       smtpd
-  -o smtpd_sasl_auth_enable=yes
   -o smtpd_tls_security_level=encrypt
+  -o smtpd_sasl_auth_enable=yes
+  -o smtpd_sasl_type=dovecot
+  -o smtpd_sasl_path=private/auth
+  -o smtpd_sasl_security_options=noanonymous
+  -o smtpd_sasl_local_domain={{ public_dns_zone | mandatory }}
+  -o smtpd_client_restrictions=permit_sasl_authenticated,reject
   -o smtpd_relay_restrictions=permit_mynetworks,permit_sasl_authenticated,defer_unauth_destination
   -o milter_macro_daemon_name=ORIGINATING
 #smtps     inet  n       -       n       -       -       smtpd

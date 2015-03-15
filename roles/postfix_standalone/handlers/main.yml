@@ -16,5 +16,5 @@
 - name: Restart Dovecot
   service: name=dovecot state=restarted
 
-- name: Restart Firewalld
+- name: Restart firewalld
   service: name=firewalld state=restarted

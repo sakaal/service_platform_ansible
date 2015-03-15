@@ -8,21 +8,14 @@
 # http://wiki.apache.org/httpd/NameBasedSSLVHosts
 #
 
-- name: Open source transport layer security tools
+- name: TLS and PKI packages
+  with_items:
+  - openssl
+  - crypto-utils
+  - mod_ssl # Apache HTTP Server
+  - haveged # HArdware Volatile Entropy Gathering and Expansion
   sudo: yes
-  yum: name=openssl
-
-- name: Tools for managing and generating digital certificates and keys
-  sudo: yes
-  yum: name=crypto-utils
-
-- name: Apache HTTP Server (mod_ssl)
-  sudo: yes
-  yum: name=mod_ssl
-
-- name: HArdware Volatile Entropy Gathering and Expansion (HAVEGE) daemon
-  sudo: yes
-  yum: name=haveged
+  yum: name={{ item }}
 
 - name: SELinux allow the HTTP server to network connect
   sudo: yes
@@ -52,20 +45,11 @@
   sudo: yes
   service: name=haveged enabled=yes state=started
 
-- name: Query if the HTTPS service has been added to the firewall zone
+- name: Configure the firewall for HTTPS
   sudo: yes
-  command: firewall-cmd --zone={{ firewall_zone | mandatory }}
-           --query-service=https
-  register: zone_https
-  changed_when: (zone_https.rc != 0) or not zone_https.stdout|bool
-  failed_when: None
-
-- name: Open the firewall for the HTTPS service
-  when: zone_https|changed
-  sudo: yes
-  command: firewall-cmd --permanent --zone={{ firewall_zone | mandatory }}
-           --add-service=https
-  notify: Reload the firewall
+  firewalld: permanent=true zone={{ firewall_zone | mandatory }}
+             service=https state=enabled
+  notify: Restart firewalld
 
 - name: Ensure the HTTP server is running
   sudo: yes

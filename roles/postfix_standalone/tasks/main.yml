@@ -35,7 +35,7 @@
     regexp='^{{ item.key|mandatory }}\s'
     line='{{ item.key|mandatory }} = {{ item.val|mandatory }}'
   notify:
-    - Restart Dovecot
+  - Restart Dovecot
 
 - name: Dovecot mail
   with_items:
@@ -48,9 +48,7 @@
     regexp='^{{ item.key|mandatory }}\s'
     line='{{ item.key|mandatory }} = {{ item.val|mandatory }}'
   notify:
-    - Restart Dovecot
-
-# http://security.stackexchange.com/questions/48300/why-should-the-dh-keylength-match-rsa-length-in-tls
+  - Restart Dovecot
 
 - name: Dovecot TLS
   with_items:
@@ -61,17 +59,19 @@
   - key: "ssl_key"
     val: "</etc/pki/tls/private/{{ public_hostname | mandatory }}-key.pem"
   - key: "ssl_dh_parameters_length"
-    val: "2048" # should match the certificate RSA key length
+    val: "{{ tls_dh_parameter_size | mandatory }}"
   - key: ssl_protocols
-    val: "!SSLv2 !SSLv3"
+    val: "{{ tls_protocols | mandatory | list | join(' ')
+         }}{{ ([''] + tls_protocol_excludes|mandatory|list) | join(' !') }}"
   - key: ssl_cipher_list
-    val: "ALL:!LOW:!SSLv2:!EXP:!aNULL"
+    val: "{{ tls_ciphersuite | mandatory | list | join(':') +
+         (([''] + tls_ciphersuite_excludes|mandatory|list) | join(':!')) }}"
   lineinfile:
     dest=/etc/dovecot/conf.d/10-ssl.conf
     regexp="^{{ item.key|mandatory }}\s"
     line="{{ item.key|mandatory }} = {{ item.val|mandatory }}"
   notify:
-    - Restart Dovecot
+  - Restart Dovecot
 
 #
 # http://wiki2.dovecot.org/MailLocation/mbox
@@ -84,6 +84,36 @@
   sudo: yes
   file: state=directory follow=yes path=/var/mail mode="a+rwxt"
 
+- name: Prepare Dovecot for Postfix SASL authentication
+  with_items:
+  - after:  "  # Postfix smtp-auth"
+    line:   "  unix_listener /var/spool/postfix/private/auth { # managed"
+  - after:  "  unix_listener /var/spool/postfix/private/auth { # managed"
+    line:   "    mode = 0660 # managed"
+  - after:  "    mode = 0660 # managed"
+    line:   "    user = postfix # managed"
+  - after:  "    user = postfix # managed"
+    line:   "    group = postfix # managed"
+  - after:  "    group = postfix # managed"
+    line:   "  } # managed"
+  lineinfile:
+    dest=/etc/dovecot/conf.d/10-master.conf
+    line="{{ item.line | mandatory }}"
+    insertafter="{{ item.after | mandatory }}"
+  notify:
+  - Restart Dovecot
+ 
+- name: Dovecot authentication mechanisms to support Outlook and Windows
+  with_items:
+  - key: "auth_mechanisms"
+    val: "plain login"
+  lineinfile:
+    dest=/etc/dovecot/conf.d/10-auth.conf
+    regexp='^{{ item.key|mandatory }}\s'
+    line='{{ item.key|mandatory }} = {{ item.val|mandatory }}'
+  notify:
+  - Restart Dovecot
+
 #
 # Postfix Dovecot integration
 #
@@ -91,12 +121,14 @@
   with_items:
   - key: "mailbox_command"
     val: "/usr/libexec/dovecot/deliver"
+  - key: "smtpd_sasl_type"
+    val: "dovecot"
   lineinfile:
     dest=/etc/postfix/main.cf
     regexp='^{{ item.key|mandatory }}\s'
     line='{{ item.key|mandatory }} = {{ item.val|mandatory }}'
   notify:
-    - Restart Postfix
+  - Restart Postfix
 
 #
 # freshclam - virus database updates configuration
@@ -144,8 +176,8 @@
     regexp="^\$max_servers"
     line="$max_servers = '{{ amavis_max_servers | mandatory }}';"
   notify:
-    - Restart Postfix
-    - Restart clamd@amavisd
+  - Restart Postfix
+  - Restart clamd@amavisd
 
 - name: Amavisd domain
   lineinfile:
@@ -153,7 +185,7 @@
     regexp="^\$mydomain"
     line="$mydomain = '{{ postfix_mydomain | mandatory }}';"
   notify:
-    - Restart clamd@amavisd
+  - Restart clamd@amavisd
 
 - name: Amavisd hostname
   lineinfile:
@@ -162,7 +194,7 @@
     line="$myhostname = '{{ postfix_myhostname | mandatory }}';"
     insertafter="^#\s+\$myhostname"
   notify:
-    - Restart clamd@amavisd
+  - Restart clamd@amavisd
 
 - name: Amavisd helpers home
   lineinfile:
@@ -171,7 +203,7 @@
     line='$helpers_home = "$MYHOME/var";'
     insertafter="^#\s+\$helpers_home"
   notify:
-    - Restart clamd@amavisd
+  - Restart clamd@amavisd
 
 #
 # OpenDKIM configuration
@@ -321,7 +353,7 @@
     regexp='^{{ item.key|mandatory }}\s'
     line='{{ item.key|mandatory }} = {{ item.val|mandatory }}'
   notify:
-    - Restart Postfix
+  - Restart Postfix
 
 #
 # Postfix configuration
@@ -334,7 +366,7 @@
     line='soft_bounce = no'
     insertafter='^#soft_bounce'
   notify:
-    - Reload Postfix
+  - Reload Postfix
 
 - name: Postfix hostname
   lineinfile:
@@ -343,7 +375,7 @@
     line='myhostname = {{ postfix_myhostname | mandatory }}'
     insertafter='^#myhostname'
   notify:
-    - Reload Postfix
+  - Reload Postfix
 
 - name: Postfix domain
   lineinfile:
@@ -352,7 +384,7 @@
     line='mydomain = {{ postfix_mydomain | mandatory }}'
     insertafter='^#mydomain'
   notify:
-    - Reload Postfix
+  - Reload Postfix
 
 - name: Postfix interfaces
   lineinfile:
@@ -361,7 +393,7 @@
     line='inet_interfaces = all'
     insertafter='^#inet_interfaces'
   notify:
-    - Reload Postfix
+  - Reload Postfix
 
 - name: Postfix destination
   when: postfix_mydestination is defined
@@ -371,7 +403,7 @@
     line='mydestination = {{ postfix_mydestination | mandatory }}'
     insertafter='^#mydestination'
   notify:
-    - Reload Postfix
+  - Reload Postfix
 
 - name: Postfix networks style
   lineinfile:
@@ -380,7 +412,7 @@
     line='mynetworks_style = host'
     insertafter='^#mynetworks_style'
   notify:
-    - Reload Postfix
+  - Reload Postfix
 
 - name: Postfix origin
   lineinfile:
@@ -389,7 +421,7 @@
     line='myorigin = $mydomain'
     insertafter='^#myorigin'
   notify:
-    - Reload Postfix
+  - Reload Postfix
 
 - name: Postfix networks
   when: postfix_mynetworks is defined
@@ -399,7 +431,7 @@
     line='mynetworks = {{ postfix_mynetworks | mandatory }}'
     insertafter='^#mynetworks'
   notify:
-    - Reload Postfix
+  - Reload Postfix
 
 - name: Postfix relay host
   when: postfix_relayhost is defined
@@ -409,7 +441,7 @@
     line='relayhost = {{ postfix_relayhost | mandatory }}'
     insertafter='^#relayhost'
   notify:
-    - Reload Postfix
+  - Reload Postfix
 
 #
 # Postfix TLS Support - http://www.postfix.org/TLS_README.html
@@ -435,16 +467,17 @@
     regexp="^{{ item.key|mandatory }}\s"
     line="{{ item.key|mandatory }} = {{ item.val|mandatory }}"
   notify:
-    - Reload Postfix
+  - Reload Postfix
 
 - name: Postfix TLS mandatory protocols and ciphers
   with_items:
   - key: smtpd_tls_mandatory_ciphers
-    val: high
+    val: "{{ tls_ciphersuite | mandatory | list | join(', ') }}"
   - key: smtpd_tls_mandatory_exclude_ciphers
-    val: "aNULL, MD5"
+    val: "{{ tls_ciphersuite_excludes | mandatory | list | join(', ') }}"
   - key: smtpd_tls_mandatory_protocols
-    val: "!SSLv2, !SSLv3"
+    val: "{{ tls_protocols | mandatory | list | join(', ') +
+         ([''] + tls_protocol_excludes|mandatory|list) | join(', !') }}"
   - key: smtpd_tls_eecdh_grade
     val: strong
   lineinfile:
@@ -452,7 +485,7 @@
     regexp="^{{ item.key|mandatory }}"
     line="{{ item.key|mandatory }} = {{ item.val|mandatory }}"
   notify:
-    - Reload Postfix
+  - Reload Postfix
 
 #
 # http://www.postfix.org/postconf.5.html#smtpd_tls_security_level
@@ -463,7 +496,7 @@
     regexp='^smtpd_tls_security_level'
     line='smtpd_tls_security_level = may'
   notify:
-    - Reload Postfix
+  - Reload Postfix
 
 #
 # Postfix master configuration
@@ -476,7 +509,7 @@
     group: root
     mode:  0644
   notify:
-    - Reload Postfix
+  - Reload Postfix
 
 - name: Disable the spamassassin service
   service: name=spamassassin enabled=no state=stopped
@@ -502,7 +535,7 @@
     regexp='^content_filter'
     line='content_filter = amavisfeed:[127.0.0.1]:10024'
   notify:
-    - Restart Postfix
+  - Restart Postfix
 
 #
 # Firewall zone services and ports
@@ -516,7 +549,7 @@
   firewalld: permanent=true zone={{ firewall_zone | mandatory }}
              service={{ item }} state=enabled
   notify:
-    - Restart Firewalld
+  - Restart firewalld
 
 - name: Configure the firewall for Message Submission
   with_items:
@@ -524,4 +557,4 @@
   firewalld: permanent=true zone={{ firewall_zone | mandatory }}
              port={{ item }} state=enabled
   notify:
-    - Restart Firewalld
+  - Restart firewalld

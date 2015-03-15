@@ -30,18 +30,11 @@
   changed_when: (another_interface.rc == 0) and another_interface.stdout|bool
   failed_when: None
 
-- name: Remove the other interface from the eth0 interface zone
+- name: Change the other interface to the DMZ
   when: another_interface|changed
   sudo: yes
-  command: firewall-cmd --permanent --zone={{ eth0_zone.stdout }}
-           --remove-interface=eth1
-  notify: Reload the firewall
-
-- name: Add the other interface to the DMZ
-  when: another_interface|changed
-  sudo: yes
-  command: firewall-cmd --permanent --zone=dmz --add-interface=eth1
-  notify: Reload the firewall
+  command: firewall-cmd --permanent --zone=dmz --change-interface=eth1
+  notify: Restart firewalld
 
 - name: Default route via the DMZ interface
   sudo: yes

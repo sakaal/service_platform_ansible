@@ -3,5 +3,8 @@
 
 - name: Restart Jenkins
   sudo: yes
-  sudo_user: root
   service: name=jenkins state=restarted
+
+- name: Restart firewalld
+  sudo: yes
+  service: name=firewalld state=restarted

@@ -8,7 +8,8 @@
 
 <VirtualHost {{ public_ipv4_address }}:80>
   ServerName "{{ item.fqdn | mandatory }}:80"
-  Redirect / https://{{ item.fqdn }}/
+  # We use permanent redirect status 301 (see HSTS includeSubDomains below)
+  Redirect permanent / https://{{ item.fqdn }}/
 </VirtualHost>
 
 <VirtualHost {{ public_ipv4_address }}:443>
@@ -71,6 +72,7 @@ CustomLog logs/{{ item.fqdn }}_ssl_request_log \
           "%t %h %{SSL_PROTOCOL}x %{SSL_CIPHER}x \"%r\" %b"
 
 # https://wiki.mozilla.org/Security/Server_Side_TLS
+# https://raymii.org/s/tutorials/Strong_SSL_Security_On_Apache2.html
 
 SSLEngine on
 SSLCertificateFile    /etc/pki/tls/certs/_.{{ public_dns_zone | mandatory }}-crt.pem
@@ -79,13 +81,23 @@ SSLCertificateKeyFile /etc/pki/tls/private/_.{{ public_dns_zone | mandatory }}-k
 SSLCertificateChainFile /etc/pki/tls/certs/{{ tls_certificate_chain_file }}
 {% endif %}
 
-SSLProtocol         all -SSLv2 -SSLv3
-SSLCipherSuite      ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:DHE-RSA-AES256-SHA:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!3DES:!MD5:!PSK
+SSLProtocol         {{ tls_protocols|mandatory|list | join(' ') +
+                    ([''] + tls_protocol_excludes|mandatory|list) | join(' -') }}
+SSLCipherSuite      {{ tls_ciphersuite|mandatory|list | join(':') +
+                    ([''] + tls_ciphersuite_excludes|mandatory|list) | join(':!') }}
 SSLHonorCipherOrder on
 SSLCompression      off
 
 # HSTS
-Header add Strict-Transport-Security "max-age=15768000"
+# https://www.owasp.org/index.php/HTTP_Strict_Transport_Security
+Header always set Strict-Transport-Security "max-age={{ tls_hsts_max_age | mandatory
+                                             }}; includeSubDomains; preload"
+
+# https://www.owasp.org/index.php/List_of_useful_HTTP_headers
+Header always set X-Content-Type-Options nosniff
+Header always set X-Frame-Options SAMEORIGIN
+Header always set X-XSS-Protection "1; mode=block"
+Header set Content-Security-Policy "default-src https:; connect-src https:; font-src https: data:; frame-src https:; img-src https: data:; media-src https:; object-src https:; script-src 'unsafe-inline' 'unsafe-eval' about: https:; style-src 'unsafe-inline' https:;"
 
 <Files ~ "\.(cgi|shtml|phtml|php3?)$">
     SSLOptions +StdEnvVars
@@ -93,11 +105,5 @@ Header add Strict-Transport-Security "max-age=15768000"
 <Directory "/var/www/cgi-bin">
     SSLOptions +StdEnvVars
 </Directory>
-
-# HTTPS and Keep-Alive Connections
-# http://blogs.msdn.com/b/ieinternals/archive/2011/03/26/https-and-connection-close-is-your-apache-modssl-server-configuration-set-to-slow.aspx
-BrowserMatch ".*MSIE [2-5]\..*" \
-         nokeepalive ssl-unclean-shutdown \
-         downgrade-1.0 force-response-1.0
 
 </VirtualHost>

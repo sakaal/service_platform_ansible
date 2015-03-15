@@ -45,58 +45,9 @@
 # Transport Layer Security
 #
 
-#
-# The cipher suite is adapted from:
-# https://wiki.mozilla.org/Security/Server_Side_TLS
-#
 - set_fact:
     ldap_olc_suffix: "dc={{ ldap_dc_dom }},dc={{ ldap_dc_tld }}"
     ldap_root_username: "{{ (ldap_root_username|default('Manager')).strip() }}"
-    ldap_tls_ciphers:
-    - "TLSv1.2"
-    - "TLSv1"
-    - "!SSLv3"
-    - "!SSLv2"
-    - "ECDHE-RSA-AES128-GCM-SHA256"
-    - "ECDHE-ECDSA-AES128-GCM-SHA256"
-    - "ECDHE-RSA-AES256-GCM-SHA384"
-    - "ECDHE-ECDSA-AES256-GCM-SHA384"
-    - "DHE-RSA-AES128-GCM-SHA256"
-    - "DHE-DSS-AES128-GCM-SHA256"
-    - "ECDHE-RSA-AES128-SHA256"
-    - "ECDHE-ECDSA-AES128-SHA256"
-    - "ECDHE-RSA-AES128-SHA"
-    - "ECDHE-ECDSA-AES128-SHA"
-    - "ECDHE-RSA-AES256-SHA384"
-    - "ECDHE-ECDSA-AES256-SHA384"
-    - "ECDHE-RSA-AES256-SHA"
-    - "ECDHE-ECDSA-AES256-SHA"
-    - "DHE-RSA-AES128-SHA256"
-    - "DHE-RSA-AES128-SHA"
-    - "DHE-DSS-AES128-SHA256"
-    - "DHE-RSA-AES256-SHA256"
-    - "DHE-DSS-AES256-SHA"
-    - "DHE-RSA-AES256-SHA"
-    - "AES128-GCM-SHA256"
-    - "AES256-GCM-SHA384"
-    - "AES128-SHA256"
-    - "AES256-SHA256"
-    - "AES128-SHA"
-    - "AES256-SHA"
-    - "AES"
-    - "CAMELLIA"
-    - "DES-CBC3-SHA"
-    - "!aNULL"
-    - "!NULL"
-    - "!EXPORT"
-    - "!DES"
-    - "!RC4"
-    - "!MD5"
-    - "!PSK"
-    - "!aECDH"
-    - "!EDH-DSS-DES-CBC3-SHA"
-    - "!EDH-RSA-DES-CBC3-SHA"
-    - "!KRB5-DES-CBC3-SHA"
 
 - name: Sanity check the LDAP root user name
   when: ldap_root_username | mandatory == "root"
@@ -106,7 +57,11 @@
 
 - set_fact:
     ldap_root_dn: "cn={{ ldap_root_username }},{{ ldap_olc_suffix }}"
-    ldap_tls_cipher_suite: "NONE:{{ ldap_tls_ciphers | join(':') }}"
+    ldap_tls_cipher_suite: "NONE:+{{ (tls_protocols|mandatory|list) | join(':+')
+                           + ([''] + tls_protocol_excludes|mandatory|list) | join(':!')
+                           + ([''] + tls_ciphersuite|mandatory|list) | join(':+')
+                           + ([''] + tls_ciphersuite_excludes|mandatory|list) | join(':!')
+                           }}"
 
 - name: Enable the Stand-alone LDAP daemon
   sudo: yes

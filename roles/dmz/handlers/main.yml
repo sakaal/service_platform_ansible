@@ -1,6 +1,6 @@
 ---
 # file: roles/dmz/handlers/main.yml
 
-- name: Reload the firewall
+- name: Restart firewalld
   sudo: yes
-  command: firewall-cmd --reload
+  service: name=firewalld state=restarted
