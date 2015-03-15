@@ -6,6 +6,7 @@
 #
 
 - hosts: localhost
+  connection: local
   vars_files:
   - /mnt/sensitive_data/etc/ansible/vars/admin_access.yml
   roles:
@@ -13,3 +14,4 @@
   - ca_trust
   - java_keystore
   - maven
+  - ../../service_commons_ansible/roles/updates_auto
