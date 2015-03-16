@@ -81,7 +81,7 @@ SSLCertificateKeyFile /etc/pki/tls/private/_.{{ public_dns_zone | mandatory }}-k
 SSLCertificateChainFile /etc/pki/tls/certs/{{ tls_certificate_chain_file }}
 {% endif %}
 
-SSLProtocol         {{ tls_protocols|mandatory|list | join(' ') +
+SSLProtocol        {{ ([''] + tls_protocols|mandatory|list) | join(' +') +
                     ([''] + tls_protocol_excludes|mandatory|list) | join(' -') }}
 SSLCipherSuite      {{ tls_ciphersuite|mandatory|list | join(':') +
                     ([''] + tls_ciphersuite_excludes|mandatory|list) | join(':!') }}
