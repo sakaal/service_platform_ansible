@@ -116,7 +116,7 @@
     dest: /etc/sysconfig/jenkins
     regexp: "^\\s*JENKINS_JAVA_OPTIONS\\s*=.*$"
     line: 'JENKINS_JAVA_OPTIONS="-Djava.awt.headless=true -Dmail.smtp.starttls.enable={{
-          'true' if jenkins_smtp_tls|default(yes)|bool else 'false' }}"'
+          "true" if jenkins_smtp_tls|default(yes)|bool else "false" }}"'
   notify: Restart Jenkins
 
 - name: Jenkins location configuration
