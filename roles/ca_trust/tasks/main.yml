@@ -27,3 +27,4 @@
   get_url: url={{ item.url | mandatory }}
            dest=/etc/pki/tls/certs/{{ item.filename }}
            sha256sum={{ item.sha256sum | mandatory }}
+           validate_certs=no
