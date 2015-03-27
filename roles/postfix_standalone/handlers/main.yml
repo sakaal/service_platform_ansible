@@ -18,3 +18,7 @@
 
 - name: Restart firewalld
   service: name=firewalld state=restarted
+
+- name: Refresh aliases
+  sudo: yes
+  command: newaliases

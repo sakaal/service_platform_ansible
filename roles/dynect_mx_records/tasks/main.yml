@@ -60,6 +60,59 @@
                 "preference": "{{ dns_mx_preference | mandatory }}"
                 }, "ttl": "0" }'
 
+
+#
+# DANE TLSA records
+#
+
+- name: DANA X.509 certificate SHA-256 fingerprint
+  shell: "openssl x509 -noout -fingerprint -sha256 < /etc/pki/tls/certs/{{
+         public_hostname | mandatory }}-crt.pem | cut -d= -f2 | tr -d :"
+  register: dane_sha256
+
+- when: dane_sha256|success
+  set_fact: dane_sha256_fingerprint="{{ dane_sha256.stdout | mandatory }}" 
+
+- name: Check if DNS zones already have DANE TLSA records
+  local_action: >
+                uri url="{{ dynect_api_url }}/TLSARecord/{{
+                public_dns_zone }}/*._tcp.{{ public_hostname | mandatory }}/"
+                HEADER_Content-Type="application/json"
+                HEADER_Auth-Token="{{ dynect_session_token }}"
+  register: zone_tlsa_records
+  ignore_errors: yes
+
+- name: Update DNS zone DANE PKIX-EE TLSA records
+  when: zone_tlsa_records|success and
+        zone_tlsa_records.json.data|list|length > 0
+  local_action: >
+                uri method=PUT url="{{ dynect_api_url }}/TLSARecord/{{
+                public_dns_zone }}/*._tcp.{{ public_hostname }}/"
+                HEADER_Content-Type="application/json"
+                HEADER_Auth-Token="{{ dynect_session_token }}"
+                body='{ "rdata": {
+                "cert_usage": "1",
+                "selector": "0",
+                "match_type": "1",
+                "certificate": "{{ dane_sha256_fingerprint | mandatory }}"
+                }, "ttl": "0" }'
+  register: updated_tlsa_records
+  changed_when: True
+
+- name: Make DNS zone DANE PKIX-EE TLSA records
+  when: updated_tlsa_records|skipped
+  local_action: >
+                uri method=POST url="{{ dynect_api_url }}/TLSARecord/{{
+                public_dns_zone | mandatory }}/*._tcp.{{ public_hostname }}/"
+                HEADER_Content-Type="application/json"
+                HEADER_Auth-Token="{{ dynect_session_token }}"
+                body='{ "rdata": {
+                "cert_usage": "1",
+                "selector": "0",
+                "match_type": "1",
+                "certificate": "{{ dane_sha256_fingerprint | mandatory }}"
+                }, "ttl": "0" }'
+
 #
 # DomainKeys Identified Mail (DKIM) TXT records
 #

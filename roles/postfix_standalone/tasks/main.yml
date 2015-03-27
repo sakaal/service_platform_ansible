@@ -115,6 +115,19 @@
   - Restart Dovecot
 
 #
+# You must redirect root mail to another account.
+#
+- name: Email aliases
+  with_items: email_aliases|default([])
+  lineinfile:
+    dest=/etc/aliases
+    regexp='^#?{{ item.user|mandatory }}:(\s*).*$'
+    line='{{ item.user }}:\1{{ item.alias|mandatory }}'
+    backrefs=yes
+  notify:
+  - Refresh aliases
+
+#
 # Postfix Dovecot integration
 #
 - name: Postfix Dovecot
@@ -458,6 +471,8 @@
 
 - name: Postfix TLS RSA certificate and key
   with_items:
+  - key: smtpd_tls_CAfile
+    val: /etc/pki/ca-trust/extracted/openssl/ca-bundle.trust.crt
   - key: smtpd_tls_cert_file
     val: /etc/pki/tls/certs/{{ public_hostname | mandatory }}-crt.pem
   - key: smtpd_tls_key_file
@@ -472,7 +487,7 @@
 - name: Postfix TLS mandatory protocols and ciphers
   with_items:
   - key: smtpd_tls_mandatory_ciphers
-    val: "{{ tls_ciphersuite | mandatory | list | join(', ') }}"
+    val: high
   - key: smtpd_tls_mandatory_exclude_ciphers
     val: "{{ tls_ciphersuite_excludes | mandatory | list | join(', ') }}"
   - key: smtpd_tls_mandatory_protocols
