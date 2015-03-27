@@ -1,0 +1,6 @@
+---
+# file: roles/ca_trust/handlers/main.yml
+
+- name: Update CA trust
+  sudo: yes
+  command: update-ca-trust

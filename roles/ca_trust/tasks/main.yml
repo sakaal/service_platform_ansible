@@ -12,14 +12,9 @@
   get_url: url={{ item.url | mandatory }}
            dest=/etc/pki/ca-trust/source/anchors/{{ item.filename }}
            sha256sum={{ item.sha256sum | mandatory }}
-  register: trusted_ca_result
+           validate_certs=no
+  notify: Update CA trust
 
-- name: Update the trusted CA root certificate bundles
-  when: trusted_ca_result|changed
-  sudo: yes
-  command: update-ca-trust extract
-  changed_when: False
- 
 - name: Certificate Authority (CA) intermediate certificates
   when: intermediate_ca_certificates is defined
   with_items: intermediate_ca_certificates|default([])
