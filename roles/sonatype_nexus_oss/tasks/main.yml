@@ -241,7 +241,7 @@
   sudo: yes
   command: firewall-cmd --permanent
            --add-rich-rule='rule family="ipv4"
-           source address="192.168.122.0/24"
+           source address="{{ ansible_default_ipv4.network }}/24"
            port port="8081" protocol="tcp" accept'
   changed_when: False
 

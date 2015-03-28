@@ -155,11 +155,11 @@
     line: "\\1>{{ item.val | mandatory }}<\\2"
   notify: Restart Jenkins
 
-- name: Open firewall port 8080 access from within the libvirt default network
+- name: Open firewall port 8080 access from within the default network
   sudo: yes
   firewalld: permanent=yes
              rich_rule='rule family="ipv4"
-                        source address="192.168.122.0/24"
+                        source address="{{ ansible_default_ipv4.network }}/24"
                         port port="8080" protocol="tcp" accept'
              state=enabled
   notify: Restart firewalld

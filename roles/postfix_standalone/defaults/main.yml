@@ -6,7 +6,7 @@
 #
 postfix_mydestination: "$myhostname, localhost.$mydomain, localhost, {{ inventory_hostname }}, $mydomain"
 postfix_mydomain:      "{{ public_dns_zone | mandatory }}"
-postfix_mynetworks:    "{{ public_ipv4_address | mandatory }}/32, 192.168.122.0/24, 127.0.0.0/8"
+postfix_mynetworks:    "{{ public_ipv4_address | mandatory }}/32, {{ ansible_default_ipv4.network }}/24, 127.0.0.0/8"
 
 #
 # Must be a fully-qualified domain name with reverse DNS resolution:

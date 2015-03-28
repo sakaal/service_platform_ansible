@@ -65,7 +65,7 @@
 # DANE TLSA records
 #
 
-- name: DANA X.509 certificate SHA-256 fingerprint
+- name: DANE X.509 certificate SHA-256 fingerprint
   shell: "openssl x509 -noout -fingerprint -sha256 < /etc/pki/tls/certs/{{
          public_hostname | mandatory }}-crt.pem | cut -d= -f2 | tr -d :"
   register: dane_sha256

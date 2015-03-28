@@ -259,7 +259,7 @@
   with_items:
   - "{{ public_dns_zone }}"
   - "{{ public_hostname }}"
-  - "192.168.122.0/24"
+  - "{{ ansible_default_ipv4.network }}/24"
   lineinfile: dest=/etc/opendkim/TrustedHosts
               regexp='^{{ item }}$'
               line='{{ item.strip() }}'
@@ -283,7 +283,7 @@
 
 - name: Sender Policy Framework DNS SPF record data
   set_fact:
-    dns_spf_data: "v=spf1 ip4:192.168.122.0/24 a mx ~all"
+    dns_spf_data: "v=spf1 ip4:{{ ansible_default_ipv4.network }}/24 a mx ~all"
 
 - name: OpenDKIM auto restart
   lineinfile:
