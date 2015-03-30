@@ -65,3 +65,14 @@
 - name: Enable and start the WildFly 8 service
   sudo: yes
   service: name=wildfly8 enabled=yes state=started
+
+- name: Firewalld configuration
+  with_items:
+  - port: 8080/tcp
+  sudo: yes
+  firewalld: permanent=yes zone={{ firewall_zone | mandatory }}
+             port={{ item.port|mandatory }} state=enabled
+
+- name: Reload Firewalld
+  sudo: yes
+  command: firewall-cmd --reload
