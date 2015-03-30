@@ -13,7 +13,6 @@
   - openssl
   - crypto-utils
   - mod_ssl # Apache HTTP Server
-  - haveged # HArdware Volatile Entropy Gathering and Expansion
   sudo: yes
   yum: name={{ item }}
 
@@ -40,10 +39,6 @@
             dest=/etc/httpd/conf.d/{{ item.fqdn }}.conf
             owner=root group=root mode=0644
   notify: Restart the HTTP server
-
-- name: Enable the entropy service
-  sudo: yes
-  service: name=haveged enabled=yes state=started
 
 - name: Configure the firewall for HTTPS
   sudo: yes
