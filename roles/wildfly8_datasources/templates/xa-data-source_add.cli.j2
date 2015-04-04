@@ -1,0 +1,17 @@
+connect
+batch
+xa-data-source add --name={{ item.name|mandatory }} --jndi-name="java:jboss/datasources/{{ item.name }}" \
+--driver-name="{{ item.driver_name | default(wf8_ds_driver_name) }}" \
+--xa-datasource-class={{ item.xa_datasource_class|mandatory }} \
+--user-name="{{ item.user_name|mandatory }}" --password="{{ item.password|mandatory }}" \
+--use-ccm={{ 'true' if item.use_ccm|default(wf8_ds_use_ccm) else 'false' }} \
+--max-pool-size={{ item.max_pool_size | default(wf8_ds_max_pool_size) }} \
+--blocking-timeout-wait-millis={{ item.blocking_timeout_wait_millis | default(wf8_ds_blocking_timeout_wait_millis) }} \
+--transaction-isolation=TRANSACTION_READ_COMMITTED \
+--new-connection-sql="{{ item.new_connection_sql | default(wf8_ds_new_connection_sql) }}" \
+--valid-connection-checker-class-name={{ item.valid_connection_checker_class_name|default(wf8_ds_valid_connection_checker_class_name) }} \
+--exception-sorter-class-name={{ item.exception_sorter_class_name|default(wf8_ds_exception_sorter_class_name) }}
+/subsystem=datasources/xa-data-source={{ item.name }}/xa-datasource-properties=ServerName:add(value={{ item.host|mandatory }})
+/subsystem=datasources/xa-data-source={{ item.name }}/xa-datasource-properties=PortNumber:add(value={{ item.port|mandatory }})
+/subsystem=datasources/xa-data-source={{ item.name }}/xa-datasource-properties=DatabaseName:add(value={{ item.database|mandatory }})
+run-batch

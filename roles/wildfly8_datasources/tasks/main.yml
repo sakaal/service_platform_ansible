@@ -16,17 +16,18 @@
 - name: JDBC data sources
   with_items: wildfly8_datasources|default([])
   when: not '{{ item.name | mandatory }}' in wildfly8_datasources_result.stdout
+        and item.xa_datasource_class is not defined
   sudo: yes
   sudo_user: "{{ wildfly8_user }}"
   command: chdir="{{ wildfly8_home | mandatory }}"
            {{ wildfly8_cli | mandatory }} --connect
            --command='/subsystem=datasources/data-source={{
-           item.name | mandatory }}:add( jndi-name=java:/jdbc/{{ item.name }},
-           driver-name={{
-           item.driver_name | default(wf8_ds_driver_name) }},
-           connection-url=\"{{ item.connection_url | mandatory }}\",
-           user-name={{ item.user_name | mandatory }},
-           password=\"{{ item.password | mandatory }}\",
+           item.name | mandatory }}:add( jndi-name=java:jboss/datasources/{{ item.name }},
+           driver-name={{ item.driver_name | default(wf8_ds_driver_name) }},
+           connection-url=\"jdbc:{{ item.driver_type | default(wf8_ds_driver_type)
+           }}://{{ item.host | mandatory}}:{{ item.port | mandatory }}/{{
+           item.database | mandatory}}\",user-name={{ item.user_name | mandatory
+           }},password=\"{{ item.password | mandatory }}\",
            use-ccm={{ item.use_ccm | default(wf8_ds_use_ccm) }},
            max-pool-size={{
            item.max_pool_size | default(wf8_ds_max_pool_size) }},
@@ -36,3 +37,29 @@
            new-connection-sql=\"{{
            item.new_connection_sql | default(wf8_ds_new_connection_sql) }}\"
            )'
+
+- name: Check JDBC XA data sources
+  sudo: yes
+  sudo_user: "{{ wildfly8_user | mandatory }}"
+  command: chdir="{{ wildfly8_home | mandatory }}"
+           {{ wildfly8_cli | mandatory }} --connect
+           --command='/subsystem=datasources:read-children-names(child-type=xa-data-source)'
+  register: wildfly8_xa_datasources_result
+
+- name: JDBC XA datasource scripts
+  with_items: wildfly8_datasources|default([])
+  when: not '{{ item.name | mandatory }}' in wildfly8_xa_datasources_result.stdout
+        and item.xa_datasource_class is defined
+  sudo: yes
+  sudo_user: "{{ wildfly8_user }}"
+  template: src="xa-data-source_add.cli.j2"
+            dest="{{ wildfly8_home | mandatory }}/xa-data-source_add_{{ item.name }}.cli"
+
+- name: JDBC XA datasources
+  with_items: wildfly8_datasources|default([])
+  when: not '{{ item.name | mandatory }}' in wildfly8_xa_datasources_result.stdout
+        and item.xa_datasource_class is defined
+  sudo: yes
+  sudo_user: "{{ wildfly8_user }}"
+  command: chdir="{{ wildfly8_home | mandatory }}"
+           {{ wildfly8_cli | mandatory }} --file="xa-data-source_add_{{ item.name }}.cli"

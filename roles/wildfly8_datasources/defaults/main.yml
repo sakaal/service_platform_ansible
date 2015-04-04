@@ -4,12 +4,18 @@
 #
 # Use the first configured PostgreSQL JDBC driver by default:
 #
+wf8_ds_driver_type: postgresql
 wf8_ds_driver_name:
   "postgresql-{{ postgresql_jdbc_drivers[0].version | mandatory
   }}-{{ postgresql_jdbc_drivers[0].build | mandatory
   }}.{{ postgresql_jdbc_drivers[0].spec | mandatory }}"
-
 wf8_ds_use_ccm: true
 wf8_ds_max_pool_size: 25
 wf8_ds_blocking_timeout_wait_millis: 5000
 wf8_ds_new_connection_sql: "SET datestyle TO ISO,European;"
+
+#
+# These are for JDBC XA datasources:
+#
+wf8_ds_valid_connection_checker_class_name: org.jboss.jca.adapters.jdbc.extensions.postgres.PostgreSQLValidConnectionChecker
+wf8_ds_exception_sorter_class_name: org.jboss.jca.adapters.jdbc.extensions.postgres.PostgreSQLExceptionSorter
