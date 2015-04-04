@@ -5,6 +5,9 @@
 # WildFly 8 logging levels by category
 #
 
+- name: Wait for the WildFly server to start
+  wait_for: host=localhost port=9990 timeout=20
+
 - name: Check loggers
   when: wildfly8_loggers is defined
   sudo: yes
