@@ -2,8 +2,10 @@
 <module xmlns="urn:jboss:module:1.0" name="org.postgresql">  
   <resources>
 {% for item in postgresql_jdbc_drivers %}
+{% if item.state|mandatory == "present" %}
     <resource-root path="postgresql-{{
                          item.version }}-{{ item.build }}.{{ item.spec }}.jar"/>
+{% endif %}
 {% endfor %}
   </resources>  
   <dependencies>  
