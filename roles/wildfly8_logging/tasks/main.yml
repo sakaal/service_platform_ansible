@@ -5,6 +5,12 @@
 # WildFly 8 logging levels by category
 #
 
+- name: Ensure the standalone/log directory exists
+  sudo: yes
+  file: path="{{ wildfly8_home | mandatory }}/standalone/log"
+        state=directory owner="{{ wildfly8_user }}" group="{{ wildfly8_user }}"
+        mode="u+rwx,g+rwxs"
+
 - name: Wait for the WildFly server to start
   wait_for: host=localhost port=9990 timeout=20
 
