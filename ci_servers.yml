@@ -15,7 +15,7 @@
     - ../../service_commons_ansible/roles/updates_auto
     - java_oracle
     - ca_trust
-    - java_keystore
+    - ../../service_commons_ansible/java_keystore
     - jenkins_ci
     - jenkins_ci_backup
     - continuous_delivery
