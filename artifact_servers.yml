@@ -15,6 +15,6 @@
     - transport_layer_security
     - ../../service_commons_ansible/roles/updates_auto
     - java_oracle
-    - ../../service_commons_ansible/java_keystore
+    - ../../service_commons_ansible/roles/java_keystore
     - sonatype_nexus_oss
     - sonatype_nexus_oss_backup
