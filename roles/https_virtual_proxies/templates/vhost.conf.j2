@@ -58,6 +58,7 @@ RequestHeader set X-Forwarded-Port "443"
 ProxyPass /{{ proxy.context | mandatory }} http://{{ proxy.backend_host | mandatory }}/{{ proxy.backend_context | mandatory }} nocanon
 ProxyPassReverse /{{ proxy.context }} http://{{ proxy.backend_host }}/{{ proxy.backend_context }}
 ProxyPassReverse /{{ proxy.context }} http://{{ item.fqdn }}/{{ proxy.backend_context }}
+ProxyPassReverseCookieDomain {{ proxy.backend_host }} {{ item.fqdn }}
 {% if proxy.backend_context != proxy.context %}
 ProxyPassReverseCookiePath /{{ proxy.backend_context }} /{{ proxy.context }}
 {% endif %}
