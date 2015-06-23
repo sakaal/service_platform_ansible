@@ -19,5 +19,6 @@
     - ../../service_commons_ansible/roles/updates_auto
     - access_control
     - postfix_standalone
+    - dynect_dane_records
     - dynect_mx_records
     - alpine

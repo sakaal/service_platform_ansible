@@ -1,0 +1,4 @@
+---
+# file: roles/dynect_dane_records/defaults/main.yml
+
+dane_cert_hostname: "{{ public_hostname | mandatory }}"

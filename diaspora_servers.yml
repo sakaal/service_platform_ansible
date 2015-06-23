@@ -11,6 +11,7 @@
   - transport_layer_security
   - hosts_aliases
   - ../../service_commons_ansible/roles/updates_auto
+  - dynect_dane_records
   - diaspora_pod
   #
   # The diaspora known SSH identity is used for transferring user uploaded
