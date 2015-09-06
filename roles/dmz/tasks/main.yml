@@ -64,10 +64,14 @@
 
 - name: Update Hetzner reverse DNS records
   when: public_hostname is defined and public_ipv4_address is defined
-  no_log: True
-  local_action: command curl -su
-                '{{ hetzner_api_user | mandatory }}:{{ hetzner_api_password | mandatory }}'
-                {{ hetzner_api_url }}/rdns/{{ (ansible_eth1|mandatory).ipv4.address }}
-                -d 'ptr={{ public_hostname }}'
+  local_action:
+    module: uri
+    method: POST
+    user: "{{ hetzner_api_user | mandatory }}"
+    password: "{{ hetzner_api_password | mandatory }}"
+    url: "{{ hetzner_api_url }}/rdns/{{ (ansible_eth1|mandatory).ipv4.address }}"
+    HEADER_Content-Type: application/x-www-form-urlencoded
+    body: "ptr={{ public_hostname | mandatory }}"
+    status_code: 200,201
   register: hetzner_result
-  failed_when: (hetzner_result.stdout|from_json).error is defined
+  failed_when: hetzner_result.json.error is defined
