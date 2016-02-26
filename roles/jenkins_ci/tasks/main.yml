@@ -1,12 +1,34 @@
 ---
 # file: roles/jenkins_ci/tasks/main.yml
 
-- name: Graphviz
-  sudo: yes
+- assert:
+    that:
+    - public_hostname is defined
+    - public_hostname.strip() != ""
+    - jenkins_system_email is defined
+    - jenkins_smtp_username is defined
+    - jenkins_smtp_password is defined
+    - jenkins_smtp_hostname is defined
+    - jenkins_smtp_port is defined
+
+- name: Either SSL or TLS may be used for SMTP - not both
+  assert:
+    that:
+    - not ( jenkins_smtp_ssl | default(False) and
+            jenkins_smtp_tls | default(True) )
+
+- name: Graphviz (yum)
+  when: ansible_pkg_mgr == "yum"
+  become: yes
   yum: name=graphviz
 
+- name: Graphviz (dnf)
+  when: ansible_pkg_mgr == "dnf"
+  become: yes
+  dnf: name=graphviz
+
 - name: Configure the Jenkins RPM repository
-  sudo: yes
+  become: yes
   get_url: dest=/etc/yum.repos.d/jenkins.repo
            url=http://pkg.jenkins-ci.org/redhat/jenkins.repo
 
@@ -17,19 +39,25 @@
 # marker in the key file. Otherwise rpm_key import will fail.
 #
 - name: Upload the Jenkins RPM repository GPG key
-  sudo: yes
+  become: yes
   copy: src=jenkins-ci.org.key dest=/root/jenkins-ci.org.key
 
 - name: Import the Jenkins RPM repository GPG key
-  sudo: yes
+  become: yes
   rpm_key: key=/root/jenkins-ci.org.key state=present
 
-- name: Ensure Jenkins CI is present
-  sudo: yes
+- name: Ensure Jenkins CI is present (yum)
+  when: ansible_pkg_mgr == "yum"
+  become: yes
   yum: name=jenkins
 
+- name: Ensure Jenkins CI is present (dnf)
+  when: ansible_pkg_mgr == "dnf"
+  become: yes
+  dnf: name=jenkins
+
 - name: Find the Jenkins CI home directory
-  sudo: yes
+  become: yes
   shell: "cat /etc/passwd | grep '^jenkins:' | cut -d: -f6"
   register: jenkins_home
   failed_when: jenkins_home.stdout.strip() == ""
@@ -39,69 +67,33 @@
     jenkins_home: "{{ jenkins_home.stdout.strip() }}"
 
 - name: Generate SSH key for the jenkins user
-  sudo: yes
+  become: yes
   user: name=jenkins createhome=no
         generate_ssh_key=yes
-        ssh_key_comment=jenkins@{{ ansible_fqdn }}-{{
-                                   ansible_date_time.iso8601 }}
+        ssh_key_comment=jenkins@{{ ansible_fqdn }}_{{
+                                   ansible_date_time.iso8601 |
+                                   replace(':', '') }}
 
 - name: Copy admin known_hosts to jenkins user
-  sudo: yes
+  become: yes
   shell: cp -f /home/{{ admin_username }}/.ssh/known_hosts
          "{{ jenkins_home }}/.ssh/known_hosts"
 
 - name: Jenkins known_hosts permissions
-  sudo: yes
+  become: yes
   file: dest="{{ jenkins_home }}/.ssh/known_hosts"
         owner=jenkins group=jenkins mode=600
 
+- name: Create the plugins directory
+  become: yes
+  file: state=directory dest="{{ jenkins_home }}/plugins"
+        owner=jenkins group=jenkins
+
 - name: Plugins
-  with_items:
-  - name: analysis-collector              # Analysis Collector
-  - name: analysis-core                   # Static Code Analysis
-  - name: ant                             # Ant
-  - name: build-monitor-plugin            # Build Monitor
-  - name: build-pipeline-plugin           # Build Pipeline
-  - name: build-token-root                # Build Token Root
-  - name: checkstyle                      # Checkstyle
-  - name: config-file-provider            # Config File Provider
-  - name: credentials                     # Credentials
-  - name: dashboard-view                  # Dashboard View
-  - name: delivery-pipeline-plugin        # Delivery Pipeline
-  - name: dependency-check-jenkins-plugin # OWASP Dependency Check
-  - name: depgraph-view                   # Dependency Graph View
-  - name: deploy                          # Deploy
-  - name: disk-usage                      # Disk Usage
-  - name: downstream-buildview            # Downstream buildview
-  - name: emotional-jenkins-plugin        # Emotional Jenkins
-  - name: external-monitor-job            # Monitoring external jobs
-  - name: git-client                      # Git Client
-  - name: git                             # Git
-  - name: http_request                    # HTTP Request
-  - name: javadoc                         # Javadoc
-  - name: jquery                          # jQuery
-  - name: jquery-ui                       # jQuery UI
-  - name: junit                           # JUnit
-  - name: ldap                            # LDAP
-  - name: locale                          # Locale
-  - name: m2release                       # M2 Release
-  - name: mailer                          # Mailer
-  - name: matrix-auth                     # Matrix Authorization Strategy
-  - name: matrix-project                  # Matrix Project
-  - name: maven-info                      # Maven Info
-  - name: maven-plugin                    # Maven Project
-  - name: monitoring                      # Monitoring
-  - name: parameterized-trigger           # Parameterized Trigger
-  - name: promoted-builds                 # Promoted Builds
-  - name: publish-over-ssh                # Publish Over SSH
-  - name: scm-api                         # SCM API
-  - name: shelve-project-plugin           # Shelve Project
-  - name: sitemonitor                     # SiteMonitor
-  - name: ssh-credentials                 # SSH Credentials
-  - name: subversion                      # Subversion
-  - name: token-macro                     # Token Macro
-  - name: zapper                          # OWASP Zed Attack Proxy (ZAP)
-  sudo: yes
+  with_flattened:
+  - "{{ jenkins_ci_default_plugins | default([]) }}"
+  - "{{ jenkins_ci_plugins | default([]) }}"
+  become: yes
   get_url: dest="{{ jenkins_home }}/plugins/{{ item.name | mandatory }}.jpi"
            url="https://updates.jenkins-ci.org/latest/{{ item.name }}.hpi"
            owner=jenkins group=jenkins mode=0644
@@ -111,7 +103,7 @@
 # This allows Jenkins E-mail Notifications to use a TLS enabled SMTP server.
 #
 - name: Enable SMTP TLS for Jenkins
-  sudo: yes
+  become: yes
   lineinfile:
     dest: /etc/sysconfig/jenkins
     regexp: "^\\s*JENKINS_JAVA_OPTIONS\\s*=.*$"
@@ -119,44 +111,17 @@
           "true" if jenkins_smtp_tls|default(yes)|bool else "false" }}"'
   notify: Restart Jenkins
 
-- name: Jenkins location configuration
+- name: Configure Jenkins modules
   with_items:
-  - tag: adminAddress
-    val: "Jenkins &lt;{{ jenkins_system_email | mandatory }}&gt;"
-  - tag: jenkinsUrl
-    val: "https://{{ public_hostname | mandatory }}/"
-  sudo: yes
-  lineinfile:
-    dest: "{{ jenkins_home }}/jenkins.model.JenkinsLocationConfiguration.xml"
-    regexp: "^(\\s*<{{ item.tag | mandatory }}>).*(</{{ item.tag }}>)\\s*$"
-    backrefs: yes
-    line: "\\1{{ item.val | mandatory }}\\2"
-  notify: Restart Jenkins
-
-- name: Mailer configuration
-  with_items:
-  - tag: smtpAuthUsername
-    val: "{{ jenkins_smtp_username | mandatory }}"
-  - tag: smtpAuthPassword
-    val: "{{ jenkins_smtp_password | mandatory }}"
-  - tag: smtpHost
-    val: "{{ jenkins_smtp_hostname | mandatory }}"
-  - tag: useSsl
-    val: "{{ 'true' if jenkins_smtp_ssl|default(no)|bool else 'false' }}"
-  - tag: smtpPort
-    val: "{{ jenkins_smtp_port | mandatory }}"
-  - tag: charset
-    val: "UTF-8"
-  sudo: yes
-  lineinfile:
-    dest: "{{ jenkins_home }}/hudson.tasks.Mailer.xml"
-    regexp: "^(\\s*<{{ item.tag | mandatory }})>.*<(/{{ item.tag }}>)\\s*$"
-    backrefs: yes
-    line: "\\1>{{ item.val | mandatory }}<\\2"
+  - jenkins.model.JenkinsLocationConfiguration.xml
+  - hudson.tasks.Mailer.xml
+  become: yes
+  template: src="{{ item }}.j2" dest="{{ jenkins_home }}/{{ item }}"
+            owner=jenkins group=jenkins
   notify: Restart Jenkins
 
 - name: Open firewall port 8080 access from within the default network
-  sudo: yes
+  become: yes
   firewalld: permanent=yes
              rich_rule='rule family="ipv4"
                         source address="{{ ansible_default_ipv4.network }}/24"
@@ -165,7 +130,7 @@
   notify: Restart firewalld
 
 - name: Enable the Jenkins CI service
-  sudo: yes
+  become: yes
   service: name=jenkins state=started enabled=yes
 
 #
