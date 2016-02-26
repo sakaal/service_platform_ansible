@@ -1,0 +1,34 @@
+---
+# file: roles/git_server/tasks/main.yml
+#
+# Git bare repository server
+#
+
+- name: Packages (yum)
+  when: ansible_pkg_mgr == "yum"
+  with_items:
+  - git
+  become: yes
+  yum: name={{ item }}
+
+- name: Packages (dnf)
+  when: ansible_pkg_mgr == "dnf"
+  with_items:
+  - git
+  become: yes
+  dnf: name={{ item }}
+
+- name: Git service user
+  become: yes
+  user: name=git
+        comment="Git service"
+        generate_ssh_key=yes
+        ssh_key_comment="git@{{ ansible_fqdn }}_{{ ansible_date_time.iso8601 | replace(':', '') }}"
+        state=present
+
+- name: Git authorized SSH keys
+  with_items: git_server_authorized_keys | default([])
+  become: yes
+  authorized_key: user=git
+                  key="{{ item.key | mandatory }} {{ item.id | mandatory }}"
+                  state="{{ item.state | mandatory }}"
