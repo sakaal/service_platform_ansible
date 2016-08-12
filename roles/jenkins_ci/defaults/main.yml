@@ -1,5 +1,5 @@
----
 # file: roles/jenkins_ci/defaults/main.yml
+---
 
 jenkins_ci_default_plugins:
 #  - name: analysis-collector              # Analysis Collector
@@ -23,7 +23,9 @@ jenkins_ci_default_plugins:
   - name: disk-usage                      # Disk Usage
 #  - name: downstream-buildview            # Downstream buildview
   - name: emotional-jenkins-plugin        # Emotional Jenkins
+  - name: envinject                       # EnvInject
   - name: external-monitor-job            # Monitoring external jobs
+  - name: ez-templates                    # EZ Templates
   - name: git-client                      # Git Client
   - name: git                             # Git
   - name: greenballs                      # Green Balls
@@ -40,12 +42,16 @@ jenkins_ci_default_plugins:
   - name: mailer                          # Mailer
   - name: matrix-auth                     # Matrix Authorization Strategy
   - name: matrix-project                  # Matrix Project
-#  - name: maven-info                      # Maven Info
-#  - name: maven-plugin                    # Maven Project
+  - name: maven-info                      # Maven Info
+  - name: maven-plugin                    # Maven Project
   - name: monitoring                      # Monitoring
   - name: multiple-scms                   # Multiple SCMs
   - name: parameterized-trigger           # Parameterized Trigger
-#  - name: pipeline-utility-steps          # Pipeline Utility Steps
+  - name: pipeline-build-step             # Pipeline Build Step
+  - name: pipeline-input-step             # Pipeline Input Step
+  - name: pipeline-stage-step             # Pipeline Stage Step
+  - name: pipeline-stage-view             # Pipeline Stage View
+  - name: pipeline-utility-steps          # Pipeline Utility Steps
   - name: promoted-builds                 # Promoted Builds
   - name: publish-over-ssh                # Publish Over SSH
   - name: role-strategy                   # Role-based Authorization Strategy
@@ -57,6 +63,16 @@ jenkins_ci_default_plugins:
   - name: ssh-credentials                 # SSH Credentials
   - name: timestamper                     # Timestamper
   - name: token-macro                     # Token Macro
-#  - name: workflow-aggregator             # Pipeline
+  - name: workflow-aggregator             # Pipeline
+  - name: workflow-support                # Pipeline Supporting APIs
+  - name: workflow-cps                    # Pipeline Groovy
+  - name: workflow-cps-global-lib         # Pipeline Shared Groovy Libraries
+  - name: workflow-basic-steps            # Pipeline Basic Steps
+  - name: workflow-multibranch            # Pipeline Multibranch
+  - name: workflow-scm-step               # Pipeline SCM Step
+  - name: workflow-job                    # Pipeline Job
+  - name: workflow-durable-task-step      # Pipeline Nodes and Processes
+  - name: workflow-step-api               # Pipeline Step API
+  - name: workflow-api                    # Pipeline API
 #  - name: zapper                          # OWASP Zed Attack Proxy (ZAP)
   - name: zentimestamp                    # ZenTimestamp

@@ -1,14 +1,13 @@
----
 # file: roles/access_control/tasks/main.yml
-
 #
 # Grant or remove SSH access
 #
+---
 
 - name: User accounts
   with_items: ssh_access|default([])
   when: item.fullname is defined
-  sudo: yes
+  become: yes
   user: name={{ item.user | mandatory }}
         comment="{{ item.fullname }}"
         shell="{{ item.shell | default('/bin/bash') }}"
@@ -20,7 +19,7 @@
   with_items: ssh_access|default([])
   when: item.groups is defined and
         item.state == 'present'
-  sudo: yes
+  become: yes
   user: name="{{ item.user | mandatory }}"
         append=yes
         groups="{{ item.groups }}"
@@ -29,7 +28,7 @@
   with_items: ssh_access|default([])
   when: item.password is defined and
         item.state == 'present'
-  sudo: yes
+  become: yes
   user: name="{{ item.user | mandatory }}"
         password="{{ item.password | string | mandatory }}"
 
@@ -38,7 +37,7 @@
   with_subelements:
   - ssh_access|default([])
   - authorized_keys
-  sudo: yes
+  become: yes
   authorized_key: user="{{ item.0.user | mandatory }}"
                   key="{{ item.1.key | mandatory }}"
                   state="{{ item.1.state | default('present')}}"

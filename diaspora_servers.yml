@@ -1,11 +1,8 @@
----
 # file: diaspora_servers.yml
+---
 
 - name: DIASPORA
   hosts: diaspora_servers
-  vars_files:
-  - /mnt/sensitive_data/etc/ansible/vars/admin_access.yml
-  - /mnt/sensitive_data/etc/ansible/vars/hetzner.yml
   roles:
   - libvirt_guest_network_service
   - transport_layer_security
@@ -22,9 +19,6 @@
 
 - name: DIASPORA UPLOADS BACKUP
   hosts: diaspora_uploads_hosts
-  vars_files:
-  - /mnt/sensitive_data/etc/ansible/vars/admin_access.yml
-  - /mnt/sensitive_data/etc/ansible/vars/hetzner.yml
   roles:
   - access_control
   - diaspora_uploads_backup

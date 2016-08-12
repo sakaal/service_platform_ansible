@@ -1,21 +1,20 @@
----
 # file: roles/wildfly8_postgresql_drivers/tasks/main.yml
-
 #
 # Deploy PostgreSQL JDBC drivers to WildFly 8 Application Server
 #
+---
 
 - name: Create module directories for PostgreSQL JDBC drivers
-  sudo: yes
-  sudo_user: "{{ wildfly8_user }}"
+  become: yes
+  become_user: "{{ wildfly8_user }}"
   file: state=directory
         path={{ wildfly8_home }}/modules/system/layers/base/org/postgresql
   file: state=directory
         path={{ wildfly8_home }}/modules/system/layers/base/org/postgresql/main
 
 - name: Check the JDBC drivers already installed in WildFly 8
-  sudo: yes
-  sudo_user: "{{ wildfly8_user }}"
+  become: yes
+  become_user: "{{ wildfly8_user }}"
   command: chdir="{{ wildfly8_home | mandatory }}"
            {{ wildfly8_cli | mandatory }} --connect
            --command='/subsystem=datasources:installed-drivers-list'
@@ -42,8 +41,8 @@
 # server administration console.
 #
 #- name: Check JDBC data sources
-#  sudo: yes
-#  sudo_user: "{{ wildfly8_user | mandatory }}"
+#  become: yes
+#  become_user: "{{ wildfly8_user | mandatory }}"
 #  command: chdir="{{ wildfly8_home | mandatory }}"
 #           {{ wildfly8_cli | mandatory }} --connect
 #           --command='/subsystem=datasources:read-children-names(child-type=data-source)'
@@ -53,8 +52,8 @@
 #  with_items: wildfly8_datasources|default([])
 #  when: not wildfly8_datasources_result|skipped
 #        '{{ item.name | mandatory }}' in wildfly8_datasources_result.stdout
-#  sudo: yes
-#  sudo_user: "{{ wildfly8_user }}"
+#  become: yes
+#  become_user: "{{ wildfly8_user }}"
 #  command: chdir="{{ wildfly8_home | mandatory }}"
 #           {{ wildfly8_cli | mandatory }} --connect
 #           --command='/subsystem=datasources/data-source={{
@@ -66,8 +65,8 @@
   when: (item.state|mandatory == "absent") and 
         'postgresql-{{ item.version }}-{{ item.build }}.{{ item.spec }}'
         in wildfly8_jdbc_drivers.stdout
-  sudo: yes
-  sudo_user: "{{ wildfly8_user }}"
+  become: yes
+  become_user: "{{ wildfly8_user }}"
   command: chdir="{{ wildfly8_home | mandatory }}"
            {{ wildfly8_cli | mandatory }} --connect
            --command='/subsystem=datasources/jdbc-driver=postgresql-{{
@@ -76,8 +75,8 @@
 - name: Undeploy old PostgreSQL JDBC drivers
   with_items: postgresql_jdbc_drivers
   when: item.state|mandatory == "absent"
-  sudo: yes
-  sudo_user: "{{ wildfly8_user }}"
+  become: yes
+  become_user: "{{ wildfly8_user }}"
   file: dest="{{ wildfly8_home | mandatory
               }}/modules/system/layers/base/org/postgresql/main/postgresql-{{
               item.version }}-{{ item.build }}.{{ item.spec }}.jar"
@@ -88,16 +87,16 @@
   when: (item.state|mandatory == "present") and 
         not 'postgresql-{{ item.version }}-{{ item.build }}.{{ item.spec }}'
         in wildfly8_jdbc_drivers.stdout
-  sudo: yes
-  sudo_user: "{{ wildfly8_user }}"
+  become: yes
+  become_user: "{{ wildfly8_user }}"
   copy: src="postgresql-{{ item.version }}-{{ item.build }}.{{ item.spec }}.jar"
         dest="{{ wildfly8_home | mandatory
               }}/modules/system/layers/base/org/postgresql/main/postgresql-{{
               item.version }}-{{ item.build }}.{{ item.spec }}.jar"
 
 - name: Deploy module descriptors for PostgreSQL JDBC drivers
-  sudo: yes
-  sudo_user: "{{ wildfly8_user }}"
+  become: yes
+  become_user: "{{ wildfly8_user }}"
   template: src=module.xml.j2 dest={{ wildfly8_home
             }}/modules/system/layers/base/org/postgresql/main/module.xml
 
@@ -105,8 +104,8 @@
   with_items: postgresql_jdbc_drivers
   when: not 'postgresql-{{ item.version }}-{{ item.build }}.{{ item.spec }}'
         in wildfly8_jdbc_drivers.stdout
-  sudo: yes
-  sudo_user: "{{ wildfly8_user }}"
+  become: yes
+  become_user: "{{ wildfly8_user }}"
   command: chdir="{{ wildfly8_home | mandatory }}"
            {{ wildfly8_cli | mandatory }} --connect
            --command='/subsystem=datasources/jdbc-driver=postgresql-{{

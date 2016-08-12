@@ -1,9 +1,8 @@
----
 # file: roles/hosts_aliases/tasks/main.yml
-
 #
 # Locally map hostnames to IP addresses
 #
+---
 
 - name: Safety check
   with_items: hosts_aliases|default([])
@@ -12,7 +11,7 @@
 
 - name: Hosts file /etc/hosts
   with_items: hosts_aliases|default([])
-  sudo: yes
+  become: yes
   lineinfile: dest=/etc/hosts regexp="^\s*{{ item.ip | mandatory }}\s+"
               line="{{ item.ip }} {{ item.names|mandatory|join(' ') }}"
               state="{{ item.state|default('present') }}"

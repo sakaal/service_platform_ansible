@@ -1,5 +1,5 @@
----
 # file: roles/archive_deployment/tasks/main.yml
+---
 
 - name: Archivers and data transfer tools
   with_items:
@@ -9,5 +9,5 @@
   - p7zip
   - unzip
   - wget
-  sudo: yes
-  yum: name={{ item }}
+  become: yes
+  yum: name="{{ item }}"

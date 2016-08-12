@@ -1,32 +1,31 @@
----
 # file: roles/https_virtual_proxies/tasks/main.yml
-
 #
 # Apache HTTP Server virtual hosts for SSL/TLS HTTPS reverse proxies
 #
 # http://httpd.apache.org/docs/2.4/ssl/ssl_howto.html
 # http://wiki.apache.org/httpd/NameBasedSSLVHosts
 #
+---
 
 - name: TLS and PKI packages
   with_items:
   - openssl
   - crypto-utils
   - mod_ssl # Apache HTTP Server
-  sudo: yes
+  become: yes
   yum: name={{ item }}
 
 - name: SELinux allow the HTTP server to network connect
-  sudo: yes
+  become: yes
   seboolean: name=httpd_can_network_connect state=yes persistent=yes
 
 - name: Comment out default HTTP listener bindings
-  sudo: yes
+  become: yes
   lineinfile: dest=/etc/httpd/conf/httpd.conf
               regexp='^(\s*)Listen(\s+.*)$' backrefs=yes line='#\1Listen\2'
 
 - name: Name-based SSL virtual hosts global configuration
-  sudo: yes
+  become: yes
   template: src=ssl.conf.j2
             dest=/etc/httpd/conf.d/ssl.conf
             owner=root group=root mode=0644
@@ -34,18 +33,18 @@
 
 - name: Virtual HTTPS proxies
   with_items: virtual_proxies|default([])
-  sudo: yes
+  become: yes
   template: src=vhost.conf.j2
             dest=/etc/httpd/conf.d/{{ item.fqdn }}.conf
             owner=root group=root mode=0644
   notify: Restart the HTTP server
 
 - name: Configure the firewall for HTTPS
-  sudo: yes
+  become: yes
   firewalld: permanent=true zone={{ firewall_zone | mandatory }}
              service=https state=enabled
   notify: Restart firewalld
 
 - name: Ensure the HTTP server is running
-  sudo: yes
+  become: yes
   service: name=httpd state=started enabled=yes

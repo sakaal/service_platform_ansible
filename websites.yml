@@ -1,12 +1,9 @@
----
 # file: websites.yml
-
 #
 # Static web content on the web servers
 #
+---
 
 - hosts: web_servers
-  vars_files:
-    - /mnt/sensitive_data/etc/ansible/vars/admin_access.yml
   roles:
     - http_server_content

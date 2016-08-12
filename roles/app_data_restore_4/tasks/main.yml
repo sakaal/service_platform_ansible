@@ -1,8 +1,8 @@
----
 # file: roles/app_data_restore_4/tasks/main.yml
+---
 
 - name: Destination directory
-  sudo: yes
+  become: yes
   file: path="/var/local/archives/restore" state=directory
         owner=root group=wheel mode=770
 
@@ -13,7 +13,7 @@
         dest="/var/local/archives/restore/{{ item | basename }}"
 
 - name: A script to restore application data from archives
-  sudo: yes
+  become: yes
   template: src=backup_restore.sh.j2
             dest=/usr/local/sbin/backup_restore
             mode=755 owner=root group=root

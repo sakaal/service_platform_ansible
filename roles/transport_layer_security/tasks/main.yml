@@ -1,8 +1,8 @@
----
 # file: roles/transport_layer_security/tasks/main.yml
 #
 # Copy X.509 PKI certificates and keys to target hosts (for TLS/SSL)
 #
+---
 
 #
 # Public DNS domain certificate
@@ -10,7 +10,7 @@
 
 - name: Check if a certificate exists for the domain
   when: (public_dns_zone is defined) and (public_dns_zone != public_hostname)
-  sudo: yes
+  become: yes
   local_action: stat path=/mnt/sensitive_data/etc/pki/tls/certs/{{ public_dns_zone }}-crt.pem
                      get_md5=no
   register: public_dns_zone_certificate
@@ -18,7 +18,7 @@
 - name: Domain X.509 server key
   when: not public_dns_zone_certificate|skipped
         and public_dns_zone_certificate.stat.exists
-  sudo: yes
+  become: yes
   copy: src=/mnt/sensitive_data/etc/pki/tls/private/{{ public_dns_zone }}-key.pem
         dest=/etc/pki/tls/private/{{ public_dns_zone }}-key.pem
         owner=root group=root mode=0600
@@ -26,7 +26,7 @@
 - name: Domain X.509 certificate
   when: not public_dns_zone_certificate|skipped
         and public_dns_zone_certificate.stat.exists
-  sudo: yes
+  become: yes
   copy: src=/mnt/sensitive_data/etc/pki/tls/certs/{{ public_dns_zone }}-crt.pem
         dest=/etc/pki/tls/certs/{{ public_dns_zone }}-crt.pem
         owner=root group=root mode=0644
@@ -37,7 +37,7 @@
 
 - name: Check if a wildcard certificate exists for the subdomains
   when: public_dns_zone is defined
-  sudo: yes
+  become: yes
   local_action: stat path=/mnt/sensitive_data/etc/pki/tls/certs/_.{{ public_dns_zone }}-crt.pem
                      get_md5=no
   register: subdomain_wildcard_certificate
@@ -45,7 +45,7 @@
 - name: Public subdomain wildcard X.509 server key
   when: public_dns_zone is defined and
         subdomain_wildcard_certificate.stat.exists
-  sudo: yes
+  become: yes
   copy: src=/mnt/sensitive_data/etc/pki/tls/private/_.{{ public_dns_zone | mandatory }}-key.pem
         dest=/etc/pki/tls/private/_.{{ public_dns_zone }}-key.pem
         owner=root group=root mode=0600
@@ -53,7 +53,7 @@
 - name: Public subdomain wildcard X.509 certificate
   when: public_dns_zone is defined and
         subdomain_wildcard_certificate.stat.exists
-  sudo: yes
+  become: yes
   copy: src=/mnt/sensitive_data/etc/pki/tls/certs/_.{{ public_dns_zone | mandatory }}-crt.pem
         dest=/etc/pki/tls/certs/_.{{ public_dns_zone }}-crt.pem
         owner=root group=root mode=0644
@@ -64,7 +64,7 @@
 
 - name: Check if a certificate exists for the public hostname
   when: public_hostname is defined
-  sudo: yes
+  become: yes
   local_action: stat path=/mnt/sensitive_data/etc/pki/tls/certs/{{ public_hostname }}-crt.pem
                      get_md5=no
   register: public_hostname_certificate
@@ -72,7 +72,7 @@
 - name: Public hostname X.509 server key
   when: not public_hostname_certificate|skipped
         and public_hostname_certificate.stat.exists
-  sudo: yes
+  become: yes
   copy: src=/mnt/sensitive_data/etc/pki/tls/private/{{ public_hostname }}-key.pem
         dest=/etc/pki/tls/private/{{ public_hostname }}-key.pem
         owner=root group=root mode=0600
@@ -80,7 +80,7 @@
 - name: Public hostname X.509 certificate
   when: not public_hostname_certificate|skipped
         and public_hostname_certificate.stat.exists
-  sudo: yes
+  become: yes
   copy: src=/mnt/sensitive_data/etc/pki/tls/certs/{{ public_hostname }}-crt.pem
         dest=/etc/pki/tls/certs/{{ public_hostname }}-crt.pem
         owner=root group=root mode=0644

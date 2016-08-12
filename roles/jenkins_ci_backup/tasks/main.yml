@@ -1,17 +1,16 @@
----
 # file: roles/jenkins_ci_backup/tasks/main.yml
-
 #
 # roles/jenkins_ci sets the jenkins_home variable.
 #
+---
 
 - name: Jenkins CI backup excludes list
-  sudo: yes
+  become: yes
   copy: src=jenkins.backup_excludes
         dest="{{ jenkins_home | mandatory }}/.backup_excludes"
         mode=660 owner=jenkins group=jenkins
 
 - name: Backup client configuration for Jenkins CI
-  sudo: yes
+  become: yes
   template: src=jenkins_ci.conf.j2
             dest="/usr/local/etc/backup_client.d/jenkins_ci.conf"

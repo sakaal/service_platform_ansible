@@ -1,5 +1,5 @@
----
 # file: roles/postfix_standalone/tasks/main.yml
+---
 
 #
 # Amavisd-new pulls clamav, clamd and spamassassin as its dependencies
@@ -77,11 +77,11 @@
 # http://wiki2.dovecot.org/MailLocation/mbox
 #
 - name: Dovecot /var/mail/* permissions
-  sudo: yes
+  become: yes
   file: state=directory follow=yes recurse=yes path=/var/mail mode=0600
 
 - name: Dovecot LDA /var/mail/ dotlocks
-  sudo: yes
+  become: yes
   file: state=directory follow=yes path=/var/mail mode="a+rwxt"
 
 - name: Prepare Dovecot for Postfix SASL authentication
@@ -174,7 +174,7 @@
   with_items:
   - name: antivirus_use_jit
     state: yes
-  sudo: yes
+  become: yes
   seboolean: persistent=yes
              name={{ item.name | mandatory }}
              state={{ item.state | mandatory }}

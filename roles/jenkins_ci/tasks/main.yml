@@ -1,5 +1,5 @@
----
 # file: roles/jenkins_ci/tasks/main.yml
+---
 
 - assert:
     that:
@@ -14,8 +14,8 @@
 - name: Either SSL or TLS may be used for SMTP - not both
   assert:
     that:
-    - not ( jenkins_smtp_ssl | default(False) and
-            jenkins_smtp_tls | default(True) )
+    - not ( jenkins_smtp_ssl | bool | default(False) and
+            jenkins_smtp_tls | bool | default(True) )
 
 - name: Graphviz (yum)
   when: ansible_pkg_mgr == "yum"
@@ -113,8 +113,8 @@
 
 - name: Configure Jenkins modules
   with_items:
-  - jenkins.model.JenkinsLocationConfiguration.xml
-  - hudson.tasks.Mailer.xml
+  - "jenkins.model.JenkinsLocationConfiguration.xml"
+  - "hudson.tasks.Mailer.xml"
   become: yes
   template: src="{{ item }}.j2" dest="{{ jenkins_home }}/{{ item }}"
             owner=jenkins group=jenkins

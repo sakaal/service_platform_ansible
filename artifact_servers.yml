@@ -1,14 +1,10 @@
----
 # file: artifact_servers.yml
-
 #
 # Software artifact management with Sonatype Nexus OSS
 #
+---
 
 - hosts: artifact_servers
-  vars_files:
-    - /mnt/sensitive_data/etc/ansible/vars/admin_access.yml
-    - /mnt/sensitive_data/etc/ansible/vars/hetzner.yml
   roles:
     - libvirt_guest_network_service
     - ca_trust

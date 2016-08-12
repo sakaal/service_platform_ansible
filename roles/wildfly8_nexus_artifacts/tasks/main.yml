@@ -1,6 +1,4 @@
----
 # file: roles/wildfly8_nexus_artifacts/tasks/main.yml
-
 #
 # Deployment of software artifacts to WildFly 8 Application Servers during
 # configuration management runs
@@ -14,11 +12,12 @@
 # Fetches artifacts from Sonatype Nexus OSS repositories and deploys them to
 # the WildFly 8 Application Server.
 #
+---
 
 - name: Deliver artifacts from Nexus
   with_items: wildfly8_artifacts
-  sudo: yes
-  sudo_user: "{{ wildfly8_user }}"
+  become: yes
+  become_user: "{{ wildfly8_user }}"
   command: url_get dest="/home/{{ wildfly8_user
            }}/{{ item.a }}-{{ item.v }}.{{ item.p }}"
            url_username="{{ delivery_user | mandatory }}"
@@ -31,8 +30,8 @@
 
 - name: Check artifacts status
   with_items: artifacts_delivery.results
-  sudo: yes
-  sudo_user: "{{ wildfly8_user }}"
+  become: yes
+  become_user: "{{ wildfly8_user }}"
   command: chdir="{{ wildfly8_home | mandatory }}"
            {{ wildfly8_cli | mandatory }} --connect --command='deployment-info
            --name={{ item.item.a }}-{{ item.item.v }}.{{ item.item.p }}'
@@ -43,8 +42,8 @@
 - name: Deploy artifacts to WildFly 8
   with_items: component_status.results
   when: item|changed
-  sudo: yes
-  sudo_user: "{{ wildfly8_user }}"
+  become: yes
+  become_user: "{{ wildfly8_user }}"
   command: chdir="{{ wildfly8_home | mandatory }}"
            {{ wildfly8_cli | mandatory }} --connect --command='deploy
            /home/{{ wildfly8_user }}/{{ item.item.item.a }}-{{ item.item.item.v

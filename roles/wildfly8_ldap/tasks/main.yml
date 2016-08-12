@@ -1,0 +1,56 @@
+# file: roles/wildfly8_ldap/tasks/main.yml
+#
+# WildFly 8 LDAP authentication
+#
+# TODO: <jaas name="ldap-web-policy"/> https://developer.jboss.org/message/881598
+# https://developer.jboss.org/wiki/LDAPSecurityRealmExamples
+# https://docs.jboss.org/author/display/AS71/CLI+Recipes
+# http://jbossdivers.wordpress.com/2012/02/12/utilizando-ldap-login-module-no-jboss-as-7-1/
+# org.jboss.security.negotiation.AdvancedLdapLoginModule
+#
+---
+
+- name: Check LDAP security domain
+  become: yes
+  become_user: "{{ wildfly8_user | mandatory }}"
+  command: chdir="{{ wildfly8_home | mandatory }}"
+           {{ wildfly8_cli | mandatory }} --connect
+           --command='/subsystem=security:read-children-names(child-type=security-domain)'
+  register: wildfly8_security_domains_result
+
+- name: LDAP security domain
+  when: not 'ldap-web-policy' in wildfly8_security_domains_result.stdout
+  become: yes
+  become_user: "{{ wildfly8_user }}"
+  command: chdir="{{ wildfly8_home | mandatory }}"
+           {{ wildfly8_cli | mandatory }} --connect
+           --command='/subsystem=security/security-domain=ldap-web-policy:add(cache-type=default)'
+
+- name: AdvancedLdap login module
+  when: not 'ldap-web-policy' in wildfly8_security_domains_result.stdout
+  become: yes
+  become_user: "{{ wildfly8_user }}"
+  command: chdir="{{ wildfly8_home | mandatory }}"
+           {{ wildfly8_cli | mandatory }} --connect
+           --command='/subsystem=security/security-domain=ldap-web-policy/authentication=classic:add(
+           login-modules=[ { "code" => "AdvancedLdap", "flag" => "required",
+           "module-options" => [
+           "password-stacking" => "useFirstPass",
+           "java.naming.provider.url" => "ldap://ldap1-dev.h.jutska.com:389",
+           "bindAuthentication" => "simple",
+           "bindDN" => \"{{ ldap_bind_dn | mandatory }}\",
+           "bindCredential" => \"{{ ldap_bind_credential | mandatory }}\",
+           "jaasSecurityDomain" => \"jboss.security:service=JaasSecurityDomain,domain=jmx-console\",
+           "baseCtxDN" => \"ou=people,{{ ldap_bind_suffix | mandatory }}\",
+           "baseFilter" => "\\\(uid=\\{0\\}\\\)",
+           "allowEmptyPassword" => "false",
+           "rolesCtxDN" => \"ou=groups,{{ ldap_bind_suffix | mandatory }}\",
+           "roleFilter" => "\\\(member=\\{1\\}\\\)",
+           "roleAttributeID" => "cn",
+           "roleAttributeIsDN" => "true",
+           "roleNameAttributeID" => "cn",
+           "recurseRoles" => "true",
+           "searchScope" => "SUBTREE_SCOPE",
+           "searchTimeLimit" => "5000"
+           ] } ]
+           )'

@@ -1,15 +1,14 @@
----
 # file: roles/backup_tools
-
 #
 # Tools for configuring automated backups
 #
+---
   
 - name: Backup tools
   with_items:
   - lftp
-  sudo: yes
-  yum: name={{ item }}
+  become: yes
+  yum: name="{{ item }}"
 
 - name: LFTP settings directory
   file: path="~/.lftp" state=directory

@@ -1,24 +1,20 @@
----
 # file: mail_servers.yml
-
 #
 # Postfix MTA and MSA, TLS, Amavisd-new, ClamAV and database updates,
 # MX records, firewall, and Alpine email client
 #
+---
 
 - hosts: mail_servers
-  sudo: yes
-  vars_files:
-    - /mnt/sensitive_data/etc/ansible/vars/admin_access.yml
-    - /mnt/sensitive_data/etc/ansible/vars/hetzner.yml
+  become: yes
   roles:
-    - ca_trust
-    - dmz
-    - libvirt_guest_network_service
-    - transport_layer_security
-    - ../../service_commons_ansible/roles/updates_auto
-    - access_control
-    - postfix_standalone
-    - dynect_dane_records
-    - dynect_mx_records
-    - alpine
+  - ca_trust
+  - dmz
+  - libvirt_guest_network_service
+  - transport_layer_security
+  - ../../service_commons_ansible/roles/updates_auto
+  - access_control
+  - postfix_standalone
+  - dynect_dane_records
+  - dynect_mx_records
+  - alpine

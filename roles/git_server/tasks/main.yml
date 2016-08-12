@@ -1,8 +1,8 @@
----
 # file: roles/git_server/tasks/main.yml
 #
 # Git bare repository server
 #
+---
 
 - name: Packages (yum)
   when: ansible_pkg_mgr == "yum"

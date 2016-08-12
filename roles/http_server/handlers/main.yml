@@ -1,6 +1,6 @@
----
 # file: roles/http_server/handlers/main.yml
+---
 
 - name: Restart the HTTP server
-  sudo: yes
+  become: yes
   service: name=httpd state=restarted

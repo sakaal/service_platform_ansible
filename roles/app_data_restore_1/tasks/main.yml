@@ -83,7 +83,7 @@
 - name: Set the safe password file permissions locally
   with_items: app_data_pw_files.results
   when: not item|skipped
-  sudo: yes
+  become: yes
   file: path="/mnt/sensitive_data/archives/restore/{{ item.stdout }}" 
         owner=root group=wheel mode=640
 

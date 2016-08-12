@@ -1,12 +1,11 @@
----
 # file: roles/libvirt_guest_network_service/tasks/main.yml
-
 #
 # Disable NetworkManager
 #
+---
 
 - name: Remove NetworkManager
-  sudo: yes
+  become: yes
   yum: name=NetworkManager state=absent
   register: NetworkManager
 
@@ -15,7 +14,7 @@
   with_items:
   - NetworkManager-wait-online.service
   - NetworkManager.service
-  sudo: yes
+  become: yes
   shell: systemctl stop {{ item }}
   failed_when: False
 
@@ -24,14 +23,14 @@
   with_items:
   - NetworkManager-wait-online.service
   - NetworkManager.service
-  sudo: yes
+  become: yes
   shell: systemctl disable {{ item }}
 
 - name: Network interfaces NM_CONTROLLED=no
   with_items:
   - eth0
   - eth1
-  sudo: yes
+  become: yes
   lineinfile:
     dest="/etc/sysconfig/network-scripts/ifcfg-{{ item }}"
     regexp="^NM_CONTROLLED="
@@ -42,13 +41,17 @@
   with_items:
   - eth0
   - eth1
-  sudo: yes
+  become: yes
   lineinfile:
     dest="/etc/sysconfig/network-scripts/ifcfg-{{ item }}"
     regexp="^ONBOOT="
     line="ONBOOT=yes"
   failed_when: no
 
+- name: Start the network service
+  become: yes
+  service: name=network state=started
+
 - name: Enable the network service
-  sudo: yes
-  service: name=network enabled=yes state=started
+  become: yes
+  service: name=network enabled=yes

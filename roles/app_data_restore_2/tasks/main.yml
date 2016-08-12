@@ -1,32 +1,31 @@
----
 # file: roles/app_data_restore_2/tasks/main.yml
-
 #
 # Copies the safe password files and client keys to removable media
 # to be taken to a secure offline host, where they can be safely opened
 # and encrypted back to the client keys.
 #
+---
 
 - name: Local directory for archive keys 
   run_once: yes
-  sudo: yes
+  become: yes
   local_action: file path=/etc/pki/archives/client state=directory 
 
 - name: Collect public keys from the backup clients
-  sudo: yes
+  become: yes
   fetch:
     src:  "/etc/pki/archives/client/{{ inventory_hostname }}_backup-client-public.pem"
     dest: "{{ inventory_hostname }}_backup-client-public.pem"
     flat: yes
 
 - name: Move the keys in place locally
-  sudo: yes
+  become: yes
   local_action: command mv -f
                 "{{ inventory_hostname }}_backup-client-public.pem"
                 /etc/pki/archives/client/
 
 - name: Set the key permissions locally
-  sudo: yes
+  become: yes
   local_action: file state=file owner=root group=root mode=664
                 path="/etc/pki/archives/client/{{ inventory_hostname }}_backup-client-public.pem"
 

@@ -1,9 +1,9 @@
----
 # file: roles/http_server_content/tasks/main.yml
+---
 
 - name: Website document directories
   with_items: "{{ websites | default([]) }}"
-  sudo: yes
+  become: yes
   file: state=directory dest=/var/www/{{ item }}/htdocs
 
 #

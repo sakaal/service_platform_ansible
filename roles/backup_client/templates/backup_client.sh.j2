@@ -63,9 +63,16 @@ su - ${BACKUP_USER} -c "rm -f ~/.lftp/*_log"
 LFTP="open -u {{ backup_onsite_account | mandatory }}, {{ backup_onsite_protocol | mandatory }}://{{ backup_onsite_service | mandatory }};"
 REMOTE_DIR="`date -u +"%Y-%m"`/`hostname`${clientdir}"
 
+MONTH_RETAIN="`date -u +"%Y-%m" --date="3 months ago"`"
+MONTH_DELETE="`date -u +"%Y-%m" --date="4 months ago"`"
+
 nice -n 19 su - ${BACKUP_USER} -c "lftp -c '${LFTP}\
  mkdir -p ${REMOTE_DIR};\
  mirror --Remove-source-files -R ${OUTBOUND_QUEUE} ${REMOTE_DIR}'\
+ > /dev/null 2>&1"
+
+nice -n 19 su - ${BACKUP_USER} -c "lftp -c '${LFTP}\
+ ls ${MONTH_RETAIN} && rm -r ${MONTH_DELETE};'\
  > /dev/null 2>&1"
 
 #

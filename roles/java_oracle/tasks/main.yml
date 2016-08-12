@@ -1,5 +1,5 @@
----
 # file: roles/java_oracle/tasks/main.yml
+---
 
 - name: Download the Oracle Java archive locally
   run_once: yes
@@ -40,17 +40,17 @@
   with_items:
   - "{{ java_oracle_archive }}"
   - "{{ java_oracle_jce_archive }}"
-  sudo: yes
+  become: yes
   copy: src="{{ item }}" dest="/opt/{{ item }}"
 
 - name: Install the Oracle Java RPM
-  sudo: yes
+  become: yes
   command: chdir=/opt creates="{{ java_oracle_home | mandatory }}"
            rpm -U {{ java_oracle_archive }}
   register: java_oracle_installed
 
 - name: Extract the JCE policy archive
-  sudo: yes
+  become: yes
   unarchive: src="/opt/{{ java_oracle_jce_archive }}"
              dest=/opt
              creates="/opt/{{ java_oracle_jce_dir | mandatory }}"
@@ -61,16 +61,16 @@
   with_items:
   - local_policy.jar
   - US_export_policy.jar
-  sudo: yes
+  become: yes
   command: chdir="/opt/{{ java_oracle_jce_dir }}" rsync --checksum
            "{{ item }}" "{{ java_oracle_home }}/jre/lib/security"
 
 - name: Set Oracle java as default
   when: java_oracle_installed|changed and ansible_distribution == 'Fedora'
-  sudo: yes
+  become: yes
   command: alternatives --set java "{{ java_oracle_home }}/bin/java"
 
 - name: Set Oracle jar as default
   when: java_oracle_installed|changed and ansible_distribution == 'Fedora'
-  sudo: yes
+  become: yes
   command: alternatives --set jar "{{ java_oracle_home }}/bin/jar"

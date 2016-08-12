@@ -1,6 +1,4 @@
----
 # file: roles/ldap_server/tasks/main.yml
-
 #
 # OpenLDAP directory service
 #
@@ -16,12 +14,13 @@
 #
 #ldap_root_password: "{SSHA}8wEXAMPLE/vv04kIDUMMY7iYFDy3jhEJ"
 #
+---
 
 - name: Required packages
   with_items:
   - openldap-servers
   - openldap-clients
-  sudo: yes
+  become: yes
   yum: name={{ item }}
   register: ldap_installation
 
@@ -30,7 +29,7 @@
   with_items:
   - "{1}monitor"
   - "{2}hdb"
-  sudo: yes
+  become: yes
   file: path=/etc/openldap/slapd.d/cn=config/olcDatabase={{ item }}.ldif
         state=absent
 
@@ -64,13 +63,13 @@
                            }}"
 
 - name: Enable the Stand-alone LDAP daemon
-  sudo: yes
+  become: yes
   service: name=slapd enabled=yes state=started
 
 - name: Calculate x509 hashes for the CA certificate
   with_items:
   - "{{ tls_certificate_chain_file | mandatory }}"
-  sudo: yes
+  become: yes
   command: openssl x509 -noout -hash -in /etc/pki/tls/certs/{{ item }}
   register: ldap_ca_x509_hash
   changed_when: False
@@ -78,13 +77,13 @@
 - name: Manage x509 hashes in the CA certificates directory
   with_items: ldap_ca_x509_hash.results | default([])
   when: item.rc == 0 and item.stdout is defined
-  sudo: yes
+  become: yes
   command: chdir=/etc/openldap/certs creates={{ item.stdout }}.0
            ln -s /etc/pki/tls/certs/{{ item.item }} {{ item.stdout }}.0
   notify: Restart the directory server
 
 - name: Secure LDAPS port listener
-  sudo: yes
+  become: yes
   lineinfile:
     dest: /etc/sysconfig/slapd
     regexp: "^#?\\s*SLAPD_URLS=.*$"
@@ -99,7 +98,7 @@
   - domain
   - people
   - account_wildfly
-  sudo: yes
+  become: yes
   template: src={{ item }}.ldif.j2 dest=~/{{ item }}.ldif mode=640
 
 - name: LDAP client command-line options
@@ -107,7 +106,7 @@
     ldap_opts: "-Y external -H ldapi:///"
 
 - name: Configure TLS
-  sudo: yes
+  become: yes
   command: ldapmodify {{ ldap_opts }} -f ~/tls.ldif
 
 #
@@ -119,7 +118,7 @@
   - cosine
   - nis
   - inetorgperson
-  sudo: yes
+  become: yes
   command: ldapsearch -ALLLQ {{ ldap_opts }} -b "cn=config"
            "cn={*}{{ item }}" dn
   register: ldap_schema_loaded
@@ -129,7 +128,7 @@
 - name: Configure LDAP schemas
   with_items: ldap_schema_loaded.results | default([])
   when: item|changed
-  sudo: yes
+  become: yes
   command: ldapadd {{ ldap_opts }} -f /etc/openldap/schema/{{ item.item }}.ldif
 
 #
@@ -140,7 +139,7 @@
   with_items:
   - monitor
   - hdb
-  sudo: yes
+  become: yes
   command: ldapsearch -ALLLQ {{ ldap_opts }} -b "cn=config"
            "olcSuffix={{ ldap_olc_suffix }}"
   register: ldap_db_exists
@@ -149,11 +148,11 @@
 - name: Add the databases
   with_items: ldap_db_exists.results | default([])
   when: item|changed
-  sudo: yes
+  become: yes
   command: ldapadd {{ ldap_opts }} -f ~/{{ item.item }}.ldif
 
 - name: Check if the domain exists
-  sudo: yes
+  become: yes
   command: slapcat -b "{{ ldap_olc_suffix }}" -a "o={{ ldap_dc_dom }}"
   register: ldap_domain_exists
   changed_when: ldap_domain_exists.rc == 0 and
@@ -162,7 +161,7 @@
                ldap_domain_exists.stderr.strip() != ""
 
 - name: Check if the people organizational unit exists
-  sudo: yes
+  become: yes
   command: slapcat -b "{{ ldap_olc_suffix }}" -a "ou=people"
   register: ldap_people_exist
   changed_when: ldap_people_exist.rc == 0 and
@@ -173,32 +172,32 @@
 - name: Stop the Stand-alone LDAP daemon
   when: ldap_domain_exists|changed or
         ldap_people_exist|changed
-  sudo: yes
+  become: yes
   service: name=slapd state=stopped
 
 - name: Add the domain
   when: ldap_domain_exists|changed
-  sudo: yes
+  become: yes
   command: slapadd -b "{{ ldap_olc_suffix }}" -l ~/domain.ldif
 
 - name: Add the organizational unit for people
   when: ldap_people_exist|changed
-  sudo: yes
+  become: yes
   command: slapadd -b "{{ ldap_olc_suffix }}" -l ~/people.ldif
 
 - name: Database configuration permissions
-  sudo: yes
+  become: yes
   file: state=directory recurse=yes path=/var/lib/ldap
         owner=ldap group=ldap
 
 - name: Start the Stand-alone LDAP daemon
   when: ldap_domain_exists|changed or
         ldap_people_exist|changed
-  sudo: yes
+  become: yes
   service: name=slapd state=started
 
 - name: Check if the wildfly account exists
-  sudo: yes
+  become: yes
   command: ldapsearch -ALLLQ {{ ldap_opts }}
            -b "ou=people,{{ ldap_olc_suffix }}" "uid=wildfly" dn
   register: ldap_wildfly_exists
@@ -209,7 +208,7 @@
 
 - name: Add the wildfly account
   when: ldap_wildfly_exists|changed
-  sudo: yes
+  become: yes
   command: ldapadd {{ ldap_opts }} -f ~/account_wildfly.ldif
 
 #
@@ -224,7 +223,7 @@
     val: "ldap://{{ inventory_hostname | mandatory }}"
   - key: "TLS_CIPHER_SUITE"
     val: "{{ ldap_tls_cipher_suite | mandatory }}"
-  sudo: yes
+  become: yes
   lineinfile:
     dest: "/etc/openldap/ldap.conf"
     backrefs: yes
@@ -235,14 +234,14 @@
 # Firewall
 #
 
-- sudo: yes
+- become: yes
   service: name=firewalld state=started
 
 - name: Query if directory services have been added to the firewall zone
   with_items:
   - ldap
   - ldaps
-  sudo: yes
+  become: yes
   command: firewall-cmd --zone={{ firewall_zone | mandatory }}
            --query-service={{ item }}
   register: zone_ldap
@@ -252,7 +251,7 @@
 - name: Open the firewall for directory services
   with_items: zone_ldap.results | default([])
   when: item|changed
-  sudo: yes
+  become: yes
   command: firewall-cmd --permanent --zone={{ firewall_zone | mandatory }}
            --add-service={{ item.item }}
   notify: Restart firewall

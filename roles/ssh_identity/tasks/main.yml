@@ -1,13 +1,12 @@
----
 # file: roles/ssh_identity/tasks/main.yml
-
 #
 # Deploy SSH identities
 #
+---
 
 - name: SSH access keys
   with_fileglob:
   - "/mnt/sensitive_data/home/{{ ssh_user|mandatory }}/.ssh/*"
-  sudo: yes
+  become: yes
   copy: src="{{ item }}" dest="/home/{{ ssh_user }}/.ssh/"
-        owner={{ ssh_user }} group={{ ssh_user }} mode=600
+        owner="{{ ssh_user }}" group="{{ ssh_user }}" mode=600

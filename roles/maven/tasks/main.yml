@@ -1,17 +1,16 @@
----
 # file: roles/maven/tasks/main.yml
-
 #
 # Apache Maven
 #
+---
 
 - name: Packages
   with_items:
   - maven
-  sudo: yes
-  yum: name={{ item }}
+  become: yes
+  yum: name="{{ item }}"
 
 - name: Maven options
-  sudo: yes
+  become: yes
   copy: src=maven.sh dest=/etc/profile.d/maven.sh
         owner=root group=root mode=0644

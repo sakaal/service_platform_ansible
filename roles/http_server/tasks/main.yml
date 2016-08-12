@@ -1,8 +1,8 @@
----
 # file: roles/http_server/tasks/main.yml
+---
 
 - name: Apache HTTP Server
-  sudo: yes
+  become: yes
   yum: name=httpd
 
 #
@@ -28,28 +28,28 @@
   set_fact: http_server_name="{{ ansible_fqdn | mandatory }}"
 
 - name: HTTP server name
-  sudo: yes
+  become: yes
   lineinfile: dest=/etc/httpd/conf/httpd.conf
               regexp='^\s*ServerName\s'
               line="ServerName {{ http_server_name | mandatory }}:80"
               insertafter='^#\s*ServerName'
 
 - name: HTTP server administrator public email address conforming to RFC 2142
-  sudo: yes
+  become: yes
   lineinfile: dest=/etc/httpd/conf/httpd.conf
               regexp='^\s*ServerAdmin\s'
               line="ServerAdmin webmaster@{{ public_dns_zone }}"
               insertafter='^#\s*ServerAdmin'
 
 - name: HTTP server document root
-  sudo: yes
+  become: yes
   lineinfile: dest=/etc/httpd/conf/httpd.conf
               regexp='^\s*DocumentRoot\s'
               line="DocumentRoot "/var/www/{{ http_server_name }}/htdocs""
               insertafter='^#\s*DocumentRoot'
 
 - name: Query if the HTTP service has been added to the firewall zone
-  sudo: yes
+  become: yes
   command: firewall-cmd --zone={{ firewall_zone | mandatory }}
            --query-service=http
   register: zone_http
@@ -58,7 +58,7 @@
 
 - name: Open the firewall for the HTTP service
   when: zone_http|changed
-  sudo: yes
+  become: yes
   command: firewall-cmd --permanent --zone={{ firewall_zone | mandatory }}
            --add-service=http
   notify: Restart firewalld

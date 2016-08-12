@@ -1,14 +1,13 @@
----
 # file: roles/ca_trust
-
 #
 # Add root certificates in the simple trust anchors subdirectory.
 #
+---
   
 - name: Add Certificate Authority (CA) root certificates
   when: trusted_ca_certificates is defined
-  with_items: trusted_ca_certificates|default([])
-  sudo: yes
+  with_items: "{{ trusted_ca_certificates|default([]) }}"
+  become: yes
   get_url: url={{ item.url | mandatory }}
            dest=/etc/pki/ca-trust/source/anchors/{{ item.filename }}
            sha256sum={{ item.sha256sum | mandatory }}
@@ -17,8 +16,8 @@
 
 - name: Certificate Authority (CA) intermediate certificates
   when: intermediate_ca_certificates is defined
-  with_items: intermediate_ca_certificates|default([])
-  sudo: yes
+  with_items: "{{ intermediate_ca_certificates|default([]) }}"
+  become: yes
   get_url: url={{ item.url | mandatory }}
            dest=/etc/pki/tls/certs/{{ item.filename }}
            sha256sum={{ item.sha256sum | mandatory }}

@@ -1,6 +1,4 @@
----
 # file: roles/diaspora_pod/tasks/main.yml
-
 #
 # A Diaspora pod on CentOS 7 with PostgreSQL
 #
@@ -12,6 +10,7 @@
 # a robust solution as it stands today.
 # However, this is open source so feel free to make it better!
 #
+---
 
 - name: Required packages
   with_items:
@@ -31,7 +30,7 @@
   - ImageMagick
   - nodejs
   - postgresql-devel
-  sudo: yes
+  become: yes
   yum: name="{{ item }}"
 
 #
@@ -40,16 +39,16 @@
 - name: Other packages
   with_items:
   - incron
-  sudo: yes
+  become: yes
   yum: name="{{ item }}"
 
 - name: Create the Diaspora user account
-  sudo: yes
+  become: yes
   user: name={{ diaspora_user | mandatory }} comment="Diaspora" shell=/bin/bash
 
 - name: Clone the Diaspora source repository master branch
-  sudo: yes
-  sudo_user: "{{ diaspora_user }}"
+  become: yes
+  become_user: "{{ diaspora_user }}"
   command: chdir="/home/{{ diaspora_user }}" creates="diaspora" 
            git clone https://github.com/diaspora/diaspora.git diaspora
   register: diaspora_cloned
@@ -60,8 +59,8 @@
 #
 - name: Get the latest version of Diaspora
   when: diaspora_cloned|skipped
-  sudo: yes
-  sudo_user: "{{ diaspora_user }}"
+  become: yes
+  become_user: "{{ diaspora_user }}"
   shell: chdir="{{ diaspora_dir }}"
          git fetch --all; git reset --hard origin/master
   ignore_errors: yes
@@ -71,45 +70,45 @@
 # D39DC0E3: public key "Michal Papis (RVM signing) <mpapis@gmail.com>"
 #
 - name: Check the GPG public key of Michal Papis
-  sudo: yes
-  sudo_user: "{{ diaspora_user }}"
+  become: yes
+  become_user: "{{ diaspora_user }}"
   command: gpg2 --list-public-keys
   register: gpg_public_keys
   changed_when: not "D39DC0E3" in gpg_public_keys.stdout
 
 - name: GPG public key of Michal Papis
   when: gpg_public_keys|changed
-  sudo: yes
-  sudo_user: "{{ diaspora_user }}"
+  become: yes
+  become_user: "{{ diaspora_user }}"
   shell: gpg2 --keyserver hkp://keys.gnupg.net --recv-keys D39DC0E3
 
 #
 # TODO: Improve security with how RVM is installed?
 #
 - name: Ruby Version Manager (RVM)
-  sudo: yes
-  sudo_user: "{{ diaspora_user }}"
+  become: yes
+  become_user: "{{ diaspora_user }}"
   shell: creates="/home/{{ diaspora_user }}/.rvm"
          curl -L https://get.rvm.io | bash -s stable
 
 - name: Load the user's .profile with Bash
-  sudo: yes
-  sudo_user: "{{ diaspora_user }}"
+  become: yes
+  become_user: "{{ diaspora_user }}"
   lineinfile: dest="/home/{{ diaspora_user }}/.bash_profile"
               regexp="/.profile\s*$" line="source ~/.profile"
               insertafter="^.*PATH.*$"
 
 - name: Install the rvm command for Bash
-  sudo: yes
-  sudo_user: "{{ diaspora_user }}"
+  become: yes
+  become_user: "{{ diaspora_user }}"
   lineinfile: dest="/home/{{ diaspora_user }}/.bash_profile"
               regexp="^.*rvm/scripts/rvm.*source.*rvm/scripts/rvm.*$"
               line='[[ -s "$HOME/.rvm/scripts/rvm" ]] && source "$HOME/.rvm/scripts/rvm"'
               insertafter="^.*PATH.*$"
 
 - name: Install Ruby (This may take a while...)
-  sudo: yes
-  sudo_user: "{{ diaspora_user }}"
+  become: yes
+  become_user: "{{ diaspora_user }}"
   shell: bash -lc "rvm install 2.0"
   register: ruby_install
   changed_when: ruby_install.stderr is not defined
@@ -119,8 +118,8 @@
   with_items:
   - "database"
   - "diaspora"
-  sudo: yes
-  sudo_user: "{{ diaspora_user }}"
+  become: yes
+  become_user: "{{ diaspora_user }}"
   command: chdir="{{ diaspora_dir }}/config"
            creates="{{ item }}.yml"
            cp "{{ item }}.yml.example" "{{ item }}.yml"
@@ -130,79 +129,79 @@
   - "^\\s*host:.+localhost"
   - "^\\s*username:.+postgres\\s*$"
   - "^\\s*password:.{0,5}$"
-  sudo: yes
-  sudo_user: "{{ diaspora_user }}"
+  become: yes
+  become_user: "{{ diaspora_user }}"
   lineinfile: dest="{{ diaspora_dir }}/config/database.yml"
               regexp="{{ item }}"
               state=absent
 
 - name: Comment out MySQL
-  sudo: yes
-  sudo_user: "{{ diaspora_user }}"
+  become: yes
+  become_user: "{{ diaspora_user }}"
   lineinfile: >
               dest="{{ diaspora_dir }}/config/database.yml"
               regexp="^\s+#?<<:\s+\*mysql\s*$"
               line="  #<<: *mysql"
 
 - name: Uncomment PostgreSQL
-  sudo: yes
-  sudo_user: "{{ diaspora_user }}"
+  become: yes
+  become_user: "{{ diaspora_user }}"
   lineinfile: >
               dest="{{ diaspora_dir }}/config/database.yml"
               regexp="^\s+#?<<:\s+\*postgres\s*$"
               line="  <<: *postgres"
 
 - name: PostgreSQL host
-  sudo: yes
-  sudo_user: "{{ diaspora_user }}"
+  become: yes
+  become_user: "{{ diaspora_user }}"
   lineinfile: >
               dest="{{ diaspora_dir }}/config/database.yml"
               insertbefore="^\s+port:\s+5432\s*$"
               line="  host: {{ diaspora_db_host|mandatory }}"
 
 - name: PostgreSQL username
-  sudo: yes
-  sudo_user: "{{ diaspora_user }}"
+  become: yes
+  become_user: "{{ diaspora_user }}"
   lineinfile: >
               dest="{{ diaspora_dir }}/config/database.yml"
               insertafter="^\s+port:\s+5432\s*$"
               line="  username: {{ diaspora_db_username|mandatory }}"
 
 - name: PostgreSQL password
-  sudo: yes
-  sudo_user: "{{ diaspora_user }}"
+  become: yes
+  become_user: "{{ diaspora_user }}"
   lineinfile: >
               dest="{{ diaspora_dir }}/config/database.yml"
               insertafter="^\s+username:\s+{{ diaspora_db_username }}\s*$"
               line='  password: "{{ diaspora_db_password|mandatory }}"'
 
 - name: Public URI
-  sudo: yes
-  sudo_user: "{{ diaspora_user }}"
+  become: yes
+  become_user: "{{ diaspora_user }}"
   lineinfile: >
               dest="{{ diaspora_dir }}/config/diaspora.yml"
               insertafter="^\s+#url:.*https?://example.org/.*$"
               line='    url: "https://{{ public_hostname | mandatory }}/"'
 
 - name: Certificate Authorities (CAs)
-  sudo: yes
-  sudo_user: "{{ diaspora_user }}"
+  become: yes
+  become_user: "{{ diaspora_user }}"
   lineinfile: >
               dest="{{ diaspora_dir }}/config/diaspora.yml"
               insertafter="^\s+#certificate_authorities:.*$"
               line='    certificate_authorities: "/etc/pki/tls/certs/ca-bundle.crt"'
 
 - name: Rails environment
-  sudo: yes
-  sudo_user: "{{ diaspora_user }}"
+  become: yes
+  become_user: "{{ diaspora_user }}"
   lineinfile: >
               dest="{{ diaspora_dir }}/config/diaspora.yml"
               insertafter="^\s+#rails_environment:.*$"
               line='    rails_environment: "production"'
 
 - name: Bundle Ruby libraries (This may take a while...)
-  sudo: yes
-  sudo_user: "{{ diaspora_user }}"
+  become: yes
+  become_user: "{{ diaspora_user }}"
   shell: chdir="{{ diaspora_dir }}"
          bash -lc "bundle install --without test development"
   environment:
@@ -218,8 +217,8 @@
 # the schema. 
 #
 - name: Database setup
-  sudo: yes
-  sudo_user: "{{ diaspora_user }}"
+  become: yes
+  become_user: "{{ diaspora_user }}"
   shell: chdir="{{ diaspora_dir }}"
          bash -lc "bundle exec rake db:schema:load"
   environment:
@@ -232,15 +231,15 @@
                in diaspora_database_setup.stderr)
 
 - name: Precompile assets
-  sudo: yes
-  sudo_user: "{{ diaspora_user }}"
+  become: yes
+  become_user: "{{ diaspora_user }}"
   shell: chdir="{{ diaspora_dir }}"
          bash -lc "bundle exec rake assets:precompile"
   environment:
     DB: postgres
 
 - name: Enable the Redis persistent key-value database service
-  sudo: yes
+  become: yes
   service: name=redis enabled=yes state=started
 
 #
@@ -250,15 +249,15 @@
 # Once the migration has completed, the secret_token option can be removed.
 #
 - name: Change back to Rails 3 secret token
-  sudo: yes
-  sudo_user: "{{ diaspora_user }}"
+  become: yes
+  become_user: "{{ diaspora_user }}"
   lineinfile: dest="{{ diaspora_dir }}/config/initializers/secret_token.rb"
               backrefs=yes
               regexp="^Diaspora::Application.config.secret_key_base\s+=\s+(.*)$"
               line="Diaspora::Application.config.secret_token = \1"
 
 - name: System V init script
-  sudo: yes
+  become: yes
   template: src="diaspora.j2" dest="/etc/init.d/diaspora"
             owner=root group=root mode=755
 
@@ -269,26 +268,26 @@
 #
 
 - name: diaspora_user bin directory
-  sudo: yes
-  sudo_user: "{{ diaspora_user }}"
+  become: yes
+  become_user: "{{ diaspora_user }}"
   file: state=directory dest="/home/{{ diaspora_user }}/bin"
 
 - name: Directory processing script
-  sudo: yes
-  sudo_user: "{{ diaspora_user }}"
+  become: yes
+  become_user: "{{ diaspora_user }}"
   template: src="scan_uploads.sh.j2"
             dest="/home/{{ diaspora_user }}/bin/diaspora_scan_uploads"
             mode=750
 
 - name: Image transfer script
-  sudo: yes
-  sudo_user: "{{ diaspora_user }}"
+  become: yes
+  become_user: "{{ diaspora_user }}"
   template: src="transfer_image.sh.j2"
             dest="/home/{{ diaspora_user }}/bin/diaspora_transfer_image"
             mode=750
 
 - name: Incrontab to monitor uploads/images
-  sudo: yes
+  become: yes
   template: src="diaspora_uploads.incrontab.j2"
             dest="/etc/incron.d/diaspora_uploads"
             mode=644
@@ -299,7 +298,7 @@
   service: name=incrond enabled=yes state=started
 
 - name: Make sure that the firewall is up
-  sudo: yes
+  become: yes
   service: name=firewalld enabled=yes state=started
 
 #
@@ -307,7 +306,7 @@
 # supposed to be running behind a proxy.
 #
 - name: Open the firewall for Diaspora
-  sudo: yes
+  become: yes
   command: firewall-cmd --permanent --add-port=3000/tcp
   notify:
   - Reload firewall
@@ -333,19 +332,19 @@
 #
 
 - name: Custom splash page
-  sudo: yes
-  sudo_user: "{{ diaspora_user }}"
+  become: yes
+  become_user: "{{ diaspora_user }}"
   template: src="_show.html.haml.j2"
             dest="{{ diaspora_dir }}/app/views/home/_show.html.haml"
 
 - name: Custom mobile splash page
-  sudo: yes
-  sudo_user: "{{ diaspora_user }}"
+  become: yes
+  become_user: "{{ diaspora_user }}"
   template: src="_show.html.haml.j2"
             dest="{{ diaspora_dir }}/app/views/home/_show.mobile.haml"
   notify:
   - Restart Diaspora
 
 - name: Enable the diaspora service
-  sudo: yes
+  become: yes
   service: name=diaspora enabled=yes state=started

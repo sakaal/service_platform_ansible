@@ -1,9 +1,8 @@
----
 # file: roles/postgresql/tasks/main.yml
-
 #
 # PostgreSQL relational database management system (RDBMS)
 #
+---
 
 - name: PostgreSQL server and adapter packages
   with_items:
@@ -57,7 +56,7 @@
 - name: PostgreSQL configuration
   with_items:
   - key: listen_addresses
-    val: "\\'{{ postgresql_listen | mandatory }},localhost\\'"
+    val: "'{{ postgresql_listen | mandatory }},localhost'"
   - key: max_connections
     val: 40
   - key: shared_buffers
@@ -80,11 +79,14 @@
   notify:
   - Restart PostgreSQL
 
+- name: Start the PostgreSQL service
+  service: name=postgresql state=started
+
 - name: Enable the PostgreSQL service
-  service: name=postgresql enabled=yes state=started
+  service: name=postgresql enabled=yes
 
 - name: Open the internal firewall for PostgreSQL
-  sudo: yes
+  become: yes
   command: firewall-cmd --permanent --zone=internal --add-service=postgresql
-  notify:
-  - Reload firewall
+#  notify:
+#  - Reload firewall

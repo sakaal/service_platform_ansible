@@ -20,5 +20,5 @@
   service: name=firewalld state=restarted
 
 - name: Refresh aliases
-  sudo: yes
+  become: yes
   command: newaliases

@@ -1,13 +1,10 @@
----
 # file: wildfly8_servers.yml
-
 #
 # WildFly 8 Java EE Application Servers
 #
+---
 
 - hosts: wildfly8_servers
-  vars_files:
-  - /mnt/sensitive_data/etc/ansible/vars/admin_access.yml
   roles:
   - access_control
   - libvirt_guest_network_service

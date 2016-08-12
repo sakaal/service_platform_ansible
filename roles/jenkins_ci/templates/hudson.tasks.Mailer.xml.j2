@@ -6,7 +6,7 @@
   <hudsonUrl>https://{{ public_hostname | mandatory }}/</hudsonUrl>
   <smtpAuthUsername>{{ jenkins_smtp_username | mandatory }}</smtpAuthUsername>
   <smtpAuthPassword>{{ jenkins_smtp_password | mandatory }}</smtpAuthPassword>
-  <adminAddress>{{ management_email | mandatory }}</adminAddress>
+  <adminAddress>{{ admin_email | mandatory }}</adminAddress>
   <smtpHost>{{ jenkins_smtp_hostname | mandatory }}</smtpHost>
   <useSsl>{{ 'true' if jenkins_smtp_ssl|default(False)|bool else 'false' }}</useSsl>
   <smtpPort>{{ jenkins_smtp_port | mandatory }}</smtpPort>

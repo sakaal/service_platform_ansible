@@ -1,6 +1,4 @@
----
 # file: roles/sonatype_nexus_oss/tasks/main.yml
-
 #
 # Configuring Sonatype Nexus as a Service
 #
@@ -8,10 +6,11 @@
 #
 # Needs an SMTP service.
 #
+---
 
 - name: Create the Nexus user account
   become: yes
-  user: name={{ nexus_user | mandatory }} comment="Sonatype Nexus OSS"
+  user: name="{{ nexus_user | mandatory }}" comment="Sonatype Nexus OSS"
         shell=/bin/bash generate_ssh_key=yes
         ssh_key_comment={{ nexus_user }}@{{ ansible_fqdn }}_{{
                            ansible_date_time.iso8601 | replace(':', '') }}
@@ -49,7 +48,8 @@
 - name: Extract Sonatype Nexus OSS
   become: yes
   become_user: "{{ nexus_user }}"
-  command: chdir="~{{ nexus_user }}"
+  command: >
+           chdir="~{{ nexus_user }}"
            tar -xvzf {{ nexus_archive }}
            creates="~{{ nexus_user }}/nexus-{{ nexus_version }}"
 
@@ -178,7 +178,7 @@
                nexus_security.stdout.strip() == ""
 
 - name: Control access
-  with_items: nexus_security.results
+  with_items: "{{ nexus_security.results }}"
   when: item|changed
   become: yes
   become_user: "{{ nexus_user }}"
@@ -260,7 +260,7 @@
     xpath: //smtpConfiguration/password/text()
   - value: "{{ nexus_system_email }}"
     xpath: //smtpConfiguration/systemEmailAddress/text()
-  when: item.value.strip() != ""
+  when: (item.value|string).strip() != ""
   become: yes
   become_user: "{{ nexus_user }}"
   command: xmllint --xpath "{{ item.xpath | mandatory }}"
@@ -270,7 +270,7 @@
   failed_when: smtp_config.rc != 0 or smtp_config.stdout.strip() == ""
 
 - name: Set the SMTP configuration
-  with_items: smtp_config.results
+  with_items: "{{ smtp_config.results }}"
   when: item|changed
   become: yes
   become_user: "{{ nexus_user }}"
