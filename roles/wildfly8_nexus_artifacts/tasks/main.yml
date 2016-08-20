@@ -23,7 +23,7 @@
            url_username="{{ delivery_user | mandatory }}"
            url_password="{{ delivery_password | mandatory }}"
            url="{{ nexus_url | mandatory
-           }}/service/local/artifact/maven/redirect?r={{ item.r | mandatory
+           }}/service/local/artifact/maven/content?r={{ item.r | mandatory
            }}&g={{ item.g | mandatory }}&a={{ item.a | mandatory
            }}&v={{ item.v | mandatory }}&p={{ item.p | mandatory }}"
   register: artifacts_delivery
