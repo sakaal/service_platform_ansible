@@ -10,8 +10,12 @@
 
 - name: Create the Nexus user account
   become: yes
-  user: name="{{ nexus_user | mandatory }}" comment="Sonatype Nexus OSS"
-        shell=/bin/bash generate_ssh_key=yes
+  user: name="{{ nexus_user | mandatory }}"
+        comment="Sonatype Nexus OSS"
+        shell=/bin/bash
+        generate_ssh_key=yes
+        ssh_key_bits="{{ ssh_key_bits | default(4096) }}"
+        ssh_key_type="{{ ssh_key_type | default('rsa') }}"
         ssh_key_comment={{ nexus_user }}@{{ ansible_fqdn }}_{{
                            ansible_date_time.iso8601 | replace(':', '') }}
         state=present

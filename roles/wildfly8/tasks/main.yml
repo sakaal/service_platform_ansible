@@ -23,6 +23,8 @@
   user: name={{ wildfly8_user | mandatory }}
         comment="WildFly" shell=/bin/bash
         generate_ssh_key=yes
+        ssh_key_bits="{{ ssh_key_bits | default(4096) }}"
+        ssh_key_type="{{ ssh_key_type | default('rsa') }}"
         ssh_key_comment={{ wildfly8_user }}@{{ ansible_fqdn
                         }}-{{ ansible_date_time.iso8601 }}
 
