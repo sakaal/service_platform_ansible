@@ -33,11 +33,17 @@ for filename in /usr/local/etc/backup_client.d/*.conf; do
         /usr/local/sbin/archive_dir -n "${archive}" -d "${directory}"
     fi
 
-    /usr/local/sbin/archive_encrypt -n "${archive}" -a "${algorithm}"
+    EXITVALUE=$?
+    if [ $EXITVALUE -eq 0 ]; then
+        /usr/local/sbin/archive_encrypt -n "${archive}" -a "${algorithm}"
 
-    mkdir -p ${OUTBOUND_QUEUE}/${name}
-    mv --force --target-directory="${OUTBOUND_QUEUE}/${name}/"\
-     ${name}_*.{pass.safe,${algorithm},sha256}
+        mkdir -p ${OUTBOUND_QUEUE}/${name}
+        mv --force --target-directory="${OUTBOUND_QUEUE}/${name}/"\
+         ${name}_*.{pass.safe,${algorithm},sha256}
+    else
+        echo "Deleting the interrupted archive ${archive}" 1>&2
+        rm --force ${archive}.*gz
+    fi
 )
 done
 
