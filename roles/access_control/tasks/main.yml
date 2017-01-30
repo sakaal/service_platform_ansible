@@ -5,7 +5,7 @@
 ---
 
 - name: User accounts
-  with_items: ssh_access|default([])
+  with_items: "{{ ssh_access | default([]) }}"
   when: item.fullname is defined
   become: yes
   user: name={{ item.user | mandatory }}
@@ -14,11 +14,12 @@
         generate_ssh_key=yes
         ssh_key_bits="{{ ssh_key_bits | default(4096) }}"
         ssh_key_type="{{ ssh_key_type | default('rsa') }}"
-        ssh_key_comment="{{ item.user }}@{{ ansible_fqdn }}-{{ ansible_date_time.iso8601 | replace(':', '') }}"
+        ssh_key_comment="{{ item.user }}@{{ ansible_fqdn
+                         }}-{{ ansible_date_time.iso8601 | replace(':', '') }}"
         state="{{ item.state | default('present') }}"
 
 - name: User groups
-  with_items: ssh_access|default([])
+  with_items: "{{ ssh_access|default([]) }}"
   when: item.groups is defined and
         item.state == 'present'
   become: yes
@@ -27,7 +28,7 @@
         groups="{{ item.groups }}"
 
 - name: User passwords
-  with_items: ssh_access|default([])
+  with_items: "{{ ssh_access|default([]) }}"
   when: item.password is defined and
         item.state == 'present'
   become: yes
@@ -37,10 +38,10 @@
 - name: Authorize SSH keys
   when: ssh_access is defined
   with_subelements:
-  - ssh_access|default([])
+  - "{{ ssh_access | default([]) }}"
   - authorized_keys
   become: yes
   authorized_key: user="{{ item.0.user | mandatory }}"
                   key="{{ item.1.key | mandatory }}"
-                  state="{{ item.1.state | default('present')}}"
+                  state="{{ item.1.state | default('present') }}"
 

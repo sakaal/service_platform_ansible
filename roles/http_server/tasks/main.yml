@@ -64,7 +64,7 @@
   notify: Restart firewalld
 
 - name: Make DNS A records
-  with_items: websites|default([])
+  with_items: "{{ websites | default([]) }}"
   when: dynect_session_result|success and
         public_dns_zone is defined and
         public_ipv4_address is defined
@@ -74,9 +74,9 @@
                 {{ dynect_api_url }}/ARecord/{{ public_dns_zone }}/{{ item }}.
                 -d '{"rdata":{"address":"{{ public_ipv4_address }}"}}'
   register: dynect_result
-  changed_when: (dynect_result.stdout|from_json).status == 'success'
-  failed_when: (dynect_result.stdout|from_json).status != 'success' and
-               not 'duplicate' in (dynect_result.stdout|from_json).msgs[0].INFO
+  changed_when: (dynect_result.stdout | from_json).status == 'success'
+  failed_when: (dynect_result.stdout | from_json).status != 'success' and
+               not 'duplicate' in (dynect_result.stdout | from_json).msgs[0].INFO
 
 - name: Publish DNS zones
   when: dynect_result|changed
