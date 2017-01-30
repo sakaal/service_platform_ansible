@@ -7,7 +7,7 @@
   file: state=directory dest=/var/www/{{ item }}/htdocs
 
 #
-# The Ansible synchronize module does not work well with the custom ssh_config.
+# The Ansible synchronize module does not work well with the custom SSH config.
 # We need to call rsync directly.
 #
 - name: Websites
@@ -15,8 +15,7 @@
   local_action: command rsync --delay-updates -FF --compress
            --recursive --links --perms --exclude=".git/"
            --times --one-file-system
-           --rsh 'ssh -F /mnt/sensitive_data/etc/ssh/ssh_config
-                  -o Port={{ admin_ssh_port|mandatory }}'
+           --rsh 'ssh -F ~/.ssh/config -o Port={{ admin_ssh_port | mandatory }}'
            --rsync-path="sudo rsync" --out-format="<<CHANGED>>%i %n%L"
            "{{ inventory_dir }}/websites/{{ item }}/htdocs/"
            "{{ admin_username|mandatory }}@{{

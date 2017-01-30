@@ -105,7 +105,7 @@ See the [data backup plan](https://github.com/sakaal/service_platform_ansible/wi
 in the wiki.
 
 Set up the backup access credentials in file
-`/mnt/sensitive_data/etc/ansible/vars/hetzner.yml`:
+`~/workspace/com.example_main_ansible/group_vars/all/hetzner.yml`:
 
     #
     # Use the Hetzner Robot web console to order the backup space
@@ -165,11 +165,9 @@ Substitute your service management domain name for `example.com` (and
 1. Confirm that the service infrastructure deployment has previously generated
    appropriate SSH bastion host configuration in:
 
-         /mnt/sensitive_data/etc/ssh/ssh_config
-    * When you run the playbooks from the `service_platform_ansible`
-      directory, Ansible will automatically pick up the SSH bastion
-      host configuration based on the `ansible.cfg` file located in
-      that directory.
+         ~/.ssh/config
+    * When you run the playbooks on the ACS, the SSH client that Ansible uses
+      will automatically read the user's SSH configuration from that file.
 
 1. Deploy public network interfaces:
 
