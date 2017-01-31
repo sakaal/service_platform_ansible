@@ -71,24 +71,32 @@
   when: dynect_session_result|success and
         public_dns_zone is defined and
         public_ipv4_address is defined
-  local_action: uri method=POST
-                url="{{ dynect_api_url }}/ARecord/{{ public_dns_zone | mandatory }}/{{ item }}."
-                HEADER_Content-Type="application/json"
-                HEADER_Auth-Token="{{ dynect_session_token }}"
-                body='{"rdata":{"address":"{{ public_ipv4_address }}"}}'
-                return_content=yes
+  local_action:
+    module: uri
+    method: POST
+    url: "{{ dynect_api_url }}/ARecord/{{ public_dns_zone | mandatory }}/{{ item }}."
+    HEADER_Auth-Token: "{{ dynect_session_token }}"
+    body_format: json
+    body:
+      rdata:
+        address: "{{ public_ipv4_address }}"
+    return_content: yes
   register: dynect_result
-  changed_when: 'success' == dynect_result.json.status
-  failed_when: 'success' != dynect_result.json.status and
+  changed_when: dynect_result.json.status == 'success'
+  failed_when: dynect_result.json.status != 'success' and
                not 'duplicate' in dynect_result.json.msgs[0].INFO
 
 - name: Publish DNS zones
-  local_action: uri method=PUT url="{{ dynect_api_url }}/Zone/{{ public_dns_zone | mandatory }}"
-                HEADER_Content-Type="application/json"
-                HEADER_Auth-Token="{{ dynect_session_token }}"
-                body='{"publish":true}'
-                return_content=yes
+  local_action:
+    module: uri
+    method: PUT
+    url: "{{ dynect_api_url }}/Zone/{{ public_dns_zone | mandatory }}"
+    HEADER_Auth-Token: "{{ dynect_session_token }}"
+    body_format: json
+    body:
+      publish: true
+    return_content: yes
   register: dynect_result
-  changed_when: 'success' == dynect_result.json.status and
+  changed_when: dynect_result.json.status == 'success' and
                 '{{ public_dns_zone }} published' in dynect_result.json.msgs[0].INFO
-  failed_when: 'success' != dynect_result.json.status
+  failed_when: dynect_result.json.status != 'success'

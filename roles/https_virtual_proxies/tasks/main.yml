@@ -32,10 +32,10 @@
   notify: Restart the HTTP server
 
 - name: Virtual HTTPS proxies
-  with_items: virtual_proxies|default([])
+  with_items: "{{ virtual_proxies | default([]) }}"
   become: yes
-  template: src=vhost.conf.j2
-            dest=/etc/httpd/conf.d/{{ item.fqdn }}.conf
+  template: src="vhost.conf.j2"
+            dest="/etc/httpd/conf.d/{{ item.fqdn | mandatory }}.conf"
             owner=root group=root mode=0644
   notify: Restart the HTTP server
 
