@@ -76,10 +76,10 @@ CustomLog logs/{{ item.fqdn }}_ssl_request_log \
 # https://raymii.org/s/tutorials/Strong_SSL_Security_On_Apache2.html
 
 SSLEngine on
-SSLCertificateFile    /etc/pki/tls/certs/_.{{ public_dns_zone | mandatory }}-crt.pem
-SSLCertificateKeyFile /etc/pki/tls/private/_.{{ public_dns_zone | mandatory }}-key.pem
+SSLCertificateFile    {{ tls_certificate_file | mandatory }}
+SSLCertificateKeyFile {{ tls_certificate_key_file | mandatory }}
 {% if tls_certificate_chain_file is defined %}
-SSLCertificateChainFile /etc/pki/tls/certs/{{ tls_certificate_chain_file }}
+SSLCertificateChainFile {{ tls_certificate_chain_file }}
 {% endif %}
 
 SSLProtocol        {{ ([''] + tls_protocols|mandatory|list) | join(' +') +

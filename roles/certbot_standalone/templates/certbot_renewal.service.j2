@@ -1,0 +1,10 @@
+{# file: roles/certbot_standalone/templates/certbot_renewal.service.j2 #}
+[Unit]
+Description=Certbot certificate renewal
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/certbot_renewal
+
+[Install]
+WantedBy=multi-user.target

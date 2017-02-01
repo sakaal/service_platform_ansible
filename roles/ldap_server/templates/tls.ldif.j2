@@ -3,16 +3,16 @@
 dn: cn=config
 changetype: modify
 replace: olcTLSCACertificateFile
-olcTLSCACertificateFile: /etc/pki/tls/certs/{{ tls_certificate_chain_file | mandatory }}
+olcTLSCACertificateFile: {{ tls_certificate_chain_file | mandatory }}
 -
 replace: olcTLSCACertificatePath
 olcTLSCACertificatePath: /etc/openldap/tls
 -
 replace: olcTLSCertificateFile
-olcTLSCertificateFile: /etc/pki/tls/certs/{{ public_hostname | mandatory }}-crt.pem
+olcTLSCertificateFile: {{ tls_certificate_file | mandatory }}
 -
 replace: olcTLSCertificateKeyFile
-olcTLSCertificateKeyFile: /etc/pki/tls/certs/{{ public_hostname | mandatory }}-key.pem
+olcTLSCertificateKeyFile: {{ tls_certificate_key_file | mandatory }}
 -
 replace: olcTLSCipherSuite
 olcTLSCipherSuite: {{ ldap_tls_cipher_suite | mandatory }}

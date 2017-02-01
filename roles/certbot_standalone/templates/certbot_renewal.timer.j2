@@ -1,0 +1,10 @@
+{# file: roles/certbot_standalone/templates/certbot_renewal.timer.j2 #}
+[Unit]
+Description=Certbot certificate renewal schedule
+
+[Timer]
+OnUnitActiveSec=12h 7s
+Unit=certbot_renewal.service
+
+[Install]
+WantedBy=timers.target

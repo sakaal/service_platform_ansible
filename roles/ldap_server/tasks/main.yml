@@ -70,7 +70,7 @@
   with_items:
   - "{{ tls_certificate_chain_file | mandatory }}"
   become: yes
-  command: openssl x509 -noout -hash -in /etc/pki/tls/certs/{{ item }}
+  command: openssl x509 -noout -hash -in {{ item }}
   register: ldap_ca_x509_hash
   changed_when: False
 
@@ -79,7 +79,7 @@
   when: item.rc == 0 and item.stdout is defined
   become: yes
   command: chdir=/etc/openldap/certs creates={{ item.stdout }}.0
-           ln -s /etc/pki/tls/certs/{{ item.item }} {{ item.stdout }}.0
+           ln -s {{ item.item }} {{ item.stdout }}.0
   notify: Restart the directory server
 
 - name: Secure LDAPS port listener
