@@ -1,6 +1,7 @@
----
 # file: roles/backup_client/meta/main.yml
+---
 
 dependencies:
+- role: "../../service_infra_ansible/roles/ntp"
 - role: hetzner_backup_authorized_keys
 - role: archive_keys
