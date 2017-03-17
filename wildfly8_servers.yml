@@ -13,7 +13,7 @@
   - ../../service_commons_ansible/roles/updates_auto
   - java_oracle
   - ca_trust
-  - ../../service_commons_ansible/roles/java_keystore
+  - ../../service_commons_ansible/roles/java_truststore
   - wildfly8
   - wildfly8_logging
   - wildfly8_postgresql_drivers

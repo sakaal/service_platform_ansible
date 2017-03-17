@@ -9,6 +9,6 @@
   roles:
   - transport_layer_security
   - ca_trust
-  - ../../service_commons_ansible/roles/java_keystore
+  - ../../service_commons_ansible/roles/java_truststore
   - maven
   - ../../service_commons_ansible/roles/updates_auto
