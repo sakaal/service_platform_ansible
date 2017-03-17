@@ -39,19 +39,14 @@
   template: src=backup_client.service.j2
             dest=/etc/systemd/system/backup_client.service
             mode=755 owner=root group=root
-  register: backup_client_service
+  notify: systemctl daemon-reload
 
 - name: Backup client systemd timer unit file
   become: yes
   template: src=backup_client.timer.j2
             dest=/etc/systemd/system/backup_client.timer
             mode=755 owner=root group=root
-  register: backup_client_timer
-
-- name: Reload new or changed systemd units
-  when: backup_client_service|changed or backup_client_timer|changed
-  become: yes
-  command: systemctl daemon-reload
+  notify: systemctl daemon-reload
 
 - name: Enable the backup client timer
   become: yes

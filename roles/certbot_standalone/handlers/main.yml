@@ -1,6 +1,0 @@
-# file: roles/certbot_standalone/handlers/main.yml
----
-
-- name: Reload systemd
-  become: yes
-  command: systemctl daemon-reload

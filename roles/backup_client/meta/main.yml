@@ -2,6 +2,7 @@
 ---
 
 dependencies:
-- role: "../../service_infra_ansible/roles/ntp"
+- role: "../service_commons_ansible/roles/systemd_common"
+- role: "../service_infra_ansible/roles/ntp"
 - role: hetzner_backup_authorized_keys
 - role: archive_keys

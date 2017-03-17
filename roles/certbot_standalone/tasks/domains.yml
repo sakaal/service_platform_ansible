@@ -33,7 +33,7 @@
             dest=/etc/systemd/system/certbot_renewal.service
             mode=0644 owner=root group=root
   register: certbot_renewal_service
-  notify: Reload systemd
+  notify: systemctl daemon-reload
 
 - name: Certbot certificate renewal systemd timer unit file
   become: yes
@@ -41,7 +41,7 @@
             dest=/etc/systemd/system/certbot_renewal.timer
             mode=0644 owner=root group=root
   register: certbot_renewal_timer
-  notify: Reload systemd
+  notify: systemctl daemon-reload
 
 - name: Enable the Certbot certificate renewal timer
   become: yes

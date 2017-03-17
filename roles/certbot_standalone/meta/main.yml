@@ -1,0 +1,5 @@
+# file: roles/certbot_standalone/meta/main.yml
+---
+
+dependencies:
+- role: "../service_commons_ansible/roles/systemd_common"
