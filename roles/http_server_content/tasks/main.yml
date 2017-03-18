@@ -10,14 +10,14 @@
 # The Ansible synchronize module does not work well with the custom SSH config.
 # We need to call rsync directly.
 #
-#          --rsh 'ssh -F ~/.ssh/config -o Port={{ admin_ssh_port | mandatory }}'
+#          --rsh 'ssh -F ~/.ssh/config -o Port={{ admin_ssh_port }}'
 - name: Websites
   with_items: "{{ websites | default([]) }}"
-  local_action: command rsync --delay-updates -FF --compress
+  local_action: command rsync --timeout=10 --delay-updates -FF --compress
            --recursive --links --perms --exclude=".git/"
            --times --one-file-system
-           --rsh 'ssh -o Port={{ admin_ssh_port | mandatory }}'
+           --rsh 'ssh -o Port={{ admin_ssh_port
+                  }}{% if ansible_ssh_common_args %} {{ ansible_ssh_common_args }}{% endif %}'
            --rsync-path="sudo rsync" --out-format="<<CHANGED>>%i %n%L"
            "{{ inventory_dir }}/websites/{{ item }}/htdocs/"
-           "{{ admin_username|mandatory }}@{{
-           inventory_hostname }}:/var/www/{{ item }}/htdocs"
+           "{{ admin_username }}@{{ inventory_hostname }}:/var/www/{{ item }}/htdocs"
