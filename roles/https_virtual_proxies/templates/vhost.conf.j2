@@ -27,11 +27,13 @@ DocumentRoot "/var/www/{{ item.fqdn }}/htdocs"
 
 {% if item.proxies is defined %}
 ProxyRequests Off
+ProxyVia Off
 ProxyPreserveHost On
 AllowEncodedSlashes NoDecode
 
 RequestHeader set X-Forwarded-Proto "https"
 RequestHeader set X-Forwarded-Port "443"
+RemoteIPHeader X-Forwarded-For
 
 {% for proxy in item.proxies %}
 

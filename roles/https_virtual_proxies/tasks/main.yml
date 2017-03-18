@@ -15,6 +15,12 @@
   become: yes
   yum: name={{ item }}
 
+- name: Enable mod_remoteip
+  become: yes
+  apache2_module:
+    state: present
+    name: remoteip
+
 - name: SELinux allow the HTTP server to network connect
   become: yes
   seboolean: name=httpd_can_network_connect state=yes persistent=yes
