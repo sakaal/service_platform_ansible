@@ -1,0 +1,80 @@
+# file: roles/dns_public_cname_records/tasks/dynect.yml
+#
+# Manages DNS CNAME records for the public_hostname
+#
+---
+
+#
+# This script only considers a CNAME record 'changed', if it is missing.
+# It does not update existing CNAME records, but only adds missing ones.
+# If you need to change a CNAME record, delete the old record manually
+# via the DynECT management console.
+#
+- name: Check if DNS zone already has CNAME record
+  with_items: "{{ public_dns_cname_records | default([]) }}"
+  when: dynect_session_result | success and
+        public_hostname is defined and
+        public_dns_cname_records is defined and
+        inventory_hostname == groups[ 'public_cname_{{ item }}' ][0]
+  local_action:
+    module: uri
+    url: "{{ dynect_api_url }}/CNAMERecord/{{ public_dns_zone }}/{{ item }}/"
+    headers:
+      Content-Type: "application/json"
+      Auth-Token: "{{ dynect_session_token }}"
+  register: zone_cname_records
+  changed_when: ((zone_cname_records.json.status == 'failure') and
+                 (zone_cname_records.json.msgs[0].ERR_CD == 'NOT_FOUND')) or
+                ((zone_cname_records.json.status == "success") and
+                 (not item in zone_cname_records.json.data[0]))
+  failed_when: zone_cname_records.json.status != 'success' and
+               zone_cname_records.json.msgs[0].ERR_CD != 'NOT_FOUND'
+
+- name: Delete DNS CNAME records
+  with_items: "{{ zone_cname_records.results | default([]) }}"
+  when: ec2_state in [ 'absent' ] and not item|changed
+  local_action:
+    module: uri
+    method: DELETE
+    url: "{{ dynect_api_url }}/CNAMERecord/{{ public_dns_zone }}/{{ item.item }}/"
+    headers:
+      Content-Type="application/json"
+      Auth-Token="{{ dynect_session_token }}"
+  register: dynect_delete
+
+- name: Create DNS CNAME records
+  with_items: "{{ zone_cname_records.results | default([]) }}"
+  when: item|changed and ec2_state not in [ 'absent' ]
+  local_action:
+    module: uri
+    method: POST
+    url: "{{ dynect_api_url }}/CNAMERecord/{{ public_dns_zone }}/{{ item.item }}/"
+    headers:
+      Content-Type: "application/json"
+      Auth-Token: "{{ dynect_session_token }}"
+    body_format: "json"
+    body:
+      rdata:
+        cname: "{{ public_hostname }}"
+    return_content: yes
+  register: dynect_result
+  changed_when: dynect_result.json.status == 'success'
+  failed_when: dynect_result.json.status != 'success'
+
+- name: Publish DNS zones
+  when: dynect_result|changed or not dynect_delete|skipped
+  local_action:
+    module: uri
+    method: PUT
+    url: "{{ dynect_api_url }}/Zone/{{ public_dns_zone }}"
+    headers:
+      Content-Type: "application/json"
+      Auth-Token: "{{ dynect_session_token }}"
+    body_format: "json"
+    body:
+      publish: True
+    return_content: yes
+  register: dynect_result
+  changed_when: dynect_result.json.status == 'success' and
+                '{{ public_dns_zone }} published' in dynect_result.json.msgs[0].INFO
+  failed_when: dynect_result.json.status != 'success'

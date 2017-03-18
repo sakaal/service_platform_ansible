@@ -1,6 +1,8 @@
----
 # file: roles/http_server/meta/main.yml
+---
 
 dependencies:
+- role: dns_public_records
+- role: dns_public_cname_records
 - role: http_server_content
 - role: "../../service_commons_ansible/roles/dynect_session"

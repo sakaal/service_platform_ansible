@@ -13,6 +13,19 @@
   service: name="httpd" state=stopped
   failed_when: no
 
+- name: Configure the firewall for HTTPS
+  become: yes
+  firewalld:
+    immediate: True
+    permanent: True
+    zone: "{{ firewall_zone }}"
+    service: "https"
+    state: enabled
+  notify: Restart firewalld
+
+- name: Certbot domains
+  debug: var=certbot_domains
+
 - name: Obtain certificate via Certbot standalone
   become: yes
   command: certbot --standalone 

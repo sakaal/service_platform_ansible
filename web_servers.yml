@@ -12,5 +12,5 @@
   - libvirt_guest_network_service
   - certbot_standalone
   - transport_layer_security
-  - ../../service_commons_ansible/roles/updates_auto
+  - ../service_commons_ansible/roles/updates_auto
   - https_virtual_proxies
