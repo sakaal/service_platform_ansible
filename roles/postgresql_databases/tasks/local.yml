@@ -1,0 +1,49 @@
+# file: roles/postgresql_databases/tasks/local.yml
+#
+# Creates databases locally on a PostgreSQL server
+#
+---
+
+- name: Create roles (users)
+  with_items: "{{ postgresql_roles | default([]) }}"
+  become: yes
+  become_user: postgres
+  when: item.state | default("present") == "present"
+  postgresql_user: name="{{ item.name }}"
+                   password="{{ item.password }}"
+                   role_attr_flags="{{ item.role_attr_flags
+                   | default('NOSUPERUSER,NOCREATEROLE,NOCREATEDB') }}"
+                   state="{{ item.state | default('present') }}"
+
+- name: Databases
+  with_items: "{{ postgresql_databases | default([]) }}"
+  become: yes
+  become_user: postgres
+  postgresql_db: name="{{ item.name }}"
+                 encoding="{{ item.encoding | default('UTF-8') }}"
+                 owner="{{ item.owner }}"
+                 template="template0"
+                 state="{{ item.state | default('present') }}"
+
+- name: pgAdmin Server Instrumentation
+  become: yes
+  become_user: postgres
+  with_items: "{{ postgresql_databases | default([]) }}"
+  when: item.state == 'present'
+  postgresql_ext: name=adminpack
+                  db="{{ item.name }}"
+  ignore_errors: yes
+
+#
+# Removing roles must happen after their databases have been removed.
+#
+- name: Remove roles (users)
+  become: yes
+  become_user: postgres
+  with_items: "{{ postgresql_roles | default([]) }}"
+  when: item.state | default("present") == "absent"
+  postgresql_user: name="{{ item.name }}"
+                   password="{{ item.password }}"
+                   role_attr_flags="{{ item.role_attr_flags
+                   | default('NOSUPERUSER,NOCREATEROLE,NOCREATEDB') }}"
+                   state="{{ item.state | default('present') }}"

@@ -7,18 +7,12 @@
 #
 ---
 
-- name: Roles (users)
-  become: yes
-  become_user: postgres
-  with_items: postgresql_roles
-  postgresql_user: name='{{ item.name }}'
-                   password='{{ item.pw }}'
-                   role_attr_flags=NOSUPERUSER,NOCREATEROLE,NOCREATEDB
+- name: Check if running locally on the server
+  when: (postgresql_master_user|default('') == '') and
+        (postgresql_master_password|default('') == '')
+  include: local.yml
 
-- name: Databases
-  become: yes
-  become_user: postgres
-  with_items: postgresql_databases
-  postgresql_db: name='{{ item.name }}'
-                 encoding='UTF-8'
-                 owner='{{ item.owner }}'
+- name: Check if running from client
+  when: (postgresql_master_user|default('') != '') and
+        (postgresql_master_password|default('') != '')
+  include: client.yml
