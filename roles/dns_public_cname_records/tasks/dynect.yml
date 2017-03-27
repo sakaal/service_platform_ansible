@@ -4,12 +4,6 @@
 #
 ---
 
-#
-# This script only considers a CNAME record 'changed', if it is missing.
-# It does not update existing CNAME records, but only adds missing ones.
-# If you need to change a CNAME record, delete the old record manually
-# via the DynECT management console.
-#
 - name: Check if DNS zone already has CNAME record
   with_items: "{{ public_dns_cname_records | default([]) }}"
   when: dynect_session_result | success and
@@ -22,17 +16,18 @@
     headers:
       Content-Type: "application/json"
       Auth-Token: "{{ dynect_session_token }}"
+    return_content: yes
   register: zone_cname_records
-  changed_when: ((zone_cname_records.json.status == 'failure') and
-                 (zone_cname_records.json.msgs[0].ERR_CD == 'NOT_FOUND')) or
-                ((zone_cname_records.json.status == "success") and
-                 (not item in zone_cname_records.json.data[0]))
-  failed_when: zone_cname_records.json.status != 'success' and
-               zone_cname_records.json.msgs[0].ERR_CD != 'NOT_FOUND'
+  changed_when: "{{ ((zone_cname_records.json.status == 'failure') and
+                    (zone_cname_records.json.msgs[0].ERR_CD == 'NOT_FOUND')) or
+                    ((zone_cname_records.json.status == 'success') and
+                    (not item in zone_cname_records.json.data)) }}"
+  failed_when: "{{ zone_cname_records.json.status != 'success' and
+                   zone_cname_records.json.msgs[0].ERR_CD != 'NOT_FOUND' }}"
 
 - name: Delete DNS CNAME records
   with_items: "{{ zone_cname_records.results | default([]) }}"
-  when: ec2_state in [ 'absent' ] and not item|changed
+  when: item|changed
   local_action:
     module: uri
     method: DELETE
@@ -44,7 +39,7 @@
 
 - name: Create DNS CNAME records
   with_items: "{{ zone_cname_records.results | default([]) }}"
-  when: item|changed and ec2_state not in [ 'absent' ]
+  when: item|changed
   local_action:
     module: uri
     method: POST
