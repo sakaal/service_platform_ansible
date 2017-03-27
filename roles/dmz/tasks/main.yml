@@ -40,14 +40,14 @@
   lineinfile: dest=/etc/sysconfig/network-scripts/ifcfg-eth0
               regexp='^\s*DEFROUTE=' line='DEFROUTE=no'
 
-- name: Restart the network
-  when: link_eth1|changed or another_interface|changed
-  become: yes
-  service: name=network state=restarted
-  register: network_status
+#- name: Restart the network
+#  when: link_eth1|changed or another_interface|changed
+#  become: yes
+#  service: name=network state=restarted
+#  register: network_status
 
 - name: Gather facts
-  when: network_status|changed
+#  when: network_status|changed
   setup:
 
 - set_fact:

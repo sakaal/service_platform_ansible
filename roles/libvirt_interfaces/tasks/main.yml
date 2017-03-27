@@ -16,21 +16,21 @@
 ---
 
 - name: Check network interfaces
-  with_items: libvirt_interfaces
+  with_items: "{{ libvirt_interfaces }}"
   become: yes
-  shell: virsh -q domiflist {{ item.domain | mandatory }} |
+  shell: virsh -q domiflist {{ item.domain }} |
          grep -ioP '([0-9A-F]{2}:){5}([0-9A-F]{2})$'
   register: domiflist
-  changed_when: not '{{ item.mac.lower() | mandatory }}' in domiflist.stdout.lower()
+  changed_when: not '{{ item.mac.lower() }}' in domiflist.stdout.lower()
 
 - name: Attach network interfaces
-  with_items: domiflist.results
+  with_items: "{{ domiflist.results }}"
   when: item|changed
   become: yes
   command: virsh attach-interface --domain {{ item.item.domain }}
-           --type {{ item.item.type | mandatory }}
-           --source {{ item.item.source | mandatory }}
-           --mac '{{ item.item.mac | mandatory }}'
-           --model {{ item.item.model | mandatory }}
+           --type {{ item.item.type }}
+           --source {{ item.item.source }}
+           --mac '{{ item.item.mac }}'
+           --model {{ item.item.model }}
            --persistent
            

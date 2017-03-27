@@ -8,17 +8,19 @@
   when: trusted_ca_certificates is defined
   with_items: "{{ trusted_ca_certificates|default([]) }}"
   become: yes
-  get_url: url={{ item.url | mandatory }}
-           dest=/etc/pki/ca-trust/source/anchors/{{ item.filename }}
-           sha256sum={{ item.sha256sum | mandatory }}
-           validate_certs=no
+  get_url:
+    url: "{{ item.url }}"
+    dest: "/etc/pki/ca-trust/source/anchors/{{ item.filename }}"
+    sha256sum: "{{ item.sha256sum }}"
+    validate_certs: no
   notify: Update CA trust
 
 - name: Certificate Authority (CA) intermediate certificates
   when: intermediate_ca_certificates is defined
   with_items: "{{ intermediate_ca_certificates|default([]) }}"
   become: yes
-  get_url: url={{ item.url | mandatory }}
-           dest=/etc/pki/tls/certs/{{ item.filename }}
-           sha256sum={{ item.sha256sum | mandatory }}
-           validate_certs=no
+  get_url:
+    url: "{{ item.url }}"
+    dest: "/etc/pki/tls/certs/{{ item.filename }}"
+    sha256sum: "{{ item.sha256sum }}"
+    validate_certs: no

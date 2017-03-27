@@ -7,14 +7,14 @@
 # so every one of them must contain the same SSL configuration.
 
 <VirtualHost {{ public_ipv4_address }}:80>
-  ServerName "{{ item.fqdn | mandatory }}:80"
+  ServerName "{{ item.fqdn }}:80"
   # We use permanent redirect status 301 (see HSTS includeSubDomains below)
   Redirect permanent / https://{{ item.fqdn }}/
 </VirtualHost>
 
 <VirtualHost {{ public_ipv4_address }}:443>
 
-ServerName {{ item.fqdn | mandatory }}:443
+ServerName {{ item.fqdn }}:443
 
 {% if websites is defined and item.fqdn in websites %}
 DocumentRoot "/var/www/{{ item.fqdn }}/htdocs"
@@ -38,7 +38,7 @@ RemoteIPHeader X-Forwarded-For
 {% for proxy in item.proxies %}
 
 #
-# Proxy: https://{{ item.fqdn }}/{{ proxy.context | mandatory }}
+# Proxy: https://{{ item.fqdn }}/{{ proxy.context }}
 # Backend: http://{{ proxy.backend_host }}/{{ proxy.backend_context }}
 #
 {% if proxy.exclude_locations is defined %}
@@ -57,12 +57,19 @@ RemoteIPHeader X-Forwarded-For
 {% endfor %}
 
 {% endif %}
-ProxyPass /{{ proxy.context | mandatory }} http://{{ proxy.backend_host | mandatory }}/{{ proxy.backend_context | mandatory }} nocanon
+ProxyPass /{{ proxy.context }} http://{{ proxy.backend_host }}/{{ proxy.backend_context }} nocanon
 ProxyPassReverse /{{ proxy.context }} http://{{ proxy.backend_host }}/{{ proxy.backend_context }}
 ProxyPassReverse /{{ proxy.context }} http://{{ item.fqdn }}/{{ proxy.backend_context }}
 ProxyPassReverseCookieDomain {{ proxy.backend_host }} {{ item.fqdn }}
 {% if proxy.backend_context != proxy.context %}
 ProxyPassReverseCookiePath /{{ proxy.backend_context }} /{{ proxy.context }}
+{% endif %}
+{% if proxy.directives is defined %}
+<Location "/{{ proxy.context }}">
+{% for directive in proxy.directives %}
+    {{ directive }}
+{% endfor %}
+</Location>
 {% endif %}
 {% endfor %}
 {% endif %}
@@ -78,8 +85,8 @@ CustomLog logs/{{ item.fqdn }}_ssl_request_log \
 # https://raymii.org/s/tutorials/Strong_SSL_Security_On_Apache2.html
 
 SSLEngine on
-SSLCertificateFile    {{ tls_certificate_file | mandatory }}
-SSLCertificateKeyFile {{ tls_certificate_key_file | mandatory }}
+SSLCertificateFile    {{ tls_certificate_file }}
+SSLCertificateKeyFile {{ tls_certificate_key_file }}
 {% if tls_certificate_chain_file is defined %}
 SSLCertificateChainFile {{ tls_certificate_chain_file }}
 {% endif %}
@@ -93,7 +100,7 @@ SSLCompression      off
 
 # HSTS
 # https://www.owasp.org/index.php/HTTP_Strict_Transport_Security
-Header always set Strict-Transport-Security "max-age={{ tls_hsts_max_age | mandatory
+Header always set Strict-Transport-Security "max-age={{ tls_hsts_max_age
                                              }}; includeSubDomains; preload"
 
 # https://www.owasp.org/index.php/List_of_useful_HTTP_headers

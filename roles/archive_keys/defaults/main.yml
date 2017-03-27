@@ -1,9 +1,9 @@
 # file: roles/archive_keys/defaults/main.yml
-
 #
 # ENISA "Algorithms, Key Sizes and Parameters Report - 2013 recommendations"
 # https://www.enisa.europa.eu/activities/identity-and-trust/library/deliverables/algorithms-key-sizes-and-parameters-report
 #
+---
 
 backup_user: "root"
 

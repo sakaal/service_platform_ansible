@@ -40,7 +40,7 @@ fi
 #
 # Generate a random password:
 #
-dd if=/dev/random bs={{ archive_password_bytes | mandatory }} count=1 2>/dev/null | base64\
+dd if=/dev/random bs={{ archive_password_bytes }} count=1 2>/dev/null | base64\
  > ${archive}.pass.txt
 
 #
@@ -63,7 +63,7 @@ stat --format="%n (%s B) %y" ${archive}${ext}.${algorithm}
 # Encrypt the password file with the archives public key:
 #
 nice -n 19 openssl pkeyutl -encrypt\
- -pubin -inkey "/{{ archive_keys_path | mandatory }}/archives-public.pem"\
+ -pubin -inkey "/{{ archive_keys_path }}/archives-public.pem"\
  -in ${archive}.pass.txt\
  -out ${archive}.pass.tmp
 EXITVALUE=$?

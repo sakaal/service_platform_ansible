@@ -1,13 +1,19 @@
 # file: roles/archive_keys/tasks/main.yml
-
 #
 # PKI-based security for the application data archives
 #
+---
+
+- name: Check archive keys configuration
+  assert:
+    that:
+    - archives_public_key | default('') != ''
+    msg: "Please set up the archives key pair."
 
 - name: Archive keys directory
   become: yes
-  become_user: "{{ backup_user | mandatory }}"
-  file: state=directory path="/{{ archive_keys_path | mandatory }}/client"
+  become_user: "{{ backup_user }}"
+  file: state=directory path="/{{ archive_keys_path }}/client"
         owner="{{ backup_user }}" group="{{ backup_user }}" mode=750
 
 # http://security.stackexchange.com/questions/2335/should-rsa-public-exponent-be-only-in-3-5-17-257-or-65537-due-to-security-c
@@ -20,7 +26,7 @@
            creates="{{ ansible_fqdn }}_backup-client-private.pem"
            openssl genpkey -algorithm RSA
            -out "{{ ansible_fqdn }}_backup-client-private.pem" -outform PEM
-           -pkeyopt rsa_keygen_bits:{{ archive_key_length | mandatory }}
+           -pkeyopt rsa_keygen_bits:{{ archive_key_length }}
            -pkeyopt rsa_keygen_pubexp:65537
 
 - name: Backup client private key permissions
@@ -49,13 +55,13 @@
   become: yes
   become_user: "{{ backup_user }}"
   copy:
-    content: "{{ archives_public_key | mandatory }}"
+    content: "{{ archives_public_key }}"
     dest:    "/{{ archive_keys_path }}/archives-public.pem"
     owner:   "{{ backup_user }}"
     group:   "{{ backup_user }}"
     mode:    0444
 
 #
-# The archives-private.pem is kept offline and generated manually.
-# DO NOT copy the archives private key to /mnt/sensitive_data/.
+# The archives private key (the archives-private.pem file)
+# is generated manually and should be kept offline.
 #

@@ -3,11 +3,12 @@
 #
 # The backup user account has the access keys to the on-site backup service.
 #
-BACKUP_USER="{{ admin_username | mandatory }}"
-BACKUPS_DIR="/var/local/backup_client"
+BACKUP_USER="{{ backup_user | default(admin_username) }}"
+BACKUP_GROUP="{{ backup_group | default( backup_user | default(admin_username) ) }}"
+BACKUPS_DIR="{{ backup_directory | default('/var/local/backup_client') }}"
 OUTBOUND_QUEUE="${BACKUPS_DIR}/out"
 mkdir -p ${OUTBOUND_QUEUE}
-chown -R ${BACKUP_USER}:${BACKUP_USER} ${BACKUPS_DIR}
+chown -R ${BACKUP_USER}:${BACKUP_GROUP} ${BACKUPS_DIR}
 chmod -R o-rwx ${BACKUPS_DIR}
 
 cd "${BACKUPS_DIR}"
@@ -59,14 +60,14 @@ fi
 #
 # Transfer the encrypted archive and password file to the backup service:
 #
-chown -R ${BACKUP_USER}:${BACKUP_USER} ${OUTBOUND_QUEUE}
+chown -R ${BACKUP_USER}:${BACKUP_GROUP} ${OUTBOUND_QUEUE}
 
 #
 # Delete any old transfer logs:
 #
 su - ${BACKUP_USER} -c "rm -f ~/.lftp/*_log"
 
-LFTP="open -u {{ backup_onsite_account | mandatory }}, {{ backup_onsite_protocol | mandatory }}://{{ backup_onsite_service | mandatory }};"
+LFTP="open -u {{ backup_onsite_account }}, {{ backup_onsite_protocol }}://{{ backup_onsite_service }};"
 REMOTE_DIR="`date -u +"%Y-%m"`/`hostname`${clientdir}"
 
 MONTH_RETAIN="`date -u +"%Y-%m" --date="3 months ago"`"

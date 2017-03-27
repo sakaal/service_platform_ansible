@@ -1,4 +1,4 @@
 # file: roles/java_oracle/vars/main.yml
 ---
 
-files_dir: "{{ playbook_dir }}/roles/java_oracle/files"
+files_dir: "{{ playbook_dir | dirname }}/service_platform_ansible/roles/java_oracle/files"

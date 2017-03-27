@@ -1,24 +1,59 @@
 # file: roles/hetzner_backup_authorized_keys/tasks/main.yml
-
 #
 # Configures a backup client and the on-site backup service
 # for SSH public key authentication to allow non-interactive access.
 #
 # http://wiki.hetzner.de/index.php/Backup_Space_SSH_Keys/en
 #
+---
+
+- name: Ensure the backup user is present and has an SSH key
+  become: yes
+  user:
+    name: "{{ backup_user }}"
+    append: yes
+    groups: "{{ backup_group | default('') }}"
+    generate_ssh_key: yes
+    ssh_key_comment: "{{ backup_user }}@{{ ansible_fqdn }}_{{ ansible_date_time.iso8601 | replace(':', '') }}"
+    ssh_key_type: "{{ ssh_key_type | default('rsa') }}"
+    ssh_key_bits: "{{ ssh_key_bits | default(4096) }}"
+    system: yes
+
+- name: Resolve the backup user home directory on the remote host
+  become: yes
+  shell: "getent passwd {{ backup_user }} | cut -d: -f6"
+  changed_when: False
+  register: backup_user_home
+  failed_when: backup_user_home.rc != 0 or
+               backup_user_home.stdout.strip() | length < 5
+
+- set_fact:
+    backup_user_home: "{{ backup_user_home.stdout }}"
+
+- debug: var=backup_user_home
 
 - name: RFC 4716 format public key without comment
-  shell: ssh-keygen -e -f .ssh/id_rsa.pub | grep -v "Comment:" |
+  become: yes
+  become_user: "{{ backup_user }}"
+  shell: >
+         chdir="{{ backup_user_home }}"
+         ssh-keygen -e -f .ssh/id_rsa.pub | grep -v "Comment:" |
          tee .ssh/id_rsa_rfc4716.pub
   register: id_rsa_rfc4716_pub
   changed_when: False
+  failed_when: id_rsa_rfc4716_pub.rc != 0 or
+               id_rsa_rfc4716_pub.stdout.strip() == '' or
+               id_rsa_rfc4716_pub.stderr.strip() != ''
 
 - name: Check if already authorized to access the Hetzner backup space
+  become: yes
+  become_user: "{{ backup_user }}"
   no_log: True
   shell: >
+         chdir="{{ backup_user_home }}"
          lftp -c "
-         open -u {{ backup_onsite_account | mandatory }},{{ backup_onsite_password | mandatory }}
-         sftp://{{ backup_onsite_service | mandatory }} ;
+         open -u {{ backup_onsite_account }},{{ backup_onsite_password }}
+         sftp://{{ backup_onsite_service }} ;
          cat .ssh/authorized_keys ;
          "
   register: hetzner_backup_access
@@ -31,8 +66,11 @@
 - name: Hetzner backup space authorized keys
   when: (hetzner_backup_access|changed) and
         (hetzner_backup_access.stdout.strip() == "")
+  become: yes
+  become_user: "{{ backup_user }}"
   no_log: True
   shell: >
+         chdir="{{ backup_user_home }}"
          lftp -c "
          open -u {{ backup_onsite_account }},{{ backup_onsite_password }}
          sftp://{{ backup_onsite_service }} ;
@@ -42,22 +80,31 @@
          "
 
 - set_fact:
-    existing_keys: (hetzner_backup_access|changed) and
-                   (hetzner_backup_access.stdout.strip() != "")
+    existing_keys: "{{ (hetzner_backup_access | changed) and
+                       (hetzner_backup_access.stdout.strip() != '') }}"
+
+- debug: var=existing_keys
 
 - name: List the existing backup space authorized keys
-  when: existing_keys
-  copy: dest=".ssh/backup_authorized_keys"
+  when: "{{ existing_keys | bool }}"
+  become: yes
+  become_user: "{{ backup_user }}"
+  copy: dest="{{ backup_user_home }}/.ssh/backup_authorized_keys"
         content="{{ hetzner_backup_access.stdout }}\n"
 
 - name: Add a backup space authorized key
-  when: existing_keys
-  shell: chdir=".ssh" cat id_rsa_rfc4716.pub >> backup_authorized_keys
+  when: "{{ existing_keys | bool }}"
+  become: yes
+  become_user: "{{ backup_user }}"
+  shell: chdir="{{ backup_user_home }}/.ssh" cat id_rsa_rfc4716.pub >> backup_authorized_keys
 
 - name: Install the Hetzner backup space authorized keys
-  when: existing_keys
+  when: "{{ existing_keys | bool }}"
+  become: yes
+  become_user: "{{ backup_user }}"
   no_log: True
   shell: >
+         chdir="{{ backup_user_home }}"
          lftp -c "
          open -u {{ backup_onsite_account }},{{ backup_onsite_password }}
          sftp://{{ backup_onsite_service }} ;

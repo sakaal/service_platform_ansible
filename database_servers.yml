@@ -1,16 +1,19 @@
 # file: database_servers.yml
----
-
 #
 # Relational database management system (RDBMS) nodes
 #
+---
 
 - hosts: database_servers
-  sudo: yes
+  become: yes
   roles:
-    - libvirt_guest_network_service
-    - ../../service_commons_ansible/roles/updates_auto
-    - postgresql
-    - postgresql_databases
-    - postgresql_databases_backup
-    - archives_maintenance
+  - libvirt_guest_network_service
+  - ../service_commons_ansible/roles/updates_auto
+  - postgresql
+  - postgresql_databases
+  - role: postgresql_databases_backup
+    tags:
+    - backup
+  - role: archives_maintenance
+    tags:
+    - backup

@@ -11,19 +11,19 @@
 
 - when: temp_file|success
   set_fact:
-    temp_file: "{{ temp_file.stdout | mandatory }}"
+    temp_file: "{{ temp_file.stdout }}"
 
 - name: List earlier backup client configurations
   become: yes
   shell: chdir="/usr/local/etc/backup_client.d"
-         ls -A | grep "^pgsql-.*\.conf$" > "{{ temp_file | mandatory }}"
+         ls -A | grep "^pgsql-.*\.conf$" > "{{ temp_file }}"
   register: pgsql_current_backups
   changed_when: no
   ignore_errors: yes
 
 - name: Keep current backup client configuration items
   when: postgres_home is defined
-  with_items: postgresql_databases
+  with_items: "{{ postgresql_databases }}"
   lineinfile: dest="{{ temp_file }}"
               line="pgsql-{{ item.name }}.conf"
               state=absent
@@ -33,7 +33,7 @@
   when: pgsql_current_backups|success
   become: yes
   shell: chdir="/usr/local/etc/backup_client.d"
-         xargs -I{} sh -c 'rm {}' < "{{ temp_file | mandatory }}"
+         xargs -I{} sh -c 'rm {}' < "{{ temp_file }}"
   changed_when: no
 
 - name: Delete the temporary file
@@ -43,8 +43,7 @@
 
 - name: Backup client configuration for PostgreSQL databases
   when: postgres_home is defined
-  with_items: postgresql_databases
+  with_items: "{{ postgresql_databases }}"
   become: yes
   template: src=pgsql-.conf.j2
-            dest="/usr/local/etc/backup_client.d/pgsql-{{
-                 item.name | mandatory }}.conf"
+            dest="/usr/local/etc/backup_client.d/pgsql-{{ item.name }}.conf"

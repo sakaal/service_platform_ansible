@@ -6,4 +6,4 @@
 
 - hosts: libvirt_hosts
   roles:
-    - libvirt_interfaces
+  - libvirt_interfaces

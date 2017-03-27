@@ -2,8 +2,10 @@
 Description=backup client schedule
 
 [Timer]
-OnCalendar=*-*-* 04:45:00
-#AccuracySec=2 h 30 min
+OnCalendar={{ backup_client_timer_on_calendar }}
+{% if ansible_os_family == "RedHat" and ansible_distribution_version | version_compare('7.3', '>=') %}
+RandomizedDelaySec=2 h 30 min
+{% endif %}
 Unit=backup_client.service
 
 [Install]
