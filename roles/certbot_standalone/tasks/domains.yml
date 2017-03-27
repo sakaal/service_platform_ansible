@@ -33,6 +33,7 @@
            --email "{{ admin_email | mandatory }}"
            --agree-tos certonly
            --keep-until-expiring --quiet
+           --expand
 
 - name: Certbot certificate renewal script
   become: yes
