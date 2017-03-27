@@ -25,7 +25,9 @@ if [ -z "${archive}" ] || [ -z "${algorithm}" ]; then
     usage
 fi
 
-if [ -f "${archive}.sql.gz" ]; then
+if [ -f "${archive}.ldif.gz" ]; then
+    ext=".ldif.gz"
+elif [ -f "${archive}.sql.gz" ]; then
     ext=".sql.gz"
 elif [ -f "${archive}.tgz" ]; then
     ext=".tgz"
@@ -51,7 +53,9 @@ nice -n 19 openssl enc -${algorithm} -pass file:${archive}.pass.txt\
 EXITVALUE=$?
 if [ $EXITVALUE -eq 0 ]; then
     mv ${archive}${ext}.${algorithm}.tmp ${archive}${ext}.${algorithm}
-    nice -n 19 shred --iterations=25 --force --zero --remove "${archive}${ext}"
+    nice -n 19 shred{% if secure_erase | default(True)
+                    %} --iterations=25 --zero{% endif
+                    %} --force --remove "${archive}${ext}"
 else
     logger -t archive_encrypt -p user.error\
      "ALERT openssl enc exited with [$EXITVALUE] for archive ${archive}"
@@ -69,8 +73,9 @@ nice -n 19 openssl pkeyutl -encrypt\
 EXITVALUE=$?
 if [ $EXITVALUE -eq 0 ]; then
     mv ${archive}.pass.tmp ${archive}.pass.safe
-    nice -n 19 shred --iterations=25\
-     --force --zero --remove "${archive}.pass.txt"
+    nice -n 19 shred{% if secure_erase | default(True)
+                    %} --iterations=25 --zero{% endif %}\
+     --force --remove "${archive}.pass.txt"
 else
     logger -t archive_encrypt -p user.error\
      "ALERT openssl pkeyutl exited with [$EXITVALUE] for archive ${archive}"

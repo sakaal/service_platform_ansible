@@ -17,19 +17,13 @@ umask 077
 algorithm=aes-256-cbc
 
 #
-# Create encrypted archives and their password files:
+# Archives, encrypts, and moves application data to the outbound queue.
 #
-for filename in /usr/local/etc/backup_client.d/*.conf; do
-(
-    unset database directory name service_name
-    . "${filename}"
-    timestamp="$(date -u +'%FT%H%MZ')"
-    archive="${name}_${HOSTNAME}_${timestamp}"
-
-    if [ -n "$database" ]; then
+archive_encrypt_and_queue() {
+    if [ -n "${database}" ]; then
         echo Archiving the PostgreSQL database: ${database}
         /usr/local/sbin/archive_pgsql_db -n "${archive}" -d "${database}"
-    elif [ -n "$directory" ]; then
+    elif [ -n "${directory}" ]; then
         echo Archiving the file system directory: ${directory}
         /usr/local/sbin/archive_dir -n "${archive}" -d "${directory}"
     fi
@@ -44,6 +38,94 @@ for filename in /usr/local/etc/backup_client.d/*.conf; do
     else
         echo "Deleting the interrupted archive ${archive}" 1>&2
         rm --force ${archive}.*gz
+    fi
+}
+
+#
+# Create encrypted archives and their password files
+# for data that does not need any services managed.
+#
+for filename in /usr/local/etc/backup_client.d/*.conf; do
+(
+    if [[ ${filename} == *"*"* ]]; then
+        exit 1
+    fi
+
+    unset database directory name service_name
+    . "${filename}"
+    timestamp="$(date -u +'%FT%H%MZ')"
+    archive="${name}_${HOSTNAME}_${timestamp}"
+
+    if [[ -z "${service_name// }" ]]; then
+       archive_encrypt_and_queue
+    fi
+)
+done
+EXITVALUE=$?
+if [ $EXITVALUE -ne 0 ]; then
+    echo "Couldn't find /usr/local/etc/backup_client.d/*.conf" 1>&2
+    exit $EXITVALUE
+fi
+
+#
+# Stop backup managed services
+#
+unset filename
+for filename in /usr/local/etc/backup_client.d/*.conf; do
+(
+    unset name service_name
+    . "${filename}"
+
+    if [ -n "${service_name}" ]; then
+        #
+        # The service_name may be a comma separated list of names.
+        #
+        echo "${service_name}" | tr ',' '\n' | while read service; do
+            if [ "`systemctl is-active ${service}`" == "active" ]; then
+                echo Attempting to stop service: ${service}
+                systemctl stop ${service}
+            fi
+        done
+    fi
+)
+done
+
+#
+# Create encrypted archives and their password files
+# for data that needs services managed.
+#
+for filename in /usr/local/etc/backup_client.d/*.conf; do
+(
+    unset database directory name service_name
+    . "${filename}"
+    timestamp="$(date -u +'%FT%H%MZ')"
+    archive="${name}_${HOSTNAME}_${timestamp}"
+
+    if [[ ! -z "${service_name// }" ]]; then
+       archive_encrypt_and_queue
+    fi
+)
+done
+
+#
+# Start backup managed services (in reverse order)
+#
+unset filename
+for filename in /usr/local/etc/backup_client.d/*.conf; do
+(
+    unset name service_name
+    . "${filename}"
+
+    if [ -n "${service_name}" ]; then
+        #
+        # Start the services in reverse order.
+        #
+        echo "${service_name}" | tr ',' '\n' | sed -n '1!G;h;$p' | while read service; do
+            if [ "`systemctl is-active ${service}`" != "active" ]; then
+                echo Attempting to start service: ${service}
+                systemctl start ${service}
+            fi
+        done
     fi
 )
 done
