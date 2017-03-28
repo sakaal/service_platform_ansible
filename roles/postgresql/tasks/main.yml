@@ -58,7 +58,7 @@
   - key: listen_addresses
     val: "'{{ postgresql_listen | mandatory }},localhost'"
   - key: max_connections
-    val: 40
+    val: 100
   - key: shared_buffers
     val: 24MB
   lineinfile:
