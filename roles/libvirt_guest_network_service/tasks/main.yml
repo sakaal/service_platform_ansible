@@ -23,6 +23,7 @@
   - NetworkManager.service
   become: yes
   shell: systemctl disable {{ item }}
+  failed_when: no
 
 - name: Network interfaces NM_CONTROLLED=no
   with_items:
