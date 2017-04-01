@@ -1,4 +1,6 @@
 {# file: roles/certbot_standalone/templates/certbot_renewal.sh.j2 #}
 #!/bin/bash
 
-/usr/bin/certbot renew --quiet
+/usr/bin/certbot renew --quiet{%
+if certbot_renew_pre_hook is defined %} --pre-hook "{{ certbot_renew_pre_hook }}"{% endif %}{%
+if certbot_renew_post_hook is defined %} --post-hook "{{ certbot_renew_post_hook }}"{% endif %}
