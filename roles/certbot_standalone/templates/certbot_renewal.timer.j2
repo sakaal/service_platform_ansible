@@ -3,7 +3,9 @@
 Description=Certbot certificate renewal schedule
 
 [Timer]
+OnBootSec=3h
 OnUnitActiveSec=12h 7s
+RandomizedDelaySec=12h
 Unit=certbot_renewal.service
 
 [Install]

@@ -1,9 +1,11 @@
 {# file: roles/certbot_standalone/templates/certbot_renewal.service.j2 #}
 [Unit]
 Description=Certbot certificate renewal
+Requires=network-online.target
+After=network-online.target
 
 [Service]
-Type=oneshot
+Type=simple
 ExecStart=/usr/local/sbin/certbot_renewal
 
 [Install]
