@@ -26,25 +26,25 @@
   failed_when: no
 
 - name: Network interfaces NM_CONTROLLED=no
-  with_items:
-  - eth0
-  - eth1
+  with_items: "{{ ansible_interfaces }}"
+  when: item not in [ 'lo' ]
   become: yes
   lineinfile:
-    dest="/etc/sysconfig/network-scripts/ifcfg-{{ item }}"
-    regexp="^NM_CONTROLLED="
-    line="NM_CONTROLLED=no"
+    dest: "/etc/sysconfig/network-scripts/ifcfg-{{ item }}"
+    create: no
+    regexp: "^NM_CONTROLLED="
+    line: "NM_CONTROLLED=no"
   failed_when: no
 
 - name: Network interfaces ONBOOT=yes
-  with_items:
-  - eth0
-  - eth1
+  with_items: "{{ ansible_interfaces }}"
+  when: item not in [ 'lo' ]
   become: yes
   lineinfile:
-    dest="/etc/sysconfig/network-scripts/ifcfg-{{ item }}"
-    regexp="^ONBOOT="
-    line="ONBOOT=yes"
+    dest: "/etc/sysconfig/network-scripts/ifcfg-{{ item }}"
+    create: no
+    regexp: "^ONBOOT="
+    line: "ONBOOT=yes"
   failed_when: no
 
 - name: Enable the network service
