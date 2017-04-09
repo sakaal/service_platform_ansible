@@ -9,8 +9,11 @@
     - admin_email is defined
 
 - name: Shutdown any existing HTTP server
+  with_items:
+  - httpd
+  - nginx
   become: yes
-  service: name="httpd" state=stopped
+  service: name="{{ item }}" state=stopped
   failed_when: no
 
 - name: Configure the firewall for HTTPS

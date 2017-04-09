@@ -1,0 +1,105 @@
+#
+# {{ item.desc }}
+#
+# All name-based SSL virtual hosts get their SSL configuration
+# from whichever of them is loaded first.
+# We are not managing the order in which the SSL virtual hosts get loaded,
+# so every one of them must contain the same SSL configuration.
+#
+
+server {
+    listen {{ public_ipv4_address }}:80;
+    server_name {{ item.fqdn }};
+    # We use permanent redirect status 301 (see HSTS includeSubDomains below)
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+    listen {{ public_ipv4_address }}:443 ssl;
+    server_name {{ item.fqdn }};
+
+    ssl_certificate {{ tls_certificate_file }};
+    ssl_certificate_key {{ tls_certificate_key_file }};
+
+    ssl_session_timeout 1d;
+    ssl_session_cache shared:SSL:50m;
+    ssl_session_tickets off;
+
+    ssl_dhparam /etc/pki/tls/private/dhparam.pem;
+
+    ssl_stapling on;
+    ssl_stapling_verify on;
+
+{% if websites is defined and item.fqdn in websites %}
+    root /var/www/{{ item.fqdn }}/htdocs;
+{% endif %}
+
+    # https://wiki.mozilla.org/Security/Server_Side_TLS
+
+    ssl_protocols {{ ([''] + tls_protocols|list) | join(' ') }};
+    ssl_ciphers '{{ tls_ciphersuite|list | join(' ') +
+                ([''] + tls_ciphersuite_excludes | list) | join(' !') }}';
+    ssl_prefer_server_ciphers on;
+
+{% if item.proxies is defined %}
+    proxy_set_header Host $host;
+
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-Server $host;
+
+    proxy_set_header X-Forwarded-Proto "https";
+    proxy_set_header X-Forwarded-Port "443";
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Real-IP       $remote_addr;
+
+{% for proxy in item.proxies %}
+
+    #
+    # Proxy: https://{{ item.fqdn }}/{{ proxy.context }}
+    # Backend: http://{{ proxy.backend_host }}/{{ proxy.backend_context }}
+    #
+{% if proxy.exclude_locations is defined %}
+{% for location in proxy.exclude_locations %}
+    location = {{ location }} {
+        # exclude
+    }
+{% endfor %}
+
+{% endif %}
+{% if proxy.exclude_patterns is defined %}
+{% for pattern in proxy.exclude_patterns %}
+    location ~ {{ pattern }} {
+        # exclude
+    }
+{% endfor %}
+
+{% endif %}
+    location /{{ proxy.context }} {
+{% if proxy.backend_context is defined and proxy.backend_context != proxy.context %}
+        proxy_pass http://{{ proxy.backend_host }}/{{ proxy.backend_context }};
+{% else %}
+        proxy_pass http://{{ proxy.backend_host }};
+{% endif %}
+        proxy_http_version 1.1;
+
+        client_max_body_size 50M;
+
+        proxy_cookie_domain {{ proxy.backend_host }} {{ item.fqdn }}
+{% if proxy.backend_context is defined and proxy.backend_context != proxy.context %}
+        proxy_cookie_path /{{ proxy.backend_context }} /{{ proxy.context }}
+{% endif %}
+    }
+{% endfor %}
+{% endif %}
+
+    # HSTS
+    # https://www.owasp.org/index.php/HTTP_Strict_Transport_Security
+    add_header Strict-Transport-Security "max-age={{ tls_hsts_max_age
+                                }}; includeSubDomains; preload" always;
+
+    # https://www.owasp.org/index.php/List_of_useful_HTTP_headers
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options SAMEORIGIN;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Content-Security-Policy "default-src https:; connect-src https:; font-src https: data:; frame-src https:; img-src https: data:; media-src https:; object-src https:; script-src 'unsafe-inline' 'unsafe-eval' about: https:; style-src 'unsafe-inline' https:;";
+}
