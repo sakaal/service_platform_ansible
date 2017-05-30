@@ -152,8 +152,8 @@ su - ${BACKUP_USER} -c "rm -f ~/.lftp/*_log"
 LFTP="open -u {{ backup_onsite_account }}, {{ backup_onsite_protocol }}://{{ backup_onsite_service }};"
 REMOTE_DIR="`date -u +"%Y-%m"`/`hostname`${clientdir}"
 
-MONTH_RETAIN="`date -u +"%Y-%m" --date="3 months ago"`"
-MONTH_DELETE="`date -u +"%Y-%m" --date="4 months ago"`"
+MONTH_RETAIN="`date -u +"%Y-%m" --date="2 months ago"`"
+MONTH_DELETE="`date -u +"%Y-%m" --date="3 months ago"`"
 
 nice -n 19 su - ${BACKUP_USER} -c "lftp -c '${LFTP}\
  mkdir -p ${REMOTE_DIR};\
