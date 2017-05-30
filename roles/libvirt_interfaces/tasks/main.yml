@@ -21,7 +21,7 @@
   shell: virsh -q domiflist {{ item.domain }} |
          grep -ioP '([0-9A-F]{2}:){5}([0-9A-F]{2})$'
   register: domiflist
-  changed_when: not '{{ item.mac.lower() }}' in domiflist.stdout.lower()
+  changed_when: not item.mac.lower() in domiflist.stdout.lower()
 
 - name: Attach network interfaces
   with_items: "{{ domiflist.results }}"
