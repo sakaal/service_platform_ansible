@@ -156,12 +156,12 @@ MONTH_RETAIN="`date -u +"%Y-%m" --date="2 months ago"`"
 MONTH_DELETE="`date -u +"%Y-%m" --date="3 months ago"`"
 
 nice -n 19 su - ${BACKUP_USER} -c "lftp -c '${LFTP}\
- mkdir -p ${REMOTE_DIR};\
- mirror --Remove-source-files -R ${OUTBOUND_QUEUE} ${REMOTE_DIR}'\
+ ls ${MONTH_RETAIN} && rm -r ${MONTH_DELETE};'\
  > /dev/null 2>&1"
 
 nice -n 19 su - ${BACKUP_USER} -c "lftp -c '${LFTP}\
- ls ${MONTH_RETAIN} && rm -r ${MONTH_DELETE};'\
+ mkdir -p ${REMOTE_DIR};\
+ mirror --Remove-source-files -R ${OUTBOUND_QUEUE} ${REMOTE_DIR}'\
  > /dev/null 2>&1"
 
 #
