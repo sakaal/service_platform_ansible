@@ -1,0 +1,7 @@
+# file: git_servers.yml
+---
+
+- name: VERSION CONTROL
+  hosts: git_servers
+  roles:
+  - git_server
