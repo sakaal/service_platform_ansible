@@ -1,0 +1,8 @@
+# file: cvs_servers.yml
+---
+
+- name: VERSION CONTROL
+  hosts: cvs_servers
+  roles:
+  - access_control
+  - cvs_server
