@@ -32,6 +32,7 @@
     module: uri
     method: DELETE
     url: "{{ dynect_api_url }}/CNAMERecord/{{ public_dns_zone }}/{{ item.item }}/"
+    status_code: 200,404
     headers:
       Content-Type="application/json"
       Auth-Token="{{ dynect_session_token }}"
