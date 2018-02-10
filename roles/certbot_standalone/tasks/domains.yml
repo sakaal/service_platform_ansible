@@ -16,13 +16,13 @@
   service: name="{{ item }}" state=stopped
   failed_when: no
 
-- name: Configure the firewall for HTTPS
+- name: Configure the firewall for HTTP
   become: yes
   firewalld:
     immediate: True
     permanent: True
     zone: "{{ firewall_zone }}"
-    service: "https"
+    service: "http"
     state: enabled
   notify: Restart firewalld
 
