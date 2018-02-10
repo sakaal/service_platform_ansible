@@ -74,3 +74,4 @@
     status_code: 200,201
   register: hetzner_result
   failed_when: hetzner_result.json.error is defined
+  ignore_errors: yes
