@@ -4,5 +4,5 @@
 - name: VERSION CONTROL
   hosts: cvs_servers
   roles:
-  - access_control
   - cvs_server
+  - access_control
