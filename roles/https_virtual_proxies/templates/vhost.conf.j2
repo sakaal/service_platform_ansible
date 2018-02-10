@@ -20,7 +20,7 @@ ServerName {{ item.fqdn }}:443
 DocumentRoot "/var/www/{{ item.fqdn }}/htdocs"
 <Directory "/var/www/{{ item.fqdn }}/htdocs">
     Options None
-    AllowOverride None
+    AllowOverride All
     Require all granted
 </Directory>
 {% endif %}

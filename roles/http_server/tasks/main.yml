@@ -36,10 +36,24 @@
 
 - name: HTTP server administrator public email address conforming to RFC 2142
   become: yes
-  lineinfile: dest=/etc/httpd/conf/httpd.conf
-              regexp='^\s*ServerAdmin\s'
-              line="ServerAdmin webmaster@{{ public_dns_zone }}"
-              insertafter='^#\s*ServerAdmin'
+  lineinfile:
+    dest: '/etc/httpd/conf/httpd.conf'
+    regexp: '^\s*ServerAdmin\s'
+    line: "ServerAdmin webmaster@{{ public_dns_zone }}"
+    insertafter: '^#\s*ServerAdmin'
+
+- name: HTTP server password file
+  with_items: "{{ htpasswd_users | default([]) }}"
+  become: yes
+  lineinfile:
+    dest: '/etc/httpd/.htpasswd'
+    regexp: '^{{ item.user }}:'
+    line: "{{ item.user }}:{{ item.password }}"
+    state: "{{ item.state | default('present') }}"
+    create: yes
+    owner: root
+    group: root
+    mode: 0640
 
 - name: HTTP server document root
   become: yes
