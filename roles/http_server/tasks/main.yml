@@ -53,7 +53,7 @@
     create: yes
     owner: root
     group: root
-    mode: 0640
+    mode: 0644
 
 - name: HTTP server document root
   become: yes
