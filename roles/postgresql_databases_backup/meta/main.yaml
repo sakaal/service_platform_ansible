@@ -1,4 +1,4 @@
-# file: roles/postgresql_databases_backup/meta/main.yml
+# file: roles/postgresql_databases_backup/meta/main.yaml
 ---
 
 dependencies:

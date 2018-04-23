@@ -1,4 +1,4 @@
-# file: roles/backup_client/defaults/main.yml
+# file: roles/backup_client/defaults/main.yaml
 ---
 
 backup_client_timer_on_calendar: "*-*-* {{ [ 2|random, 59|random, 59|random ] | join(':') }}"

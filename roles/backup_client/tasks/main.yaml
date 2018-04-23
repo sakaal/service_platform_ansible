@@ -1,0 +1,84 @@
+# file: roles/backup_client/tasks/main.yaml
+---
+
+- name: Backup client script
+  become: yes
+  template:
+    src: backup_client.sh.j2
+    dest: "/usr/local/sbin/backup_client"
+    mode: 0755
+    owner: root
+    group: root
+
+- name: Backup locate script
+  become: yes
+  template:
+    src: backup_locate.sh.j2
+    dest: "/usr/local/sbin/backup_locate"
+    mode: 0755
+    owner: root
+    group: root
+
+- name: Obsolete backup directory script
+  become: yes
+  file: path="/usr/local/sbin/backup_dir" state=absent
+
+- name: Archive script for PostgreSQL databases
+  when: postgres_home is defined
+  become: yes
+  template:
+    src: archive_pgsql_db.sh.j2
+    dest: "/usr/local/sbin/archive_pgsql_db"
+    mode: 0755
+    owner: root
+    group: root
+
+- name: Archive script for file system directories
+  become: yes
+  template:
+    src: archive_dir.sh.j2
+    dest: "/usr/local/sbin/archive_dir"
+    mode: 0755
+    owner: root
+    group: root
+
+- name: Archive file encryption script
+  become: yes
+  template:
+    src: archive_encrypt.sh.j2
+    dest: "/usr/local/sbin/archive_encrypt"
+    mode: 0755
+    owner: root
+    group: root
+
+- name: Backup client configuration directory
+  become: yes
+  file: path="/usr/local/etc/backup_client.d" state=directory mode=0755
+
+- name: Backup client systemd service unit file
+  become: yes
+  template:
+    src: backup_client.service.j2
+    dest: "/etc/systemd/system/backup_client.service"
+    mode: 0755
+    owner: root
+    group: root
+  notify: systemctl daemon-reload
+
+- name: Backup client systemd timer unit file
+  become: yes
+  template:
+    src: backup_client.timer.j2
+    dest: "/etc/systemd/system/backup_client.timer"
+    mode: 0755
+    owner: root
+    group: root
+  notify: systemctl daemon-reload
+
+- name: Enable the backup client timer
+  become: yes
+  command: systemctl enable backup_client.timer
+
+- name: Start the backup client timer
+  become: yes
+  command: systemctl start backup_client.timer

@@ -1,4 +1,4 @@
-# file: roles/hetzner_backup_authorized_keys/tasks/main.yml
+# file: roles/hetzner_backup_authorized_keys/tasks/main.yaml
 #
 # Configures a backup client and the on-site backup service
 # for SSH public key authentication to allow non-interactive access.
@@ -64,7 +64,7 @@
                in hetzner_backup_access.stderr
 
 - name: Hetzner backup space authorized keys
-  when: (hetzner_backup_access|changed) and
+  when: (hetzner_backup_access is changed) and
         (hetzner_backup_access.stdout.strip() == "")
   become: yes
   become_user: "{{ backup_user }}"
@@ -80,26 +80,26 @@
          "
 
 - set_fact:
-    existing_keys: "{{ (hetzner_backup_access | changed) and
+    existing_keys: "{{ (hetzner_backup_access is changed) and
                        (hetzner_backup_access.stdout.strip() != '') }}"
 
 - debug: var=existing_keys
 
 - name: List the existing backup space authorized keys
-  when: "{{ existing_keys | bool }}"
+  when: existing_keys | bool
   become: yes
   become_user: "{{ backup_user }}"
   copy: dest="{{ backup_user_home }}/.ssh/backup_authorized_keys"
         content="{{ hetzner_backup_access.stdout }}\n"
 
 - name: Add a backup space authorized key
-  when: "{{ existing_keys | bool }}"
+  when: existing_keys | bool
   become: yes
   become_user: "{{ backup_user }}"
   shell: chdir="{{ backup_user_home }}/.ssh" cat id_rsa_rfc4716.pub >> backup_authorized_keys
 
 - name: Install the Hetzner backup space authorized keys
-  when: "{{ existing_keys | bool }}"
+  when: existing_keys | bool
   become: yes
   become_user: "{{ backup_user }}"
   no_log: True

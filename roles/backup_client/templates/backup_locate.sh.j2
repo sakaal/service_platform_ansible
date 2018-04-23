@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+#
+# The backup user account has the access keys to the on-site backup service.
+#
+BACKUP_USER="{{ backup_user | default(admin_username) }}"
+
+usage() { echo "Usage: $0 [-h <string>] [-n <string>] [-t <string>]" 1>&2; exit 1; }
+
+while getopts h:n:t: o
+do  case "${o}" in
+    h)
+        host="${OPTARG}"
+        ;;
+    n)
+        archive="${OPTARG}"
+        ;;
+    t)
+        timestamp="${OPTARG}"
+        ;;
+    *)
+        usage
+        ;;
+    esac
+done
+shift $((OPTIND-1))
+
+if [ -z "${host}" ]; then
+    host=$(hostname)
+fi
+
+if [ -z "${archive}" ]; then
+    usage
+fi
+
+if [ -z "${timestamp}" ]; then
+    timestamp="now"
+fi
+yearmonth="$(date -u +"%Y-%m" -d "${timestamp}")"
+EXITVALUE=$?
+if [ $EXITVALUE -ne 0 ]; then
+    echo "Please use standard date expressions (not the backup client timestamp format)." >&2
+    exit $EXITVALUE
+fi
+timestamp="$(date -u +"%FT%H%MZ" -d "${timestamp}")"
+
+echo "Locating the last backup of ${archive} at or before ${timestamp} for ${host}..."
+#
+# List encrypted archives available in the backup service
+# in reverse chronological order:
+#
+REMOTE_DIR="${yearmonth}/${host}/${archive}"
+
+#
+# lftp ls - lists the files in the backup service
+# awk prints the last field that is the filename only
+# sed matches the archive name, keeping only the date and time
+# reverse sort and keep only unique lines
+#
+LFTP="open -u {{ backup_onsite_account }}, {{ backup_onsite_protocol }}://{{ backup_onsite_service }};"
+available_timestamps=$(
+    su - ${BACKUP_USER} -c "lftp -c '${LFTP} ls ${REMOTE_DIR};' 2>/dev/null" \
+    | awk '{print $NF}' \
+    | sed -n "s/^${archive}_.*_\([0-9A-Z-]\+\)\..*$/\1/p" \
+    | sort -r | uniq
+)
+
+for available_timestamp in ${available_timestamps}; do
+  if [[ "${available_timestamp}" < "${timestamp}" ]] || [ "${available_timestamp}" = "${timestamp}" ]; then
+     echo "${available_timestamp}"
+     break
+  fi
+done

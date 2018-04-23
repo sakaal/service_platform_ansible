@@ -1,0 +1,5 @@
+# file: roles/hetzner_backup_authorized_keys/meta/main.yaml
+---
+
+dependencies:
+- role: backup_tools

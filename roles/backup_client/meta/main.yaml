@@ -1,4 +1,4 @@
-# file: roles/backup_client/meta/main.yml
+# file: roles/backup_client/meta/main.yaml
 ---
 
 dependencies:

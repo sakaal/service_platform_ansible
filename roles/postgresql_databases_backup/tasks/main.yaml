@@ -1,4 +1,4 @@
-# file: roles/postgresql_databases_backup/tasks/main.yml
+# file: roles/postgresql_databases_backup/tasks/main.yaml
 #
 # Backup client configuration for PostgreSQL databases
 #
@@ -9,7 +9,7 @@
   register: temp_file
   changed_when: False
 
-- when: temp_file|success
+- when: temp_file is success
   set_fact:
     temp_file: "{{ temp_file.stdout }}"
 
@@ -24,13 +24,14 @@
 - name: Keep current backup client configuration items
   when: postgres_home is defined
   with_items: "{{ postgresql_databases }}"
-  lineinfile: dest="{{ temp_file }}"
-              line="pgsql-{{ item.name }}.conf"
-              state=absent
+  lineinfile:
+    dest: "{{ temp_file }}"
+    line: "pgsql-{{ item.name }}.conf"
+    state: absent
   changed_when: False
 
 - name: Remove obsolete backup client configuration items
-  when: pgsql_current_backups|success
+  when: pgsql_current_backups is success
   become: yes
   shell: chdir="/usr/local/etc/backup_client.d"
          xargs -I{} sh -c 'rm {}' < "{{ temp_file }}"
@@ -38,12 +39,15 @@
 
 - name: Delete the temporary file
   when: temp_file is defined
-  file: name="{{ temp_file }}" state=absent
+  file:
+    name: "{{ temp_file }}"
+    state: absent
   changed_when: no
 
 - name: Backup client configuration for PostgreSQL databases
   when: postgres_home is defined
   with_items: "{{ postgresql_databases }}"
   become: yes
-  template: src=pgsql-.conf.j2
-            dest="/usr/local/etc/backup_client.d/pgsql-{{ item.name }}.conf"
+  template:
+    src: pgsql-.conf.j2
+    dest: "/usr/local/etc/backup_client.d/pgsql-{{ item.name }}.conf"

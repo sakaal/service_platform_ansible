@@ -3,7 +3,7 @@ Description=backup client schedule
 
 [Timer]
 OnCalendar={{ backup_client_timer_on_calendar }}
-{% if ansible_os_family == "RedHat" and ansible_distribution_version | version_compare('7.3', '>=') %}
+{% if ansible_os_family == "RedHat" and ansible_distribution_version is version('7.3', '>=') %}
 RandomizedDelaySec=2 h 30 min
 {% endif %}
 Unit=backup_client.service
