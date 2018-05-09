@@ -1,0 +1,4 @@
+# file: roles/transport_layer_security/defaults/main.yaml
+---
+
+tls_files_dir: "{{ inventory_dir }}/roles/transport_layer_security/files"

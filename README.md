@@ -120,16 +120,18 @@ Set up the backup access credentials in file
 
 ### Preparing the digital certificates ###
 
-Keep the digital certificates under `/mnt/sensitive_data/etc/pki/tls/`
+Keep the digital certificates under `{{ inventory_dir }}/roles/transport_layer_security/files`
 with the following naming policy for wildcard certificates and their keys:
 
-     /mnt/sensitive_data/etc/pki/tls/certs/_.example.com-crt.pem
-     /mnt/sensitive_data/etc/pki/tls/private/_.example.com-key.pem
+     files/certs/_.example.com-crt.pem
+     files/private/_.example.com-key.pem
 
 The public service domain certificate has the following naming policy:
 
-     /mnt/sensitive_data/etc/pki/tls/certs/public.test-crt.pem
-     /mnt/sensitive_data/etc/pki/tls/private/public.test-key.pem
+     files/certs/public.test-crt.pem
+     files/private/public.test-key.pem
+
+Do remember to encrypt the private keys using Ansible Vault.
 
 You may need to validate that you control a domain before you can request a
 Certificate Authority (CA) to issue a certificate for it. If you are deploying
