@@ -107,7 +107,7 @@
   become: yes
   become_user: root
   template: src=nexus.service.j2 dest=/etc/systemd/system/nexus.service
-            owner=root group=root mode=0755
+            owner=root group=root mode=0644
 
 - name: Set Nexus OSS context path
   become: yes

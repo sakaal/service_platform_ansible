@@ -60,7 +60,7 @@
   template:
     src: backup_client.service.j2
     dest: "/etc/systemd/system/backup_client.service"
-    mode: 0755
+    mode: 0644
     owner: root
     group: root
   notify: systemctl daemon-reload
@@ -70,7 +70,7 @@
   template:
     src: backup_client.timer.j2
     dest: "/etc/systemd/system/backup_client.timer"
-    mode: 0755
+    mode: 0644
     owner: root
     group: root
   notify: systemctl daemon-reload
