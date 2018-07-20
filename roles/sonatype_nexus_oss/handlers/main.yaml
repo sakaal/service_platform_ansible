@@ -1,0 +1,9 @@
+# file: roles/sonatype_nexus_oss/handlers/main.yaml
+---
+
+- name: Restart Nexus
+  become: yes
+  become_user: root
+  service:
+    name: nexus
+    state: restarted

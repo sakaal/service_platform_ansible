@@ -1,0 +1,14 @@
+# file: roles/ldap_server/handlers/main.yaml
+---
+
+- name: Restart the directory server
+  become: yes
+  service:
+    name: slapd
+    state: restarted
+
+- name: Restart firewall
+  become: yes
+  service:
+    name: firewalld
+    state: restarted

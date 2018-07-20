@@ -1,4 +1,4 @@
-# file: roles/sonatype_nexus_oss/tasks/main.yml
+# file: roles/sonatype_nexus_oss/tasks/main.yaml
 #
 # Configuring Sonatype Nexus as a Service
 #
@@ -10,7 +10,7 @@
 
 - name: Create the Nexus user account
   become: yes
-  user: name="{{ nexus_user | mandatory }}"
+  user: name="{{ nexus_user }}"
         comment="Sonatype Nexus OSS"
         shell=/bin/bash
         generate_ssh_key=yes
@@ -23,16 +23,16 @@
 - name: Download the Sonatype Nexus OSS archive locally
   run_once: yes
   local_action: command chdir="{{ files_dir }}"
-                creates="{{ nexus_archive | mandatory }}"
+                creates="{{ nexus_archive }}"
                 wget -c -nv --no-cookies
-                {{ nexus_download | mandatory }}/{{ nexus_archive }}
+                {{ nexus_download }}/{{ nexus_archive }}
                 -O {{ nexus_archive }}
 
 - name: Verify the local Sonatype Nexus OSS archive
   run_once: yes
   local_action: stat path="{{ files_dir }}/{{ nexus_archive }}"
   register: nexus_local_archive
-  failed_when: nexus_local_archive.stat.md5 != "{{ nexus_md5sum | mandatory }}"
+  failed_when: nexus_local_archive.stat.md5 != "{{ nexus_md5sum }}"
 
 - name: Verify the remote Sonatype Nexus OSS archive
   become: yes
@@ -44,7 +44,7 @@
   failed_when: False
 
 - name: Upload the Sonatype Nexus OSS archive
-  when: nexus_remote_archive|changed
+  when: nexus_remote_archive is changed
   become: yes
   become_user: "{{ nexus_user }}"
   copy: src="{{ nexus_archive }}" dest="~{{ nexus_user }}/{{ nexus_archive }}"
@@ -150,7 +150,7 @@
 #
 # You must set different email addresses and passwords for different accounts
 # for this configuration method to work. Set the Nexus accounts as follows in:
-# /mnt/sensitive_data/etc/ansible/vars/admin_access.yml
+# {{ inventory_dir }}/group_vars/all/admin_access_vault.yaml
 #
 #nexus_admin_password: $shiro1$SHA-512$500000$ZXER...W2iDUMMYwzjzNZw==
 #nexus_admin_email: "Nexus admin \\&lt;user@domain.test\\&gt;"
@@ -161,20 +161,20 @@
 - name: Check access
   with_items:
 
-  - value: "{{ nexus_admin_password | mandatory }}"
+  - value: "{{ nexus_admin_password }}"
     xpath: "//user[id='admin']/password/text()"
-  - value: "{{ nexus_admin_email | mandatory }}"
+  - value: "{{ nexus_admin_email }}"
     xpath: "//user[id='admin']/email/text()"
 
-  - value: "{{ nexus_deployment_password | mandatory }}"
+  - value: "{{ nexus_deployment_password }}"
     xpath: "//user[id='deployment']/password/text()"
-  - value: "{{ nexus_deployment_email | mandatory }}"
+  - value: "{{ nexus_deployment_email }}"
     xpath: "//user[id='deployment']/email/text()"
 
   when: item.value.strip() != ""
   become: yes
   become_user: "{{ nexus_user }}"
-  command: xmllint --xpath "{{ item.xpath | mandatory }}"
+  command: xmllint --xpath "{{ item.xpath }}"
            {{ nexus_conf }}/security.xml
   register: nexus_security
   changed_when: nexus_security.stdout.strip() != item.value
@@ -183,7 +183,7 @@
 
 - name: Control access
   with_items: "{{ nexus_security.results }}"
-  when: item|changed
+  when: item is changed
   become: yes
   become_user: "{{ nexus_user }}"
   command: sed -i 's|>\s*{{ item.stdout.strip() }}\s*<|>{{ item.item.value }}<|g'
@@ -267,7 +267,7 @@
   when: (item.value|string).strip() != ""
   become: yes
   become_user: "{{ nexus_user }}"
-  command: xmllint --xpath "{{ item.xpath | mandatory }}"
+  command: xmllint --xpath "{{ item.xpath }}"
            {{ nexus_conf }}/nexus.xml
   register: smtp_config
   changed_when: smtp_config.stdout.strip() != item.value
@@ -275,7 +275,7 @@
 
 - name: Set the SMTP configuration
   with_items: "{{ smtp_config.results }}"
-  when: item|changed
+  when: item is changed
   become: yes
   become_user: "{{ nexus_user }}"
   command: sed -i 's|>\s*{{ item.stdout.strip() }}\s*<|>{{ item.item.value }}<|g'
@@ -290,6 +290,6 @@
   lineinfile: dest={{ nexus_conf }}/nexus.xml
               regexp='^\s*<tlsEnabled>.*</tlsEnabled>\s*$'
               line='    <tlsEnabled>{{ 'true' if nexus_smtp_tls|bool else 'false' }}</tlsEnabled>'
-              insertafter='^\s*<port>{{ nexus_smtp_port | mandatory }}</port>\s*$' state=present
+              insertafter='^\s*<port>{{ nexus_smtp_port }}</port>\s*$' state=present
   notify:
      - Restart Nexus
