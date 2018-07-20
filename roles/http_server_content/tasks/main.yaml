@@ -1,4 +1,4 @@
-# file: roles/http_server_content/tasks/main.yml
+# file: roles/http_server_content/tasks/main.yaml
 ---
 
 - name: www-data group
@@ -21,7 +21,6 @@
 # The Ansible synchronize module does not work well with the custom SSH config.
 # We need to call rsync directly.
 #
-#          --rsh 'ssh -F ~/.ssh/config -o Port={{ admin_ssh_port }}'
 - name: Websites
   with_items: "{{ websites | default([]) }}"
   local_action: command rsync --timeout=10 --delay-updates -FF --compress

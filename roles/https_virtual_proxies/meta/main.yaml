@@ -1,4 +1,4 @@
-# file: roles/https_virtual_proxies/meta/main.yml
+# file: roles/https_virtual_proxies/meta/main.yaml
 ---
 
 dependencies:

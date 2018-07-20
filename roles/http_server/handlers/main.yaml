@@ -1,4 +1,4 @@
-# file: roles/http_server/handlers/main.yml
+# file: roles/http_server/handlers/main.yaml
 ---
 
 - name: Restart the HTTP server

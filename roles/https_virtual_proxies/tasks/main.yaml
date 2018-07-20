@@ -1,4 +1,4 @@
-# file: roles/https_virtual_proxies/tasks/main.yml
+# file: roles/https_virtual_proxies/tasks/main.yaml
 #
 # Apache HTTP Server virtual hosts for SSL/TLS HTTPS reverse proxies
 #

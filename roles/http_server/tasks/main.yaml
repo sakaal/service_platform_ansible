@@ -1,4 +1,4 @@
-# file: roles/http_server/tasks/main.yml
+# file: roles/http_server/tasks/main.yaml
 ---
 
 - name: Apache HTTP Server

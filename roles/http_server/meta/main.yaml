@@ -1,4 +1,4 @@
-# file: roles/http_server/meta/main.yml
+# file: roles/http_server/meta/main.yaml
 ---
 
 dependencies:
