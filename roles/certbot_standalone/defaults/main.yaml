@@ -1,0 +1,5 @@
+# file: roles/certbot_standalone/defaults/main.yaml
+---
+
+certbot_packages:
+- python-certbot-apache

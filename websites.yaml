@@ -1,4 +1,4 @@
-# file: websites.yml
+# file: websites.yaml
 #
 # Static web content on the web servers
 #
@@ -6,4 +6,4 @@
 
 - hosts: web_servers
   roles:
-    - http_server_content
+  - http_server_content

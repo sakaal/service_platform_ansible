@@ -1,0 +1,35 @@
+# file: roles/certbot_standalone/tasks/main.yaml
+#
+# Let's Encrypt recommended Certbot
+#
+---
+
+- name: Check administrative email contact
+  assert:
+    that:
+    - admin_email is defined
+    - admin_email.strip() != ""
+
+- name: Certbot Apache package (yum)
+  when: ansible_pkg_mgr == "yum"
+  with_items: "{{ certbot_packages }}"
+  become: yes
+  yum:
+    name: "{{ item }}"
+    state: present
+
+- name: Certbot Apache package (dnf)
+  when: ansible_pkg_mgr == "dnf"
+  with_items: "{{ certbot_packages }}"
+  become: yes
+  dnf:
+    name: "{{ item }}"
+    state: present
+
+- debug: var=certbot_domains
+
+- name: Configure Certbot for domains
+  when:
+    - certbot_domains is defined
+    - certbot_domains | length > 0
+  include: domains.yaml

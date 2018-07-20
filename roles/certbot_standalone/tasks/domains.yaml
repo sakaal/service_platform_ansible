@@ -1,0 +1,68 @@
+# file: roles/certbot_standalone/tasks/domains.yaml
+---
+
+- name: Check configuration
+  assert:
+    that:
+    - certbot_domains is defined
+    - certbot_domains | length > 0
+    - admin_email is defined
+
+- name: Shutdown any existing HTTP server
+  with_items:
+  - httpd
+  - nginx
+  become: yes
+  service: name="{{ item }}" state=stopped
+  failed_when: no
+
+- name: Configure the firewall for HTTP
+  become: yes
+  firewalld:
+    immediate: True
+    permanent: True
+    zone: "{{ firewall_zone }}"
+    service: "http"
+    state: enabled
+
+- name: Certbot domains
+  debug:
+    var: certbot_domains
+
+- name: Obtain certificate via Certbot standalone
+  become: yes
+  command: certbot --standalone 
+           --domains "{{ certbot_domains | join(',') }}"
+           --email "{{ admin_email }}"
+           --agree-tos certonly
+           --keep-until-expiring --quiet
+           --expand
+
+- name: Certbot certificate renewal script
+  become: yes
+  template:
+    src: certbot_renewal.sh.j2
+    dest: "/usr/local/sbin/certbot_renewal"
+    mode: 0755
+    owner: root
+    group: root
+
+- name: Certbot certificate renewal systemd service and timer unit files
+  with_items:
+  - certbot_renewal.service
+  - certbot_renewal.timer
+  become: yes
+  template:
+    src: "{{ item }}.j2"
+    dest: "/etc/systemd/system/{{ item }}"
+    mode: 0644
+    owner: root
+    group: root
+
+- name: Enable and start the Certbot certificate renewal timer
+  become: yes
+  systemd:
+    daemon_reload: yes
+    name: certbot_renewal.timer
+    enabled: yes
+    state: started

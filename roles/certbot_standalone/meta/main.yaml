@@ -1,0 +1,6 @@
+# file: roles/certbot_standalone/meta/main.yaml
+---
+
+dependencies:
+- role: dns_public_records
+- role: dns_public_cname_records

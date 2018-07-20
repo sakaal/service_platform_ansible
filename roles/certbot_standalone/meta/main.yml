@@ -1,7 +1,0 @@
-# file: roles/certbot_standalone/meta/main.yml
----
-
-dependencies:
-- role: dns_public_records
-- role: dns_public_cname_records
-- role: "../service_commons_ansible/roles/systemd_common"
