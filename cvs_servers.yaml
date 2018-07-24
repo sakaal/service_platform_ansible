@@ -1,0 +1,8 @@
+# file: cvs_servers.yaml
+---
+
+- name: VERSION CONTROL
+  hosts: cvs_servers
+  roles:
+  - cvs_server
+  - access_control

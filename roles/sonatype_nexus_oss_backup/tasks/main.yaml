@@ -1,0 +1,16 @@
+# file: roles/sonatype_nexus_oss_backup/tasks/main.yaml
+#
+# roles/sonatype_nexus_oss sets the nexus_work variable.
+#
+---
+
+- name: Sonatype Nexus OSS backup excludes list
+  become: yes
+  copy: src=sonatype_nexus_oss.backup_excludes
+        dest="{{ nexus_work | mandatory }}/.backup_excludes"
+        mode=660 owner={{ nexus_user }} group={{ nexus_user }}
+
+- name: Backup client configuration for Sonatype Nexus OSS
+  become: yes
+  template: src=sonatype_nexus_oss.conf.j2
+            dest="/usr/local/etc/backup_client.d/sonatype_nexus_oss.conf"

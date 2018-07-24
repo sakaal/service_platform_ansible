@@ -1,0 +1,37 @@
+---
+# file: roles/alpine/tasks/main.yaml
+#
+# Alpine email client
+#
+# Avoid using this Alpine installation for other than administrative or
+# testing purposes. Alpine discloses the local hostname in Message-ID.
+#
+
+- name: Alpine packages
+  with_items:
+  - alpine
+  yum: name={{ item }}
+
+- name: Alpine user domain
+  lineinfile:
+    dest="/etc/pine.conf.fixed"
+    create=yes mode=644 owner=root group=root
+    regexp="^#?\s*user-domain="
+    line="user-domain={{ public_dns_zone | mandatory }}"
+
+- name: Alpine fixed feature list
+  lineinfile:
+    dest="/etc/pine.conf.fixed"
+    regexp="^#?\s*feature-list="
+    line="feature-list=,"
+
+- name: Alpine fixed feature list items
+  with_items:
+  - use-sender-not-x-sender # obsolete X-X-Sender header
+  - disable-sender          # obsolete Sender header
+  - warn-if-blank-subject
+  lineinfile:
+    dest="/etc/pine.conf.fixed"
+    regexp="^#?\s*{{ item }}\s*,\s*$"
+    line="        {{ item }},"
+    insertafter="^\s*feature-list=.*,\s*$"

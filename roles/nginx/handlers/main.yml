@@ -1,6 +1,0 @@
-# file: roles/nginx/handlers/main.yml
----
-
-- name: Restart nginx
-  become: yes
-  service: name=nginx state=restarted

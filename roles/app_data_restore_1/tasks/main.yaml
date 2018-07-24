@@ -1,0 +1,146 @@
+---
+# file: roles/app_data_restore_1/tasks/main.yaml
+
+#
+# Target inventory for restoring application data from the archives
+#
+
+#
+# If your intention is to restore application data without leaving a trace
+# in the main CMDB about the fact that it happened, then you must fetch the
+# relevant safe password files manually from the archives and place them in
+# the /mnt/sensitive_data/archives/restore/ directory on your local ACS.
+#
+# If you do want to leave a trace in the main CMDB, then
+# list the relevant password files in the ACS group variables at:
+# com.example_main_ansible/group_vars/ACS
+#
+
+#
+# Retrieval of archive password files
+# based on a configuration item in the service main CMDB
+#
+
+- group_by: key=ACS
+
+- name: Check that the desired archive details match the prefix
+  with_items: app_data_to_restore
+  when: item.prefix is defined and
+        item.prefix != "{{ item.app_db }}_{{ item.client }}_{{ item.before }}"
+  fail: msg="The given prefix does not match the client data archive details."
+
+- name: Search for the desired archives
+  with_items: app_data_to_restore
+  when: item.prefix is defined
+  remote_user: "{{ admin_username | mandatory }}"
+  delegate_to: "{{ item.client | mandatory }}"
+  shell: >
+         lftp -c "open -u {{ backup_onsite_account | mandatory }},
+         sftp://{{ backup_onsite_service | mandatory }} ;
+         cd /{{ item.before
+         | regex_replace('^([0-9]{4})-?([0-9]{2}).*$',
+         '\\1-\\2') }}/{{ item.client }}/{{ item.app_db }}/ ;
+         glob echo {{ item.prefix
+         | regex_replace('[:Z]', '') | regex_replace(' ', 'T') }}*.pass.safe
+         | tr \' \' \'\n\' | sort | tail -n1 ;"
+  register: app_data_pw_files
+
+#
+# The Hetzner on-site backup space can only be contacted from within their
+# data center. Otherwise the password files could be fetched directly.
+#
+- name: Retrieve the safe password files from the archives to the clients
+  with_items: app_data_pw_files.results
+  when: not item|skipped
+  remote_user: "{{ admin_username | mandatory }}"
+  delegate_to: "{{ item.item.client | mandatory }}"
+  shell: >
+         lftp -c "open -u {{ backup_onsite_account | mandatory }},
+         sftp://{{ backup_onsite_service | mandatory }} ;
+         cd /{{ item.item.before | regex_replace('^([0-9]{4})-?([0-9]{2}).*$',
+         '\\1-\\2') }}/{{ item.item.client }}/{{ item.item.app_db }}/ ;
+         get {{ item.stdout }} ;"
+
+- name: Transfer the safe password files from the clients to the local system
+  with_items: app_data_pw_files.results
+  when: not item|skipped
+  remote_user: "{{ admin_username | mandatory }}"
+  delegate_to: "{{ item.item.client | mandatory }}"
+  fetch: src="{{ item.stdout }}" dest="{{ item.stdout }}" flat=yes
+
+- name: Remove the safe password files from the client
+  with_items: app_data_pw_files.results
+  when: not item|skipped
+  remote_user: "{{ admin_username | mandatory }}"
+  delegate_to: "{{ item.item.client | mandatory }}"
+  file: name="{{ item.stdout }}" state=absent
+
+- name: Move the safe password files in place locally
+  with_items: app_data_pw_files.results
+  when: not item|skipped
+  command: sudo mv -f "{{ item.stdout }}" /mnt/sensitive_data/archives/restore/
+
+- name: Set the safe password file permissions locally
+  with_items: app_data_pw_files.results
+  when: not item|skipped
+  become: yes
+  file: path="/mnt/sensitive_data/archives/restore/{{ item.stdout }}" 
+        owner=root group=wheel mode=640
+
+- name: Load the archives and their SHA-256 checksum files on the clients
+  with_fileglob:
+  - /mnt/sensitive_data/archives/restore/*.pass.safe
+  remote_user: "{{ admin_username | mandatory }}"
+  delegate_to: >
+               {{ item |
+               regex_replace(
+               '^.*/([^/]+)_([^/_]+)_([0-9]{4}-[0-9]{2})-[0-9A-Z]+\.pass\.safe$',
+               '\\2') }}
+  shell: >
+         lftp -c "open -u {{ backup_onsite_account | mandatory }},
+         sftp://{{ backup_onsite_service | mandatory }} ;
+         cd /{{ item |
+         regex_replace('^.*/([^/]+)_([^/_]+)_([0-9]{4}-[0-9]{2})-[0-9A-Z]+\.pass\.safe$', '\\3')
+         }}/{{ item |
+         regex_replace('^.*/([^/]+)_([^/_]+)_([0-9]{4}-[0-9]{2})-[0-9A-Z]+\.pass\.safe$', '\\2')
+         }}/{{ item |
+         regex_replace('^.*/([^/]+)_([^/_]+)_([0-9]{4}-[0-9]{2})-[0-9A-Z]+\.pass\.safe$', '\\1')
+         }} ;
+         get -O /var/local/archives/restore/ {{ item
+         | regex_replace('^.*/([^/]+)\.pass\.safe$', '\\1') }}.sha256 ;
+         mget -O /var/local/archives/restore/ {{ item
+         | regex_replace('^.*/([^/]+)\.pass\.safe$', '\\1') }}.tgz.* ;"
+
+#
+# Inventory the destination hosts based on the locally available password files
+#
+
+- name: Create a temporary file
+  run_once: yes
+  local_action: command mktemp
+  register: temp_file
+  changed_when: False
+
+- when: temp_file|success
+  set_fact:
+    temp_file: "{{ temp_file.stdout | mandatory }}"
+
+- name: Make a list of destination hosts
+  with_fileglob:
+  - /mnt/sensitive_data/archives/restore/*.pass.safe
+  lineinfile: dest="{{ temp_file }}"
+              line="{{ item
+              | regex_replace('^(.*)/([^/]+)_([^_]+)_([^_]+).pass.safe$',
+              '\\3') }}"
+
+- name: Inventory the destination hosts
+  with_lines:
+  - cat {{ temp_file }}
+  when: not item in play_hosts
+  add_host:
+    hostname: "{{ item }}"
+    groups: "dest_nodes"
+
+- name: Delete the temporary file
+  file: name="{{ temp_file }}" state=absent
+  changed_when: False

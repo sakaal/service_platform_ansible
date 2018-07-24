@@ -1,0 +1,15 @@
+# file: directory_servers.yaml
+#
+# Directory service nodes
+#
+---
+
+- hosts: directory_servers
+  roles:
+    - libvirt_guest_network_service
+    - ca_trust
+    - transport_layer_security
+    - ../../service_commons_ansible/roles/updates_auto
+    - ldap_server
+
+# TODO: LDAP backup

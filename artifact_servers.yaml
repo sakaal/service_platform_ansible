@@ -1,0 +1,16 @@
+# file: artifact_servers.yaml
+#
+# Software artifact management with Sonatype Nexus OSS
+#
+---
+
+- hosts: artifact_servers
+  roles:
+    - libvirt_guest_network_service
+    - ca_trust
+    - transport_layer_security
+    - ../../service_commons_ansible/roles/updates_auto
+    - java_oracle
+    - ../../service_commons_ansible/roles/java_truststore
+    - sonatype_nexus_oss
+    - sonatype_nexus_oss_backup

@@ -1,0 +1,12 @@
+# file: roles/wildfly8/handlers/main.yaml
+---
+
+- name: Reload WildFly8
+  become: yes
+  become_user: "{{ wildfly8_user }}"
+  command: chdir="{{ wildfly8_home | mandatory }}"
+           {{ wildfly8_cli | mandatory }} --connect --command=':reload'
+
+- name: Restart WildFly8
+  become: yes
+  service: name=wildfly8 state=restarted

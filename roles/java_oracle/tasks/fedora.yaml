@@ -1,0 +1,12 @@
+# file: roles/java_oracle/tasks/fedora.yaml
+---
+
+- name: Set Oracle java as default
+  when: java_oracle_installed|changed
+  become: yes
+  command: alternatives --set java "{{ java_oracle_home }}/bin/java"
+
+- name: Set Oracle jar as default
+  when: java_oracle_installed|changed
+  become: yes
+  command: alternatives --set jar "{{ java_oracle_home }}/bin/jar"

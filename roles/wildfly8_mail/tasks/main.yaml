@@ -1,0 +1,101 @@
+# file: roles/wildfly8_mail/tasks/main.yaml
+#
+# WildFly 8 JavaMail resources
+#
+---
+
+- name: Check the existing SMTP socket bindings
+  become: yes
+  become_user: "{{ wildfly8_user | mandatory }}"
+  command: chdir="{{ wildfly8_home | mandatory }}"
+           {{ wildfly8_cli | mandatory }} --connect
+           --command='/socket-binding-group=standard-sockets:read-children-names(child-type=remote-destination-outbound-socket-binding)'
+           --timeout=200
+  register: wildfly8_socket_bindings
+
+- name: SMTP socket bindings
+  with_items: javamail_resources|default([])
+  when: not 'mail-smtp-{{ item.name | mandatory }}'
+        in wildfly8_socket_bindings.stdout
+  become: yes
+  become_user: "{{ wildfly8_user }}"
+  command: chdir="{{ wildfly8_home | mandatory }}"
+           {{ wildfly8_cli | mandatory }} --connect
+           --command='/socket-binding-group=standard-sockets/remote-destination-outbound-socket-binding=mail-smtp-{{
+           item.name }}/:add(host={{ item.smtp_host | mandatory
+           }},port={{ item.smtp_port | mandatory }})'
+  notify: Reload WildFly8
+
+- name: Check the existing mail sessions
+  become: yes
+  become_user: "{{ wildfly8_user | mandatory }}"
+  command: chdir="{{ wildfly8_home | mandatory }}"
+           {{ wildfly8_cli | mandatory }} --connect
+           --command='/subsystem=mail:read-children-names(child-type=mail-session)'
+           --timeout=200
+  register: wildfly8_mail_sessions
+
+- name: Mail sessions
+  with_items: javamail_resources|default([])
+  when: not 'mail/{{ item.name }}' in wildfly8_mail_sessions.stdout
+  become: yes
+  become_user: "{{ wildfly8_user }}"
+  command: chdir="{{ wildfly8_home | mandatory }}"
+           {{ wildfly8_cli | mandatory }} --connect
+           --command='/subsystem=mail/mail-session=java\:\/mail\/{{ item.name
+           }}:add(jndi-name=java\:\/mail\/{{ item.name }})'
+  notify: Reload WildFly8
+
+- name: Bind mail sessions to outbound SMTP sockets
+  when: not 'mail/{{ item.name }}' in wildfly8_mail_sessions.stdout
+  with_items: javamail_resources|default([])
+  become: yes
+  become_user: "{{ wildfly8_user }}"
+  command: chdir="{{ wildfly8_home | mandatory }}"
+           {{ wildfly8_cli | mandatory }} --connect
+           --command='/subsystem=mail/mail-session=java\:\/mail\/{{ item.name
+           }}/server=smtp:add(outbound-socket-binding-ref="mail-smtp-{{
+           item.name }}")'
+  notify: Reload WildFly8
+
+- name: Mail session user
+  with_items: javamail_resources|default([])
+  become: yes
+  become_user: "{{ wildfly8_user }}"
+  command: chdir="{{ wildfly8_home | mandatory }}"
+           {{ wildfly8_cli | mandatory }} --connect
+           --command='/subsystem=mail/mail-session=java\:\/mail\/{{ item.name
+           }}/server=smtp/:write-attribute(name=username,value={{ item.user }})'
+  notify: Reload WildFly8
+
+- name: Mail session password
+  with_items: javamail_resources|default([])
+  when: (item.password is defined) and (item.password.strip() != "")
+  become: yes
+  become_user: "{{ wildfly8_user }}"
+  command: chdir="{{ wildfly8_home | mandatory }}"
+           {{ wildfly8_cli | mandatory }} --connect
+           --command='/subsystem=mail/mail-session=java\:\/mail\/{{ item.name
+           }}/server=smtp/:write-attribute(name=password,value={{
+           item.password|mandatory.strip() }})'
+  notify: Reload WildFly8
+
+- name: Mail session SSL/TLS
+  with_items: javamail_resources|default([])
+  become: yes
+  become_user: "{{ wildfly8_user }}"
+  command: chdir="{{ wildfly8_home | mandatory }}"
+           {{ wildfly8_cli | mandatory }} --connect
+           --command='/subsystem=mail/mail-session=java\:\/mail\/{{ item.name
+           }}/server=smtp/:write-attribute(name=ssl,value=true)'
+  notify: Reload WildFly8
+
+- name: Default From-address
+  with_items: javamail_resources|default([])
+  become: yes
+  become_user: "{{ wildfly8_user }}"
+  command: chdir="{{ wildfly8_home | mandatory }}"
+           {{ wildfly8_cli | mandatory }} --connect
+           --command='/subsystem=mail/mail-session=java\:\/mail\/{{ item.name
+           }}/:write-attribute(name=from,value="{{ item.from | mandatory }}")'
+  notify: Reload WildFly8

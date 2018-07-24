@@ -1,0 +1,17 @@
+# file: roles/ssh_identity/tasks/main.yaml
+#
+# Deploy SSH identities
+#
+---
+
+- name: SSH access keys
+  with_fileglob:
+  - "{{ inventory_dir }}/roles/ssh_identity/files/{{ ssh_user }}/*"
+  become: yes
+  copy:
+    src: "{{ item }}"
+    dest: "/home/{{ ssh_user }}/.ssh/"
+    decrypt: yes
+    owner: "{{ ssh_user }}"
+    group: "{{ ssh_user }}"
+    mode: 0600

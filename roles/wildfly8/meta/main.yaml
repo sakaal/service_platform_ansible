@@ -1,0 +1,6 @@
+---
+# file: roles/wildfly8/meta/main.yaml
+
+dependencies:
+- role: "../../service_commons_ansible/roles/entropy"
+- role: archive_deployment

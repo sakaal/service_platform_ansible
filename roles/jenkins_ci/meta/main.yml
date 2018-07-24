@@ -1,5 +1,0 @@
----
-# file: roles/jenkins_ci/meta/main.yml
-
-dependencies:
-- role: "../../service_commons_ansible/roles/ssh_known_hosts"

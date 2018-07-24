@@ -1,0 +1,50 @@
+# file: roles/wildfly8_nexus_artifacts/tasks/main.yaml
+#
+# Deployment of software artifacts to WildFly 8 Application Servers during
+# configuration management runs
+# 
+# Note that this is separate from the current Continuous Deployment (CD)
+# process. This method works best for independent artifacts that don't require
+# a specific deploy ordering relative to others.
+#
+# Both this and the CD process are work in progress and will change.
+#
+# Fetches artifacts from Sonatype Nexus OSS repositories and deploys them to
+# the WildFly 8 Application Server.
+#
+---
+
+- name: Deliver artifacts from Nexus
+  with_items: wildfly8_artifacts
+  become: yes
+  become_user: "{{ wildfly8_user }}"
+  command: url_get dest="/home/{{ wildfly8_user
+           }}/{{ item.a }}-{{ item.v }}.{{ item.p }}"
+           url_username="{{ delivery_user | mandatory }}"
+           url_password="{{ delivery_password | mandatory }}"
+           url="{{ nexus_url | mandatory
+           }}/service/local/artifact/maven/content?r={{ item.r | mandatory
+           }}&g={{ item.g | mandatory }}&a={{ item.a | mandatory
+           }}&v={{ item.v | mandatory }}&p={{ item.p | mandatory }}"
+  register: artifacts_delivery
+
+- name: Check artifacts status
+  with_items: artifacts_delivery.results
+  become: yes
+  become_user: "{{ wildfly8_user }}"
+  command: chdir="{{ wildfly8_home | mandatory }}"
+           {{ wildfly8_cli | mandatory }} --connect --command='deployment-info
+           --name={{ item.item.a }}-{{ item.item.v }}.{{ item.item.p }}'
+  ignore_errors: yes
+  register: component_status
+  changed_when: component_status.rc != 0 or not 'OK' in component_status.stdout
+
+- name: Deploy artifacts to WildFly 8
+  with_items: component_status.results
+  when: item|changed
+  become: yes
+  become_user: "{{ wildfly8_user }}"
+  command: chdir="{{ wildfly8_home | mandatory }}"
+           {{ wildfly8_cli | mandatory }} --connect --command='deploy
+           /home/{{ wildfly8_user }}/{{ item.item.item.a }}-{{ item.item.item.v
+           }}.{{ item.item.item.p }} --force'

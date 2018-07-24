@@ -1,0 +1,80 @@
+# file: roles/app_data_restore_2/tasks/main.yaml
+#
+# Copies the safe password files and client keys to removable media
+# to be taken to a secure offline host, where they can be safely opened
+# and encrypted back to the client keys.
+#
+---
+
+- name: Local directory for archive keys 
+  run_once: yes
+  become: yes
+  local_action: file path=/etc/pki/archives/client state=directory 
+
+- name: Collect public keys from the backup clients
+  become: yes
+  fetch:
+    src:  "/etc/pki/archives/client/{{ inventory_hostname }}_backup-client-public.pem"
+    dest: "{{ inventory_hostname }}_backup-client-public.pem"
+    flat: yes
+
+- name: Move the keys in place locally
+  become: yes
+  local_action: command mv -f
+                "{{ inventory_hostname }}_backup-client-public.pem"
+                /etc/pki/archives/client/
+
+- name: Set the key permissions locally
+  become: yes
+  local_action: file state=file owner=root group=root mode=664
+                path="/etc/pki/archives/client/{{ inventory_hostname }}_backup-client-public.pem"
+
+#
+# Do not use other removable media on the ACS when preparing to restore backups.
+#
+- name: Detect the removable media device
+  run_once: yes
+  local_action: shell ls
+                /run/media/{{ local_user | mandatory }} 2>/dev/null | tail -n1
+  register: detected_media
+
+- name: Prompt the user to insert a removable media device
+  when: detected_media.stdout.strip() == ""
+  fail:
+    msg: "Please insert a removable media device.
+          Make sure it's mounted under /run/media/{{ local_user }}/."
+
+- set_fact:
+    remov_media_label: "{{ detected_media.stdout.strip() }}"
+
+- set_fact:
+    remov_media_dir: "/run/media/{{ local_user }}/{{ remov_media_label }}"
+
+- name: Make the destination directories
+  run_once: yes
+  with_items:
+  - "{{ remov_media_dir }}/archives/restore"
+  - "{{ remov_media_dir }}/etc/pki/archives/client"
+  local_action: file state="directory" path="{{ item }}"
+
+- name: Copy the keys to removable media
+  local_action: copy
+                src="/etc/pki/archives/client/{{ inventory_hostname }}_backup-client-public.pem"
+                dest="{{ remov_media_dir }}/etc/pki/archives/client/{{ inventory_hostname }}_backup-client-public.pem"
+                mode=640
+
+- name: Copy the safe password files to removable media
+  run_once: yes
+  with_fileglob:
+  - /mnt/sensitive_data/archives/restore/*.pass.safe
+  local_action: copy src="{{ item }}"
+                dest="{{ remov_media_dir }}/archives/restore/" mode=640
+
+- name: Include the script on the removable media
+  run_once: yes
+  local_action: template src="authorize_restore.sh.j2"
+                dest="{{ remov_media_dir }}/authorize_restore.sh" mode=555
+
+- name: Safely remove the media
+  run_once: yes
+  local_action: shell sync && umount -d {{ remov_media_dir|mandatory }}

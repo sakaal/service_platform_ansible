@@ -1,0 +1,13 @@
+# file: roles/dns_public_records/tasks/api_call.yaml
+---
+
+- name: Group by public hostname
+  with_items: "{{ ansible_play_hosts }}"
+  when: (hostvars[ item ].public_hostname | default('')) != ''
+  add_host: name="{{ item }}"
+            groups="public_hostname_{{ hostvars[ item ].public_hostname }}"
+
+- name: DynECT Managed DNS
+  when: dynect_session_result|success and
+        '{{ inventory_hostname }}' == groups[ 'public_hostname_{{ public_hostname }}' ][0]
+  include: dynect.yaml

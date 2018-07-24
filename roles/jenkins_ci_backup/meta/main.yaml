@@ -1,0 +1,5 @@
+---
+# file: roles/jenkins_ci_backup/meta/main.yaml
+
+dependencies:
+- role: backup_client

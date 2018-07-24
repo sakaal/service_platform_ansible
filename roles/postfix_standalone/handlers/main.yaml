@@ -1,0 +1,24 @@
+---
+# file: roles/postfix_standalone/handlers/main.yaml
+
+- name: Reload Postfix
+  service: name=postfix state=reloaded
+
+- name: Restart Postfix
+  service: name=postfix state=restarted
+
+- name: Restart clamd@amavisd
+  service: name=clamd@amavisd state=restarted
+
+- name: Restart OpenDKIM
+  service: name=opendkim state=restarted
+
+- name: Restart Dovecot
+  service: name=dovecot state=restarted
+
+- name: Restart firewalld
+  service: name=firewalld state=restarted
+
+- name: Refresh aliases
+  become: yes
+  command: newaliases

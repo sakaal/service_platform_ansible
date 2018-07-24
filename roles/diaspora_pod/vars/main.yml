@@ -1,7 +1,0 @@
----
-# file: roles/diaspora_pod/vars/main.yml
-
-files_dir: "{{ playbook_dir }}/roles/diaspora_pod/files"
-
-diaspora_user: diaspora
-diaspora_dir: "/home/{{ diaspora_user|mandatory }}/diaspora"

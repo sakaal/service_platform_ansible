@@ -1,0 +1,6 @@
+# file: roles/ca_trust/handlers/main.yaml
+---
+
+- name: Update CA trust
+  become: yes
+  command: update-ca-trust

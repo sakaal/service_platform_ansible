@@ -1,8 +1,0 @@
----
-# file: roles/wildfly8/vars/main.yml
-
-files_dir: "{{ playbook_dir }}/roles/wildfly8/files"
-
-wildfly8_home: "/home/{{ wildfly8_user | mandatory }}/wildfly-{{ wildfly8_version | mandatory }}"
-wildfly8_archive: "wildfly-{{ wildfly8_version | mandatory }}.tar.gz"
-wildfly8_cli: "bin/jboss-cli.sh"

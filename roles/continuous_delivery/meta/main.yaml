@@ -1,0 +1,5 @@
+---
+# file: roles/continuous_delivery/meta/main.yaml
+
+dependencies:
+- role: "../../service_commons_ansible/roles/ssh_known_hosts"

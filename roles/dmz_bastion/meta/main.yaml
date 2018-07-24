@@ -1,0 +1,6 @@
+---
+# file: roles/dmz/meta/main.yaml
+
+dependencies:
+- role: dmz
+- role: "../../service_commons_ansible/roles/admin_bastion"

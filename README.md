@@ -105,7 +105,7 @@ See the [data backup plan](https://github.com/sakaal/service_platform_ansible/wi
 in the wiki.
 
 Set up the backup access credentials in file
-`~/workspace/com.example_main_ansible/group_vars/all/hetzner.yml`:
+`~/workspace/com.example_main_ansible/group_vars/all/hetzner.yaml`:
 
     #
     # Use the Hetzner Robot web console to order the backup space
@@ -173,12 +173,12 @@ Substitute your service management domain name for `example.com` (and
 
 1. Deploy public network interfaces:
 
-        ansible-playbook guest_networking.yml -i ../com.example_ansible_main/development
-        ansible-playbook guest_networking.yml -i ../com.example_ansible_main/production
+        ansible-playbook guest_networking.yaml -i ../com.example_ansible_main/development
+        ansible-playbook guest_networking.yaml -i ../com.example_ansible_main/production
 
 1. Deploy mail services:
 
-        ansible-playbook mail_servers.yml -i ../com.example_ansible_main/production
+        ansible-playbook mail_servers.yaml -i ../com.example_ansible_main/production
    * Use the Sender Policy Framework (SPF)
      [testing tools](http://www.openspf.org/Tools)
      and Port25 Solutions
@@ -187,31 +187,31 @@ Substitute your service management domain name for `example.com` (and
 
 1. Deploy relational database management services:
 
-        ansible-playbook database_servers.yml -i ../com.example_ansible_main/production
+        ansible-playbook database_servers.yaml -i ../com.example_ansible_main/production
 
 1. Deploy web services:
 
-        ansible-playbook web_servers.yml -i ../com.example_ansible_main/production
+        ansible-playbook web_servers.yaml -i ../com.example_ansible_main/production
    * To only update static web content on existing web servers:
 
-        ansible-playbook websites.yml -i ../com.example_ansible_main/production
+        ansible-playbook websites.yaml -i ../com.example_ansible_main/production
 
 1. Deploy directory services:
 
-        ansible-playbook directory_servers.yml -i ../com.example_ansible_main/production
+        ansible-playbook directory_servers.yaml -i ../com.example_ansible_main/production
 
 1. Deploy software artifact management services:
 
-        ansible-playbook artifact_servers.yml -i ../com.example_ansible_main/development
+        ansible-playbook artifact_servers.yaml -i ../com.example_ansible_main/development
 
 1. Deploy continuous integration services:
 
-        ansible-playbook ci_servers.yml -i ../com.example_ansible_main/development
+        ansible-playbook ci_servers.yaml -i ../com.example_ansible_main/development
 
 1. Deploy application servers:
 
-        ansible-playbook wildfly8_servers.yml -i ../com.example_ansible_main/development
-        ansible-playbook wildfly8_servers.yml -i ../com.example_ansible_main/production
+        ansible-playbook wildfly8_servers.yaml -i ../com.example_ansible_main/development
+        ansible-playbook wildfly8_servers.yaml -i ../com.example_ansible_main/production
 
 1. Diaspora is a similar open source project that is currently
    used for reference and to start building a pilot user base.
@@ -219,7 +219,7 @@ Substitute your service management domain name for `example.com` (and
    currently provided by Diaspora.
    Deploy Diaspora servers:
 
-        ansible-playbook diaspora_servers.yml -i ../com.example_ansible_main/production
+        ansible-playbook diaspora_servers.yaml -i ../com.example_ansible_main/production
    * Do read the `roles/diaspora_pod` sources and follow the instructions.
      You need to at least copy the static web content under the main inventory
      websites directory.
@@ -233,7 +233,7 @@ Substitute your service management domain name for `example.com` (and
 
 1. Begin restoration by collecting the keys:
 
-        ansible-playbook restore_archives.yml -i ../com.example_ansible_main/development
+        ansible-playbook restore_archives.yaml -i ../com.example_ansible_main/development
 
 1. Take the removable media to the secure offline host and process the keys.
 
@@ -243,7 +243,7 @@ Substitute your service management domain name for `example.com` (and
 
 1. Proceed with restoration:
 
-        ansible-playbook restore_commit.yml -i ../com.example_ansible_main/development
+        ansible-playbook restore_commit.yaml -i ../com.example_ansible_main/development
 
 Currently, some manual steps are still needed. See the source code for details.
 

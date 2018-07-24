@@ -1,0 +1,29 @@
+# file: diaspora_servers.yaml
+---
+
+- name: DIASPORA
+  hosts: diaspora_servers
+  roles:
+  - libvirt_guest_network_service
+  - transport_layer_security
+  - hosts_aliases
+  - ../../service_commons_ansible/roles/updates_auto
+  - dynect_dane_records
+  - diaspora_pod
+  #
+  # The diaspora known SSH identity is used for transferring user uploaded
+  # content between nodes. This would not be needed, if uploads directly to
+  # the reverse proxy web server were supported.
+  #
+  - { role: ssh_identity, ssh_user: "{{ diaspora_user | mandatory }}" }
+
+- name: DIASPORA UPLOADS BACKUP
+  hosts: diaspora_uploads_hosts
+  roles:
+  - access_control
+  - diaspora_uploads_backup
+
+#
+# The relational database will be archived the same way as for other
+# application databases. 
+#

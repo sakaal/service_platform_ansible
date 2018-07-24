@@ -1,4 +1,0 @@
----
-# file: roles/wildfly8_postgresql_drivers/vars/main.yml
-
-files_dir: "{{ playbook_dir }}/roles/wildfly8_postgresql_drivers/files"

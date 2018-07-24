@@ -1,0 +1,16 @@
+# file: nginx_servers.yaml
+#
+# Web services and reverse proxies
+#
+---
+
+- hosts: web_servers
+  roles:
+  - access_control
+  - ca_trust
+  - dmz
+  - libvirt_guest_network_service
+  - certbot_standalone
+  - transport_layer_security
+  - ../service_commons_ansible/roles/updates_auto
+  - nginx

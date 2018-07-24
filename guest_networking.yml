@@ -1,9 +1,0 @@
-# file: guest_networking.yml
-#
-# Attach extra interfaces to libvirt guests
-#
----
-
-- hosts: libvirt_hosts
-  roles:
-  - libvirt_interfaces

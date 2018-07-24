@@ -1,8 +1,0 @@
-# file: roles/dns_public_cname_records/tasks/main.yml
----
-
-- name: Check if public DNS CNAME records are defined
-  when: public_dns_zone is defined and
-        public_hostname is defined and
-        public_dns_cname_records is defined
-  include: api_call.yml

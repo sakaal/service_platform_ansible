@@ -1,0 +1,70 @@
+# file: roles/postgresql_databases/tasks/client.yaml
+#
+# Creates databases from a PostgreSQL client
+#
+---
+
+- name: PostgreSQL client packages
+  when: ansible_pkg_mgr == "yum"
+  with_items:
+  - "python-psycopg2"
+  become: yes
+  yum: name="{{ item }}" state=present
+
+- name: Create roles (users)
+  with_items: "{{ postgresql_roles | default([]) }}"
+  when: item.state | default("present") == "present"
+  postgresql_user: name="{{ item.name }}"
+                   password="{{ item.password }}"
+                   role_attr_flags="{{ item.role_attr_flags
+                   | default('NOSUPERUSER,NOCREATEROLE,NOCREATEDB') }}"
+                   state="{{ item.state | default('present') }}"
+                   login_host="{{ postgresql_host }}"
+                   port="{{ postgresql_port }}"
+                   db="{{ postgresql_master_db }}"
+                   login_user="{{ postgresql_master_user }}"
+                   login_password="{{ postgresql_master_password }}"
+                   no_password_changes=True
+
+- name: Create databases
+  with_items: "{{ postgresql_databases | default([]) }}"
+  postgresql_db: name="{{ item.name }}"
+                 encoding="{{ item.encoding | default('UTF-8') }}"
+                 owner="{{ postgresql_master_user }}"
+                 template="template0"
+                 state="{{ item.state | default('present') }}"
+                 login_host="{{ postgresql_host }}"
+                 port="{{ postgresql_port }}"
+                 db="{{ postgresql_master_db }}"
+                 login_user="{{ postgresql_master_user }}"
+                 login_password="{{ postgresql_master_password }}"
+
+- name: Set database owners
+  with_items: "{{ postgresql_databases | default([]) }}"
+  postgresql_db: name="{{ item.name }}"
+                 encoding="{{ item.encoding | default('UTF-8') }}"
+                 owner="{{ item.owner }}"
+                 template="template0"
+                 state="{{ item.state | default('present') }}"
+                 login_host="{{ postgresql_host }}"
+                 port="{{ postgresql_port }}"
+                 db="{{ postgresql_master_db }}"
+                 login_user="{{ postgresql_master_user }}"
+                 login_password="{{ postgresql_master_password }}"
+
+#
+# Removing roles must happen after their databases have been removed.
+#
+- name: Remove roles (users)
+  with_items: "{{ postgresql_roles | default([]) }}"
+  when: item.state | default("present") == "absent"
+  postgresql_user: name="{{ item.name }}"
+                   password="{{ item.password }}"
+                   role_attr_flags="{{ item.role_attr_flags
+                   | default('NOSUPERUSER,NOCREATEROLE,NOCREATEDB') }}"
+                   state="{{ item.state | default('present') }}"
+                   login_host="{{ postgresql_host }}"
+                   port="{{ postgresql_port }}"
+                   db="{{ postgresql_master_db }}"
+                   login_user="{{ postgresql_master_user }}"
+                   login_password="{{ postgresql_master_password }}"

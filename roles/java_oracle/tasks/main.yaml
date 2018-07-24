@@ -1,0 +1,98 @@
+# file: roles/java_oracle/tasks/main.yaml
+---
+
+#- name: Download the Oracle Java archive locally
+#  run_once: yes
+#  local_action: command chdir="{{ files_dir }}"
+#                creates={{ java_oracle_archive }}
+#                wget -nv --no-cookies --no-check-certificate
+#                --header 'Cookie: oraclelicense=accept-secureback-cookie'
+#                http://download.oracle.com/otn-pub/java/{{ java_oracle_dirpath }}/{{ java_oracle_archive }}
+#                -O {{ java_oracle_archive }}
+
+- name: Download the Oracle Java archive locally
+  run_once: yes
+  local_action:
+    module: uri
+    creates: "{{ files_dir }}/{{ java_oracle_archive }}"
+    headers:
+      Cookie: 'oraclelicense=accept-secureback-cookie'
+    url: "http://download.oracle.com/otn-pub/java/{{ java_oracle_dirpath }}/{{ java_oracle_archive }}"
+    dest: "{{ files_dir }}/{{ java_oracle_archive }}"
+    validate_certs: no
+
+- name: Verify the Oracle Java archive
+  run_once: yes
+  local_action: stat path="{{ files_dir }}/{{ java_oracle_archive }}"
+  register: java
+  failed_when: java.stat.md5 != "{{ java_oracle_md5sum }}"
+
+#
+# Java Cryptography Extension (JCE) Unlimited Strength Jurisdiction Policy Files
+#
+#- name: Download the Oracle JCE policy archive locally
+#  run_once: yes
+#  local_action: command chdir="{{ files_dir }}"
+#                creates={{ java_oracle_jce_archive }}
+#                wget -nv --no-cookies --no-check-certificate
+#                --header 'Cookie: oraclelicense=accept-secureback-cookie'
+#                http://download.oracle.com/otn-pub/java/{{ java_oracle_jce_dirpath }}/{{ java_oracle_jce_archive }}
+#                -O "{{ java_oracle_jce_archive }}"
+
+- name: Download the Oracle JCE policy archive locally
+  run_once: yes
+  local_action:
+    module: uri
+    creates: "{{ files_dir }}/{{ java_oracle_jce_archive }}"
+    headers:
+      Cookie: 'oraclelicense=accept-secureback-cookie'
+    url: "http://download.oracle.com/otn-pub/java/{{ java_oracle_jce_dirpath }}/{{ java_oracle_jce_archive }}"
+    dest: "{{ files_dir }}/{{ java_oracle_jce_archive }}"
+    validate_certs: no
+
+- name: Verify the Oracle JCE policy archive
+  run_once: yes
+  local_action: stat path="{{ files_dir }}/{{ java_oracle_jce_archive }}"
+  register: java
+  failed_when: java.stat.md5 != "{{ java_oracle_jce_md5sum }}"
+
+- name: Upload the Oracle Java RPM and policy archive
+  with_items:
+  - "{{ java_oracle_archive }}"
+  - "{{ java_oracle_jce_archive }}"
+  become: yes
+  copy: src="{{ item }}" dest="/opt/{{ item }}"
+
+#- name: Install the Oracle Java RPM
+#  become: yes
+#  command: chdir=/opt creates="{{ java_oracle_home }}"
+#           rpm -U {{ java_oracle_archive }}
+#  register: java_oracle_installed
+
+- name: Install the Oracle Java RPM
+  become: yes
+  yum: name="/opt/{{ java_oracle_archive }}"
+  register: java_oracle_installed
+
+- name: Extract the JCE policy archive
+  become: yes
+  unarchive: src="/opt/{{ java_oracle_jce_archive }}"
+             dest=/opt
+             creates="/opt/{{ java_oracle_jce_dir }}"
+             copy=no
+  register: java_oracle_jce_installed
+
+- name: Copy the JCE policy archives in place
+  with_items:
+  - "local_policy.jar"
+  - "US_export_policy.jar"
+  become: yes
+  command: chdir="/opt/{{ java_oracle_jce_dir }}" rsync --checksum
+           "{{ item }}" "{{ java_oracle_home }}/jre/lib/security"
+
+- when: ansible_distribution == "Fedora"
+  include: fedora.yaml
+
+- name: Red Hat family configuration
+  when: ansible_os_family == "RedHat"
+  include: redhat.yaml

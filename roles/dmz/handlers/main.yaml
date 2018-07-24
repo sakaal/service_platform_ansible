@@ -1,0 +1,6 @@
+# file: roles/dmz/handlers/main.yaml
+---
+
+- name: Restart firewalld
+  become: yes
+  service: name=firewalld state=restarted

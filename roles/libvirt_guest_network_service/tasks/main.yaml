@@ -1,0 +1,52 @@
+# file: roles/libvirt_guest_network_service/tasks/main.yaml
+#
+# Disable NetworkManager
+#
+---
+
+- name: Remove NetworkManager
+  become: yes
+  yum: name=NetworkManager state=absent
+  register: NetworkManager
+
+- name: Stop NetworkManager related services
+  when: NetworkManager is changed
+  with_items:
+  - NetworkManager.service
+  become: yes
+  shell: systemctl stop {{ item }}
+  failed_when: False
+
+- name: Disable NetworkManager related services
+  when: NetworkManager is changed
+  with_items:
+  - NetworkManager.service
+  become: yes
+  shell: systemctl disable {{ item }}
+  failed_when: no
+
+- name: Network interfaces NM_CONTROLLED=no
+  with_items: "{{ ansible_interfaces }}"
+  when: item not in [ 'lo' ]
+  become: yes
+  lineinfile:
+    dest: "/etc/sysconfig/network-scripts/ifcfg-{{ item }}"
+    create: no
+    regexp: "^NM_CONTROLLED="
+    line: "NM_CONTROLLED=no"
+  failed_when: no
+
+- name: Network interfaces ONBOOT=yes
+  with_items: "{{ ansible_interfaces }}"
+  when: item not in [ 'lo' ]
+  become: yes
+  lineinfile:
+    dest: "/etc/sysconfig/network-scripts/ifcfg-{{ item }}"
+    create: no
+    regexp: "^ONBOOT="
+    line: "ONBOOT=yes"
+  failed_when: no
+
+- name: Enable the network service
+  become: yes
+  service: name=network enabled=yes

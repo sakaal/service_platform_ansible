@@ -1,0 +1,11 @@
+# file: roles/archives_maintenance/tasks/main.yaml
+#
+# An archives management node that can perform maintenance operations
+#
+---
+
+- name: Backup space inventory script
+  become: yes
+  template: src=backup_inventory.sh.j2
+            dest="/usr/local/bin/backup_inventory"
+            mode=755 owner=root group=root

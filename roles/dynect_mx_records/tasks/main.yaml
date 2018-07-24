@@ -1,0 +1,175 @@
+# file: roles/dynect_mx_records/tasks/main.yaml
+#
+# Creates DNS MX, DKIM TXT, and SPF TXT records via the DynECT API.
+#
+---
+
+- name: Check if DNS zones already have MX records
+  local_action: >
+                uri url="{{ dynect_api_url }}/MXRecord/{{
+                public_dns_zone | mandatory }}/{{ public_dns_zone }}/"
+                HEADER_Content-Type="application/json"
+                HEADER_Auth-Token="{{ dynect_session_token }}"
+  register: zone_mx_records
+
+- name: Examine the DNS zone existing MX records
+  when: zone_mx_records|success
+  with_items: "{{ zone_mx_records.json.data }}"
+  local_action: >
+                uri url="{{ dynect_api_url }}/MXRecord/{{
+                public_dns_zone | mandatory }}/{{ public_dns_zone
+                }}/{{ item|basename }}"
+                HEADER_Content-Type="application/json"
+                HEADER_Auth-Token="{{ dynect_session_token }}"
+  register: current_mx_records
+
+- name: Update DNS zone MX records
+  with_items: current_mx_records.results|default([])
+  when: (item.json.data.rdata.exchange == "{{ public_hostname }}.") and
+        (item.json.data.rdata.preference != dns_mx_preference)
+  local_action: >
+                uri method=PUT url="{{ dynect_api_url }}/MXRecord/{{
+                public_dns_zone | mandatory }}/{{ public_dns_zone
+                }}/{{ item.json.data.record_id }}"
+                HEADER_Content-Type="application/json"
+                HEADER_Auth-Token="{{ dynect_session_token }}"
+                body='{ "rdata": {
+                "exchange": "{{ public_hostname | mandatory }}",
+                "preference": "{{ dns_mx_preference | mandatory }}"
+                }, "ttl": "0" }'
+  register: updated_mx_records
+  changed_when: True
+
+- name: Determine if any DNS MX records have changed
+  with_items: current_mx_records.results|default([])
+  when: (item.json.data.rdata.exchange == "{{ public_hostname }}.") and
+        (item.json.data.rdata.preference == "{{ dns_mx_preference }}")
+  debug: msg="MX record unchanged"
+  register: existing_mx_record
+  changed_when: False
+
+- name: Make DNS zone MX records
+  when: existing_mx_record|skipped
+  local_action: >
+                uri method=POST url="{{ dynect_api_url }}/MXRecord/{{
+                public_dns_zone | mandatory }}/{{ public_dns_zone }}/"
+                HEADER_Content-Type="application/json"
+                HEADER_Auth-Token="{{ dynect_session_token }}"
+                body='{ "rdata": {
+                "exchange": "{{ public_hostname | mandatory }}",
+                "preference": "{{ dns_mx_preference | mandatory }}"
+                }, "ttl": "0" }'
+
+#
+# DomainKeys Identified Mail (DKIM) TXT records
+#
+
+- name: Check if DNS zones already have DKIM TXT records
+  local_action: >
+                uri url="{{ dynect_api_url }}/TXTRecord/{{
+                public_dns_zone }}/{{ dns_txt_attr_name | mandatory }}.{{
+                public_dns_zone }}/"
+                HEADER_Content-Type="application/json"
+                HEADER_Auth-Token="{{ dynect_session_token }}"
+  register: zone_txt_records
+  ignore_errors: yes
+
+#
+# roles/postfix_standalone brings the dns_txt_data
+#
+- name: Update DNS zone DKIM TXT records
+  when: zone_txt_records|success
+  local_action:
+    module: uri
+    method: PUT
+    url: "{{ dynect_api_url }}/TXTRecord/{{
+         public_dns_zone }}/{{ dns_txt_attr_name }}.{{ public_dns_zone
+         }}/{{ zone_txt_records.json.data.0|basename }}/"
+    HEADER_Content-Type: "application/json"
+    HEADER_Auth-Token: "{{ dynect_session_token }}"
+    body_format: json
+    body:
+      rdata:
+        txtdata: "{{ dns_txt_data | mandatory }}"
+      ttl: 0
+  register: updated_txt_records
+  changed_when: True
+
+- name: Make DNS zone DKIM TXT records
+  when: updated_txt_records|skipped
+  local_action: >
+                uri method=POST url="{{ dynect_api_url }}/TXTRecord/{{
+                public_dns_zone | mandatory }}/{{ dns_txt_attr_name }}.{{
+                public_dns_zone }}/"
+                HEADER_Content-Type="application/json"
+                HEADER_Auth-Token="{{ dynect_session_token }}"
+                body='{ "rdata": {
+                "txtdata": "{{ dns_txt_data | mandatory }}"
+                }, "ttl": "0" }'
+
+#
+# Sender Policy Framework (SPF) records
+#
+# http://en.wikipedia.org/wiki/Sender_Policy_Framework
+#
+# Every domain name or host that has an A record or MX record should have
+# an SPF TXT record specifying the policy if it is used either in an email
+# address or as HELO/EHLO argument.
+#
+
+- name: Check if DNS zones already have SPF TXT records
+  local_action: >
+                uri url="{{ dynect_api_url }}/TXTRecord/{{
+                public_dns_zone }}/{{ public_dns_zone | mandatory }}/"
+                HEADER_Content-Type="application/json"
+                HEADER_Auth-Token="{{ dynect_session_token }}"
+  register: zone_spf_records
+  ignore_errors: yes
+
+#
+# roles/postfix_standalone brings the dns_spf_data
+#
+- name: Update DNS zone SPF TXT records
+  when: zone_spf_records|success
+  with_items: "{{ zone_spf_records.json.data }}"
+  local_action:
+    module: uri
+    method: PUT
+    url: "{{ dynect_api_url }}/TXTRecord/{{
+         public_dns_zone }}/{{ public_dns_zone }}/{{ item|basename }}/"
+    HEADER_Content-Type: "application/json"
+    HEADER_Auth-Token: "{{ dynect_session_token }}"
+    body_format: json
+    body:
+      rdata:
+        txtdata: "{{ dns_spf_data | mandatory }}"
+      ttl: 0
+  register: updated_spf_records
+  changed_when: True
+
+- name: Make DNS zone SPF TXT records
+  when: updated_spf_records|skipped
+  local_action:
+    module: uri
+    method: POST
+    url: "{{ dynect_api_url }}/TXTRecord/{{
+         public_dns_zone | mandatory }}/{{ public_dns_zone }}/"
+    HEADER_Content-Type: "application/json"
+    HEADER_Auth-Token: "{{ dynect_session_token }}"
+    body_format: json
+    body:
+      rdata:
+        txtdata: "{{ dns_spf_data | mandatory }}"
+      ttl: 0
+
+#
+# Publish the records
+#
+
+- name: Publish DNS zones
+  local_action: >
+                uri method=PUT url="{{ dynect_api_url }}/Zone/{{
+                public_dns_zone | mandatory }}"
+                HEADER_Content-Type="application/json"
+                HEADER_Auth-Token="{{ dynect_session_token }}"
+                body='{"publish":true}'

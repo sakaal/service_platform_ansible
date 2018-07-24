@@ -1,0 +1,77 @@
+# file: roles/dmz/tasks/main.yaml
+#
+# Configures the other network interface of a guest to the DMZ.
+#
+---
+
+- name: Check if eth1 interface exists
+  command: ip link show eth1
+  register: link_eth1
+  changed_when: link_eth1.rc == 2 
+  failed_when: False
+
+- name: Create the eth1 interface configuration file
+  when: link_eth1|changed
+  become: yes
+  template: src=ifcfg-eth1.j2 dest=/etc/sysconfig/network-scripts/ifcfg-eth1
+            force=no mode=644
+
+- name: Get the eth0 interface zone
+  become: yes
+  command: firewall-cmd --get-zone-of-interface=eth0
+  register: eth0_zone
+
+- name: Query if there's another interface in the eth0 interface zone
+  become: yes
+  command: firewall-cmd --zone={{ eth0_zone.stdout | mandatory }}
+           --query-interface=eth1
+  register: another_interface
+  changed_when: (another_interface.rc == 0) and another_interface.stdout|bool
+  failed_when: None
+
+- name: Change the other interface to the DMZ
+  when: another_interface|changed
+  become: yes
+  command: firewall-cmd --permanent --zone=dmz --change-interface=eth1
+  notify: Restart firewalld
+
+- name: Default route via the DMZ interface
+  become: yes
+  lineinfile: dest=/etc/sysconfig/network-scripts/ifcfg-eth0
+              regexp='^\s*DEFROUTE=' line='DEFROUTE=no'
+
+#- name: Restart the network
+#  when: link_eth1|changed or another_interface|changed
+#  become: yes
+#  service: name=network state=restarted
+#  register: network_status
+
+- name: Gather facts
+#  when: network_status|changed
+  setup:
+
+- set_fact:
+    public_ipv4_address: "{{ ansible_eth1.ipv4.address | mandatory }}"
+
+#
+# The permanent FirewallD configuration should be now fine, but an extra step
+# is required to address a bug: https://bugs.centos.org/view.php?id=7526
+#
+- name: Change the other interface to the DMZ (to address CentOS-7 bug 7526)
+  become: yes
+  command: firewall-cmd --zone=dmz --change-interface=eth1
+
+- name: Update Hetzner reverse DNS records
+  when: public_hostname is defined and public_ipv4_address is defined
+  local_action:
+    module: uri
+    method: POST
+    user: "{{ hetzner_api_user | mandatory }}"
+    password: "{{ hetzner_api_password | mandatory }}"
+    url: "{{ hetzner_api_url }}/rdns/{{ (ansible_eth1|mandatory).ipv4.address }}"
+    HEADER_Content-Type: application/x-www-form-urlencoded
+    body: "ptr={{ public_hostname | mandatory }}"
+    status_code: 200,201
+  register: hetzner_result
+  failed_when: hetzner_result.json.error is defined
+  ignore_errors: yes

@@ -1,0 +1,23 @@
+# file: roles/app_data_restore_4/tasks/main.yaml
+---
+
+- name: Destination directory
+  become: yes
+  file: path="/var/local/archives/restore" state=directory
+        owner=root group=wheel mode=770
+
+- name: Copy client password files to their destination nodes 
+  with_fileglob:
+  - "{{ hostvars['localhost'].remov_media_dir | mandatory }}/archives/restore/*{{ inventory_hostname }}*.pass.client"
+  copy: src="{{ item }}"
+        dest="/var/local/archives/restore/{{ item | basename }}"
+
+- name: A script to restore application data from archives
+  become: yes
+  template: src=backup_restore.sh.j2
+            dest=/usr/local/sbin/backup_restore
+            mode=755 owner=root group=root
+
+#
+# TODO: A script to restore PostgreSQL database from archives
+#

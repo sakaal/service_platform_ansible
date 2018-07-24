@@ -1,0 +1,45 @@
+# file: roles/wildfly8_logging/tasks/main.yaml
+#
+# WildFly 8 logging levels by category
+#
+---
+
+- name: Ensure the standalone/log directory exists
+  become: yes
+  file: path="{{ wildfly8_home | mandatory }}/standalone/log"
+        state=directory owner="{{ wildfly8_user }}" group="{{ wildfly8_user }}"
+        mode="u+rwx,g+rwxs"
+
+- name: Wait for the WildFly server to start
+  wait_for: host=localhost port=9990 timeout=20
+
+- name: Check loggers
+  when: wildfly8_loggers is defined
+  become: yes
+  become_user: "{{ wildfly8_user }}"
+  command: chdir="{{ wildfly8_home | mandatory }}"
+           {{ wildfly8_cli | mandatory }} --connect
+           --command='/subsystem=logging:read-children-names(child-type=logger)'
+           --timeout=200
+  register: wildfly8_loggers_result
+
+- name: Add loggers
+  with_items: wildfly8_loggers | default([])
+  when: "'{{ item.category }}' not in wildfly8_loggers_result.stdout"
+  become: yes
+  become_user: "{{ wildfly8_user }}"
+  command: chdir="{{ wildfly8_home | mandatory }}"
+           {{ wildfly8_cli | mandatory }} --connect
+           --command='/subsystem=logging/logger={{ item.category | mandatory
+           }}:add(category={{ item.category }},level={{ item.level | mandatory
+           }})'
+
+- name: Configure loggers
+  with_items: wildfly8_loggers | default([])
+  when: "'{{ item.category }}' in wildfly8_loggers_result.stdout"
+  become: yes
+  become_user: "{{ wildfly8_user }}"
+  command: chdir="{{ wildfly8_home | mandatory }}"
+           {{ wildfly8_cli | mandatory }} --connect
+           --command='/subsystem=logging/logger={{ item.category | mandatory
+           }}:write-attribute(name=level,value={{ item.level | mandatory }})'

@@ -1,0 +1,5 @@
+---
+# file: roles/sonatype_nexus_oss_backup/meta/main.yaml
+
+dependencies:
+- role: backup_client

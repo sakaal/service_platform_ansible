@@ -1,0 +1,5 @@
+---
+# file: roles/dynect_mx_records/meta/main.yaml
+
+dependencies:
+- role: "../../service_commons_ansible/roles/dynect_session"

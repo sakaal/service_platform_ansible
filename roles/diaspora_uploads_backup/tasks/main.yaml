@@ -1,0 +1,17 @@
+# file: roles/diaspora_uploads_backup/tasks/main.yaml
+#
+# With the current Diaspora deployment model, the uploads are transferred
+# to the front-end web server. This backup process must run there.
+#
+---
+
+- name: Diaspora uploads backup excludes list
+  become: yes
+  copy: src=diaspora.backup_excludes
+        dest="{{ diaspora_uploads_dir | mandatory }}/.backup_excludes"
+        mode=660 owner=root group=wheel
+
+- name: Backup client configuration for Diaspora uploads
+  become: yes
+  template: src=diaspora_uploads.conf.j2
+            dest="/usr/local/etc/backup_client.d/diaspora_uploads.conf"

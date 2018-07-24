@@ -1,0 +1,18 @@
+# file: roles/postgresql_databases/tasks/main.yaml
+#
+# Database security is based on network separation and firewall rules.
+# The purpose of the database user password is to avoid accidentally connecting
+# to the wrong database. Staging and production databases should have different
+# user names and passwords.
+#
+---
+
+- name: Check if running locally on the server
+  when: (postgresql_master_user|default('') == '') and
+        (postgresql_master_password|default('') == '')
+  include: local.yaml
+
+- name: Check if running from client
+  when: (postgresql_master_user|default('') != '') and
+        (postgresql_master_password|default('') != '')
+  include: client.yaml
