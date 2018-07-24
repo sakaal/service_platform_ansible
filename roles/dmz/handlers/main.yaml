@@ -3,4 +3,6 @@
 
 - name: Restart firewalld
   become: yes
-  service: name=firewalld state=restarted
+  service:
+    name: firewalld
+    state: restarted

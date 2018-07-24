@@ -11,7 +11,7 @@
   failed_when: False
 
 - name: Create the eth1 interface configuration file
-  when: link_eth1|changed
+  when: link_eth1 is changed
   become: yes
   template: src=ifcfg-eth1.j2 dest=/etc/sysconfig/network-scripts/ifcfg-eth1
             force=no mode=644
@@ -23,14 +23,14 @@
 
 - name: Query if there's another interface in the eth0 interface zone
   become: yes
-  command: firewall-cmd --zone={{ eth0_zone.stdout | mandatory }}
+  command: firewall-cmd --zone={{ eth0_zone.stdout }}
            --query-interface=eth1
   register: another_interface
   changed_when: (another_interface.rc == 0) and another_interface.stdout|bool
   failed_when: None
 
 - name: Change the other interface to the DMZ
-  when: another_interface|changed
+  when: another_interface is changed
   become: yes
   command: firewall-cmd --permanent --zone=dmz --change-interface=eth1
   notify: Restart firewalld
@@ -41,17 +41,17 @@
               regexp='^\s*DEFROUTE=' line='DEFROUTE=no'
 
 #- name: Restart the network
-#  when: link_eth1|changed or another_interface|changed
+#  when: link_eth1 is changed or another_interface is changed
 #  become: yes
 #  service: name=network state=restarted
 #  register: network_status
 
 - name: Gather facts
-#  when: network_status|changed
+#  when: network_status is changed
   setup:
 
 - set_fact:
-    public_ipv4_address: "{{ ansible_eth1.ipv4.address | mandatory }}"
+    public_ipv4_address: "{{ ansible_eth1.ipv4.address }}"
 
 #
 # The permanent FirewallD configuration should be now fine, but an extra step
@@ -66,11 +66,11 @@
   local_action:
     module: uri
     method: POST
-    user: "{{ hetzner_api_user | mandatory }}"
-    password: "{{ hetzner_api_password | mandatory }}"
-    url: "{{ hetzner_api_url }}/rdns/{{ (ansible_eth1|mandatory).ipv4.address }}"
+    user: "{{ hetzner_api_user }}"
+    password: "{{ hetzner_api_password }}"
+    url: "{{ hetzner_api_url }}/rdns/{{ ansible_eth1.ipv4.address }}"
     HEADER_Content-Type: application/x-www-form-urlencoded
-    body: "ptr={{ public_hostname | mandatory }}"
+    body: "ptr={{ public_hostname }}"
     status_code: 200,201
   register: hetzner_result
   failed_when: hetzner_result.json.error is defined
