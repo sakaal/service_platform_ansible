@@ -25,13 +25,13 @@
 # that is not necessarily found in the DNS.
 #
 - when: (http_server_name is not defined) or http_server_name.strip() == ""
-  set_fact: http_server_name="{{ ansible_fqdn | mandatory }}"
+  set_fact: http_server_name="{{ ansible_fqdn }}"
 
 - name: HTTP server name
   become: yes
   lineinfile: dest=/etc/httpd/conf/httpd.conf
               regexp='^\s*ServerName\s'
-              line="ServerName {{ http_server_name | mandatory }}:80"
+              line="ServerName {{ http_server_name }}:80"
               insertafter='^#\s*ServerName'
 
 - name: HTTP server administrator public email address conforming to RFC 2142
@@ -64,14 +64,14 @@
 
 - name: Query if the HTTP service has been added to the firewall zone
   become: yes
-  command: firewall-cmd --zone={{ firewall_zone | mandatory }}
+  command: firewall-cmd --zone={{ firewall_zone }}
            --query-service=http
   register: zone_http
   changed_when: (zone_http.rc != 0) or not zone_http.stdout|bool
   failed_when: None
 
 - name: Open the firewall for the HTTP service
-  when: zone_http|changed
+  when: zone_http is changed
   become: yes
   command: firewall-cmd --permanent --zone={{ firewall_zone | mandatory }}
            --add-service=http

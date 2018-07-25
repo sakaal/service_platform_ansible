@@ -70,7 +70,7 @@
   register: public_hostname_certificate
 
 - name: Public hostname X.509 server key
-  when: not public_hostname_certificate|skipped
+  when: not public_hostname_certificate is skipped
         and public_hostname_certificate.stat.exists
   become: yes
   copy: src="{{ tls_files_dir }}/private/{{ public_hostname }}-key.pem"
@@ -78,7 +78,7 @@
         owner=root group=root mode=0600
 
 - name: Public hostname X.509 certificate
-  when: not public_hostname_certificate|skipped
+  when: not public_hostname_certificate is skipped
         and public_hostname_certificate.stat.exists
   become: yes
   copy: src="{{ tls_files_dir }}/certs/{{ public_hostname }}-crt.pem"

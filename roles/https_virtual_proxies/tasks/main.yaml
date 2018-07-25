@@ -13,7 +13,8 @@
   - crypto-utils
   - mod_ssl # Apache HTTP Server
   become: yes
-  yum: name={{ item }}
+  yum:
+    name: "{{ item }}"
 
 - name: Enable mod_remoteip
   become: yes
@@ -23,34 +24,52 @@
 
 - name: SELinux allow the HTTP server to network connect
   become: yes
-  seboolean: name=httpd_can_network_connect state=yes persistent=yes
+  seboolean:
+    name: "httpd_can_network_connect"
+    state: yes
+    persistent: yes
 
 - name: Comment out default HTTP listener bindings
   become: yes
-  lineinfile: dest=/etc/httpd/conf/httpd.conf
-              regexp='^(\s*)Listen(\s+.*)$' backrefs=yes line='#\1Listen\2'
+  lineinfile:
+    dest: "/etc/httpd/conf/httpd.conf"
+    regexp: '^(\s*)Listen(\s+.*)$'
+    backrefs: yes
+    line: '#\1Listen\2'
 
 - name: Name-based SSL virtual hosts global configuration
   become: yes
-  template: src=ssl.conf.j2
-            dest=/etc/httpd/conf.d/ssl.conf
-            owner=root group=root mode=0644
+  template:
+    src: "ssl.conf.j2"
+    dest: "/etc/httpd/conf.d/ssl.conf"
+    owner: root
+    group: root
+    mode: 0644
   notify: Restart the HTTP server
 
 - name: Virtual HTTPS proxies
   with_items: "{{ virtual_proxies | default([]) }}"
   become: yes
-  template: src="vhost.conf.j2"
-            dest="/etc/httpd/conf.d/{{ item.fqdn | mandatory }}.conf"
-            owner=root group=root mode=0644
+  template:
+    src: "vhost.conf.j2"
+    dest: "/etc/httpd/conf.d/{{ item.fqdn }}.conf"
+    owner: root
+    group: root
+    mode: 0644
   notify: Restart the HTTP server
 
 - name: Configure the firewall for HTTPS
   become: yes
-  firewalld: permanent=true zone={{ firewall_zone | mandatory }}
-             service=https state=enabled
+  firewalld:
+    permanent: true
+    zone: "{{ firewall_zone }}"
+    service: https
+    state: enabled
   notify: Restart firewalld
 
 - name: Ensure the HTTP server is running
   become: yes
-  service: name=httpd state=started enabled=yes
+  service:
+    name: httpd
+    state: started
+    enabled: yes

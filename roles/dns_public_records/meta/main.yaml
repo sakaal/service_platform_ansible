@@ -2,5 +2,5 @@
 ---
 
 dependencies:
-- role: "../../service_commons_ansible/roles/dynect_session"
+- role: "{{ playbook_dir | dirname }}/service_commons_ansible/roles/dynect_session"
 

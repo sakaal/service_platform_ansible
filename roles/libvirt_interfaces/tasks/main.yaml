@@ -25,7 +25,7 @@
 
 - name: Attach network interfaces
   with_items: "{{ domiflist.results }}"
-  when: item|changed
+  when: item is changed
   become: yes
   command: virsh attach-interface --domain {{ item.item.domain }}
            --type {{ item.item.type }}

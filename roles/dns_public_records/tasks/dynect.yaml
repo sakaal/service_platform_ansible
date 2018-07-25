@@ -3,10 +3,10 @@
 
 - assert:
     that:
-    - dynect_session_result|success
-    - "public_dns_zone|default('') != ''"
-    - "public_hostname|default('') != ''"
-    - "public_ipv4_address|default('') != ''"
+    - dynect_session_result is success
+    - public_dns_zone|default('') != ''
+    - public_hostname|default('') != ''
+    - public_ipv4_address|default('') != ''
 
 - name: Delete existing public DNS A records
   local_action: uri method=DELETE

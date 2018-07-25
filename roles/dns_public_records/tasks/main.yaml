@@ -2,7 +2,7 @@
 ---
 
 - name: Check if public DNS records are defined
-  when: "{{ public_dns_zone is defined and
-            public_hostname is defined and
-            public_ipv4_address is defined }}"
+  when: public_dns_zone is defined and
+        public_hostname is defined and
+        public_ipv4_address is defined
   include: api_call.yaml
