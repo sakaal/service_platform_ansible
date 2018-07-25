@@ -13,8 +13,11 @@
 - name: Create the eth1 interface configuration file
   when: link_eth1 is changed
   become: yes
-  template: src=ifcfg-eth1.j2 dest=/etc/sysconfig/network-scripts/ifcfg-eth1
-            force=no mode=644
+  template:
+    src: "ifcfg-eth1.j2"
+    dest: "/etc/sysconfig/network-scripts/ifcfg-eth1"
+    force: no
+    mode: 0644
 
 - name: Get the eth0 interface zone
   become: yes
@@ -24,7 +27,7 @@
 - name: Query if there's another interface in the eth0 interface zone
   become: yes
   command: firewall-cmd --zone={{ eth0_zone.stdout }}
-           --query-interface=eth1
+                        --query-interface=eth1
   register: another_interface
   changed_when: (another_interface.rc == 0) and another_interface.stdout|bool
   failed_when: None
@@ -37,17 +40,21 @@
 
 - name: Default route via the DMZ interface
   become: yes
-  lineinfile: dest=/etc/sysconfig/network-scripts/ifcfg-eth0
-              regexp='^\s*DEFROUTE=' line='DEFROUTE=no'
+  lineinfile:
+    dest: "/etc/sysconfig/network-scripts/ifcfg-eth0"
+    regexp: '^\s*DEFROUTE='
+    line: 'DEFROUTE=no'
 
-#- name: Restart the network
-#  when: link_eth1 is changed or another_interface is changed
-#  become: yes
-#  service: name=network state=restarted
-#  register: network_status
+- name: Restart the network
+  when: link_eth1 is changed or another_interface is changed
+  become: yes
+  service:
+    name: network
+    state: restarted
+  register: network_status
 
 - name: Gather facts
-#  when: network_status is changed
+  when: network_status is changed
   setup:
 
 - set_fact:
@@ -69,7 +76,8 @@
     user: "{{ hetzner_api_user }}"
     password: "{{ hetzner_api_password }}"
     url: "{{ hetzner_api_url }}/rdns/{{ ansible_eth1.ipv4.address }}"
-    HEADER_Content-Type: application/x-www-form-urlencoded
+    headers:
+      Content-Type: application/x-www-form-urlencoded
     body: "ptr={{ public_hostname }}"
     status_code: 200,201
   register: hetzner_result

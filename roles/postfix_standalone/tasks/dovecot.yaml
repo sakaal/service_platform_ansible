@@ -1,0 +1,137 @@
+# file: roles/postfix_standalone/tasks/dovecot.yaml
+---
+
+- name: Dovecot packages
+  with_items:
+  - dovecot
+  - "dovecot-pigeonhole" # TODO: Sieve mail filtering
+  - mailx
+  yum:
+    name: "{{ item }}"
+    state: present
+
+- name: Dovecot LDA
+  with_items:
+  - key: "postmaster_address"
+    val: "postmaster@{{ postfix_mydomain }}"
+  - key: "hostname"
+    val: "{{ postfix_myhostname }}"
+  - key: "lda_mailbox_autocreate"
+    val: "yes"
+  - key: "lda_mailbox_autosubscribe"
+    val: "yes"
+  lineinfile:
+    dest: "/etc/dovecot/conf.d/15-lda.conf"
+    regexp: '^{{ item.key }}\s'
+    line: '{{ item.key }} = {{ item.val }}'
+  notify:
+  - Restart Dovecot
+
+- name: Dovecot mail
+  with_items:
+  - key: "mail_location"
+    val: "mbox:~/mail:INBOX=/var/mail/%u"
+  - key: "mail_privileged_group"
+    val: "mail"
+  lineinfile:
+    dest: "/etc/dovecot/conf.d/10-mail.conf"
+    regexp: '^{{ item.key }}\s'
+    line: '{{ item.key }} = {{ item.val }}'
+  notify:
+  - Restart Dovecot
+
+#
+# Use a matching length PKI certificate key and the
+# Diffie-Hellman (DH) key exchange parameters length.
+# http://security.stackexchange.com/questions/48300/why-should-the-dh-keylength-match-rsa-length-in-tls
+#
+- name: Dovecot TLS
+  with_items:
+  - key: "ssl"
+    val: "required"
+  - key: "ssl_cert"
+    val: "</etc/pki/tls/certs/{{ public_hostname }}-bundle.pem"
+  - key: "ssl_key"
+    val: "</etc/pki/tls/private/{{ public_hostname }}-key.pem"
+  - key: "ssl_dh_parameters_length"
+    val: "{{ tls_dh_parameter_size }}" # should match the certificate RSA key length
+  - key: ssl_protocols
+    val: "{{ tls_protocols | list | join(' ')
+         }}{{ ([''] + tls_protocol_excludes|list) | join(' !') }}"
+  - key: ssl_cipher_list
+    val: "{{ tls_ciphersuite | list | join(':') +
+         (([''] + tls_ciphersuite_excludes|list) | join(':!')) }}"
+  lineinfile:
+    dest: "/etc/dovecot/conf.d/10-ssl.conf"
+    regexp: '^{{ item.key }}\s'
+    line: '{{ item.key }} = {{ item.val }}'
+  notify:
+  - Restart Dovecot
+  tags:
+  - tls
+
+#
+# http://wiki2.dovecot.org/MailLocation/mbox
+#
+- name: Dovecot /var/mail/* permissions
+  become: yes
+  file:
+    state: directory
+    follow: yes
+    recurse: yes
+    path: "/var/mail"
+    mode: 0600
+
+- name: Dovecot LDA /var/mail/ dotlocks
+  become: yes
+  file:
+    state: directory
+    follow: yes
+    path: "/var/mail"
+    mode: "a+rwxt"
+
+#
+# Postfix Dovecot integration
+#
+- name: Postfix Dovecot
+  with_items:
+  - key: "mailbox_command"
+    val: "/usr/libexec/dovecot/deliver"
+  - key: "smtpd_sasl_type"
+    val: "dovecot"
+  lineinfile:
+    dest: "/etc/postfix/main.cf"
+    regexp: '^{{ item.key }}\s'
+    line: '{{ item.key }} = {{ item.val }}'
+  notify:
+  - Restart Postfix
+
+- name: Prepare Dovecot for Postfix SASL authentication
+  with_items:
+  - after:  "  # Postfix smtp-auth"
+    line:   "  unix_listener /var/spool/postfix/private/auth { # managed"
+  - after:  "  unix_listener /var/spool/postfix/private/auth { # managed"
+    line:   "    mode = 0660 # managed"
+  - after:  "    mode = 0660 # managed"
+    line:   "    user = postfix # managed"
+  - after:  "    user = postfix # managed"
+    line:   "    group = postfix # managed"
+  - after:  "    group = postfix # managed"
+    line:   "  } # managed"
+  lineinfile:
+    dest: "/etc/dovecot/conf.d/10-master.conf"
+    line: "{{ item.line }}"
+    insertafter: "{{ item.after }}"
+  notify:
+  - Restart Dovecot
+ 
+- name: Dovecot authentication mechanisms to support Outlook and Windows
+  with_items:
+  - key: "auth_mechanisms"
+    val: "plain login"
+  lineinfile:
+    dest: "/etc/dovecot/conf.d/10-auth.conf"
+    regexp: '^{{ item.key }}\s'
+    line: '{{ item.key }} = {{ item.val }}'
+  notify:
+  - Restart Dovecot

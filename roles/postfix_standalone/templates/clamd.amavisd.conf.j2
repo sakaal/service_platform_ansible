@@ -1,0 +1,5 @@
+{# file: roles/postfix_standalone/templates/clamd.amavisd.conf.j2
+
+  Deploy to /etc/tmpfiles.d/clamd.amavisd.conf
+#}
+d /var/run/clamd.amavisd 0755 amavis amavis -

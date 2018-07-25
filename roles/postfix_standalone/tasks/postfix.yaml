@@ -1,0 +1,168 @@
+# file: roles/postfix_standalone/tasks/postfix.yaml
+#
+# Postfix configuration
+#
+---
+
+- name: Postfix packages
+  with_items:
+  - postfix
+  yum:
+    name: "{{ item }}"
+    state: present
+
+- name: Postfix disable soft_bounce
+  lineinfile:
+    dest: "/etc/postfix/main.cf"
+    regexp: '^soft_bounce'
+    line: 'soft_bounce = no'
+    insertafter: '^#soft_bounce'
+  notify:
+  - Reload Postfix
+
+- name: Postfix hostname
+  lineinfile:
+    dest: "/etc/postfix/main.cf"
+    regexp: '^myhostname'
+    line: 'myhostname = {{ postfix_myhostname }}'
+    insertafter: '^#myhostname'
+  notify:
+  - Reload Postfix
+
+- name: Postfix domain
+  lineinfile:
+    dest: "/etc/postfix/main.cf"
+    regexp: '^mydomain'
+    line: 'mydomain = {{ postfix_mydomain }}'
+    insertafter: '^#mydomain'
+  notify:
+  - Reload Postfix
+
+- name: Postfix interfaces
+  lineinfile:
+    dest: "/etc/postfix/main.cf"
+    regexp: '^inet_interfaces'
+    line: 'inet_interfaces = all'
+    insertafter: '^#inet_interfaces'
+  notify:
+  - Reload Postfix
+
+- name: Postfix destination
+  when: postfix_mydestination is defined
+  lineinfile:
+    dest: "/etc/postfix/main.cf"
+    regexp: '^mydestination'
+    line: 'mydestination = {{ postfix_mydestination }}'
+    insertafter: '^#mydestination'
+  notify:
+  - Reload Postfix
+
+- name: Postfix networks style
+  lineinfile:
+    dest: "/etc/postfix/main.cf"
+    regexp: '^mynetworks_style'
+    line: 'mynetworks_style = host'
+    insertafter: '^#mynetworks_style'
+  notify:
+  - Reload Postfix
+
+- name: Postfix origin
+  lineinfile:
+    dest: "/etc/postfix/main.cf"
+    regexp: '^myorigin'
+    line: 'myorigin = $mydomain'
+    insertafter: '^#myorigin'
+  notify:
+  - Reload Postfix
+
+- name: Postfix networks
+  when: postfix_mynetworks is defined
+  lineinfile:
+    dest: "/etc/postfix/main.cf"
+    regexp: '^mynetworks'
+    line: 'mynetworks = {{ postfix_mynetworks }}'
+    insertafter: '^#mynetworks'
+  notify:
+  - Reload Postfix
+
+- name: Postfix proxy/NAT extrnal network address
+  when: public_ipv4_address is defined
+  lineinfile:
+    dest: "/etc/postfix/main.cf"
+    regexp: '^proxy_interfaces'
+    line: "proxy_interfaces = {{ public_ipv4_address }}"
+    insertafter: '^#proxy_interfaces'
+  notify:
+  - Reload Postfix
+
+- name: Postfix relay domains
+  lineinfile:
+    dest: "/etc/postfix/main.cf"
+    regexp: '^relay_domains'
+    line: "relay_domains = {{ postfix_relay_domains | default('') }}"
+    insertafter: '^#relay_domains'
+    state: "{{ postfix_relay_domains is defined | ternary('present', 'absent') }}"
+  notify:
+  - reload postfix
+
+- name: Postfix relay recipient maps
+  lineinfile:
+    dest: "/etc/postfix/main.cf"
+    regexp: '^relay_recipient_maps'
+    line: "relay_recipient_maps = hash:/etc/postfix/relay_recipients"
+    insertafter: '^#relay_recipient_maps'
+    state: "{{ (postfix_relay_domains is defined and
+               'relay_recipients' in postfix_lookup_tables | default([]) | map(attribute='name') | list )
+               | ternary('present', 'absent') }}"
+  notify:
+  - reload postfix
+
+- name: Postfix relay host
+  lineinfile:
+    dest: "/etc/postfix/main.cf"
+    regexp: '^relayhost'
+    line: "relayhost = {{ postfix_relayhost | default('') }}"
+    insertafter: '^#relayhost'
+    state: "{{ postfix_relayhost is defined | ternary('present', 'absent') }}"
+  notify:
+  - Reload Postfix
+
+- name: Postfix TLS support
+  import_tasks: postfix_tls.yaml
+  tags:
+  - tls
+
+- name: Postfix master configuration
+  with_first_found:
+  - "{{ postfix_master_config_template | default(inventory_dir + '/roles/postfix_standalone/templates/master.cf.j2') }}"
+  - "master.cf.j2"
+  template:
+    src:   "{{ item }}"
+    dest:  "/etc/postfix/master.cf"
+    owner: root
+    group: root
+    mode:  0644
+  notify:
+  - Reload Postfix
+
+- name: Postfix lookup tables
+  with_items: "{{ postfix_lookup_tables | default([]) }}"
+  become: yes
+  template:
+    src: "{{ inventory_dir }}/roles/postfix_standalone/templates/{{ item.name }}.j2"
+    dest: "/etc/postfix/{{ item.name }}"
+    owner: root
+    group: root
+    mode: 0644
+  register: postfix_lookups
+  notify:
+  - Reload Postfix
+
+- name: Postfix lookup table indexing
+  with_items: "{{ postfix_lookups.results }}"
+  when: item is changed
+  shell: chdir="/etc/postfix"
+         postmap {% if item.item.type | default('')
+                       not in [ '', 'cidr' ]
+                 %}{{ item.item.type }}:{% endif
+                 %}{{ item.item.name }}

@@ -9,27 +9,41 @@
     - public_ipv4_address|default('') != ''
 
 - name: Delete existing public DNS A records
-  local_action: uri method=DELETE
-                url="{{ dynect_api_url }}/ARecord/{{ public_dns_zone
-                     }}/{{ public_hostname }}/"
-                HEADER_Content-Type="application/json"
-                HEADER_Auth-Token="{{ dynect_session_token }}"
+  local_action:
+    module: uri
+    method: DELETE
+    url: "{{ dynect_api_url }}/ARecord/{{ public_dns_zone
+          }}/{{ public_hostname }}/"
+    headers:
+      Content-Type: "application/json"
+      Auth-Token: "{{ dynect_session_token }}"
   ignore_errors: yes
 
 #
 # DynECT ZoneAddNode user permission is required to add records. 
 #
 - name: Make public DNS A records
-  local_action: uri method=POST
-                url="{{ dynect_api_url }}/ARecord/{{ public_dns_zone
-                     }}/{{ public_hostname }}."
-                HEADER_Content-Type="application/json"
-                HEADER_Auth-Token="{{ dynect_session_token }}"
-                body=' {"rdata":{"address":"{{ public_ipv4_address }}"}} '
+  local_action:
+    module: uri
+    method: POST
+    url: "{{ dynect_api_url }}/ARecord/{{ public_dns_zone
+          }}/{{ public_hostname }}."
+    headers:
+      Content-Type: "application/json"
+      Auth-Token: "{{ dynect_session_token }}"
+    body_format: json
+    body:
+      rdata:
+        address: "{{ public_ipv4_address }}"
 
 - name: Publish the public DNS zone
-  local_action: uri method=PUT
-                HEADER_Content-Type="application/json"
-                HEADER_Auth-Token="{{ dynect_session_token }}"
-                url="{{ dynect_api_url }}/Zone/{{ public_dns_zone }}"
-                body=' {"publish":true} '
+  local_action:
+    module: uri
+    method: PUT
+    headers:
+      Content-Type: "application/json"
+      Auth-Token: "{{ dynect_session_token }}"
+    url: "{{ dynect_api_url }}/Zone/{{ public_dns_zone }}"
+    body_format: json
+    body: 
+      publish: true

@@ -1,24 +1,59 @@
----
 # file: roles/postfix_standalone/defaults/main.yaml
+---
+
+mail_domain: "{{ public_dns_zone }}"
+
+default_ipv4_netmask: "{{ ansible_default_ipv4.network }}/{{ ansible_default_ipv4.netmask }}"
 
 #
 # A domain-wide mail server
 #
 postfix_mydestination: "$myhostname, localhost.$mydomain, localhost, {{ inventory_hostname }}, $mydomain"
-postfix_mydomain:      "{{ public_dns_zone | mandatory }}"
-postfix_mynetworks:    "{{ public_ipv4_address | mandatory }}/32, {{ ansible_default_ipv4.network }}/24, 127.0.0.0/8"
+postfix_mydomain:      "{{ mail_domain }}"
+postfix_mynetworks:    "{{ public_ipv4_address }}/32, {{ default_ipv4_netmask | ipaddr('net') }}, 127.0.0.0/8"
 
 #
 # Must be a fully-qualified domain name with reverse DNS resolution:
 #
-postfix_myhostname:    "{{ public_hostname | mandatory }}"
+postfix_myhostname:    "{{ public_hostname }}"
 
 #
 # DNS mail exchanger (MX) record preference
 #
 dns_mx_preference: 10
 
+dns_spf_data: "v=spf1 ip4:{{ default_ipv4_netmask | ipaddr('net') }} a mx ~all"
+
 #
 # Amavis concurrency
 #
 amavis_max_servers: 12
+
+#
+# DKIM selectors per mail domain
+#
+dkim_selectors:
+- name: "default"
+  domain: "{{ mail_domain }}"
+  managed: yes
+  state: present
+
+#
+# Let's Encrypt Certbot
+#
+certbot_domains:
+- '{{ public_hostname }}'
+
+certbot_renew_pre_hook: >
+  systemctl stop httpd;
+
+certbot_renew_post_hook: >
+  cat /etc/letsencrypt/live/{{ public_hostname }}/fullchain.pem
+  /etc/letsencrypt/live/{{ public_hostname }}/privkey.pem
+  > /etc/pki/tls/certs/{{ public_hostname }}-bundle.pem;
+  cat /etc/letsencrypt/live/{{ public_hostname }}/privkey.pem
+  > /etc/pki/tls/private/{{ public_hostname }}-key.pem;
+  chmod 0600 /etc/pki/tls/private/{{ public_hostname }}-key.pem;
+  systemctl start httpd;
+  systemctl reload postfix;
+  systemctl reload dovecot;

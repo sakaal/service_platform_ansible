@@ -8,6 +8,6 @@
             groups="public_hostname_{{ hostvars[ item ].public_hostname }}"
 
 - name: DynECT Managed DNS
-  when: dynect_session_result|success and
+  when: dynect_session_result is success and
         inventory_hostname == groups[ 'public_hostname_' + public_hostname ][0]
   include: dynect.yaml

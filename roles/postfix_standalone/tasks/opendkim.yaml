@@ -1,0 +1,293 @@
+# file: roles/postfix_standalone/tasks/opendkim.yaml
+#
+# OpenDKIM configuration
+#
+---
+
+- name: OpenDKIM packages
+  with_items:
+  - opendkim
+  yum:
+    name: "{{ item }}"
+    state: present
+
+- name: OpenDKIM keys directory for the mail domains
+  with_items: "{{ dkim_selectors }}"
+  become: yes
+  file:
+    state: directory
+    path: "/etc/opendkim/keys/{{ item.domain }}"
+    owner: opendkim
+    group: opendkim
+    mode: 0750
+  tags:
+  - always
+
+- name: OpenDKIM keys directory in the inventory
+  with_items: "{{ dkim_selectors }}"
+  become: no
+  local_action:
+    module: file
+    state: directory
+    path: "{{ inventory_dir }}/roles/postfix_standalone/files/opendkim/keys/{{
+           item.domain }}"
+  tags:
+  - always
+
+- name: Check if OpenDKIM keys are already managed
+  with_nested:
+  - "{{ dkim_selectors }}"
+  - [ 'private', 'txt' ]
+  when: item.0.state | default('present') == 'present'
+  local_action:
+    module: stat
+    path: "{{ inventory_dir }}/roles/postfix_standalone/files/opendkim/keys/{{
+           item.0.domain }}/{{ item.0.name }}.{{ item.1 }}"
+  register: opendkim_keys
+  tags:
+  - always
+
+- name: Deploy existing OpenDKIM keys
+  become: yes
+  with_items: "{{ opendkim_keys.results }}"
+  when: (not item is skipped) and item.stat.exists | bool
+  copy:
+    src: "{{ item.invocation.module_args.path }}"
+    dest: "/etc/opendkim/keys/{{ item.item.0.domain
+          }}/{{ item.invocation.module_args.path | basename }}"
+    owner: opendkim
+    group: opendkim
+    mode: 0600
+  tags:
+  - always
+
+- name: OpenDKIM keys
+  with_items: "{{ dkim_selectors }}"
+  when: item.state | default('present') == 'present'
+  become: yes
+  command: creates="/etc/opendkim/keys/{{ item.domain }}/{{ item.name }}.private"
+           opendkim-genkey -d {{ item.domain }}
+           -D /etc/opendkim/keys/{{ item.domain }}/ -s {{ item.name }}
+  notify: Restart OpenDKIM
+  tags:
+  - always
+
+- name: Manage the OpenDKIM keys
+  with_nested:
+  - "{{ dkim_selectors }}"
+  - [ 'private', 'txt' ]
+  when: item.0.state | default('present') == 'present'
+  become: yes
+  fetch:
+    force: no
+    src: "/etc/opendkim/keys/{{ item.0.domain }}/{{ item.0.name }}.{{ item.1 }}"
+    dest: "{{ inventory_dir }}/roles/postfix_standalone/files/opendkim/keys/{{ item.0.domain }}/"
+    flat: yes
+  register: opendkim_keys_fetch
+  tags:
+  - always
+
+- name: Encrypt newly managed OpenDKIM keys
+  with_items: "{{ opendkim_keys_fetch.results }}"
+  when: item is changed and item.dest | match('.*private')
+  become: no
+  local_action: shell chdir="{{ item.dest | dirname }}"
+                ansible-vault encrypt --encrypt-vault-id "{{ inventory_vault_id }}" "{{ item.dest | basename }}"
+  register: opendkim_keys_encryption
+  changed_when: opendkim_keys_encryption.stdout.strip() == "Encryption successful"
+  tags:
+  - always
+
+- name: Permission to the OpenDKIM key files
+  become: yes
+  with_nested:
+  - "{{ dkim_selectors }}"
+  - [ 'private', 'txt' ]
+  when: item.0.state | default('present') == 'present'
+  file:
+    state: file
+    path: "/etc/opendkim/keys/{{ item.0.domain }}/{{ item.0.name }}.{{ item.1 }}"
+    owner: opendkim
+    group: opendkim
+    mode: 0600
+  tags:
+  - always
+
+- name: OpenDKIM key table file
+  with_items: "{{ dkim_selectors }}"
+  become: yes
+  lineinfile:
+    dest: '/etc/opendkim/KeyTable'
+    regexp: '^{{ item.name }}\._domainkey\.{{ item.domain }}\s'
+    line: '{{ item.name }}._domainkey.{{ item.domain }} {{ item.domain }}:{{ item.name
+           }}:/etc/opendkim/keys/{{ item.domain }}/{{ item.name }}.private'
+    insertafter: '^#default\.'
+    state: "{{ item.state | default('present') }}"
+  notify: Restart OpenDKIM
+  tags:
+  - always
+
+- name: OpenDKIM signing table file
+  with_items: "{{ dkim_selectors }}"
+  become: yes
+  lineinfile:
+    dest: '/etc/opendkim/SigningTable'
+    regexp: '^\*@{{ item.domain }}\s'
+    line: '*@{{ item.domain }} {{ item.name }}._domainkey.{{ item.domain }}'
+    insertafter: '^#\*@.+\s{{ item.name }}._domainkey.+$'
+    state: "{{ item.state | default('present') }}"
+  notify: Restart OpenDKIM
+  tags:
+  - always
+
+- name: OpenDKIM trusted hosts file
+  become: yes
+  with_items:
+  - "{{ mail_domain }}"
+  - "{{ public_hostname }}"
+  - "{{ postfix_mynetworks.split(',') }}"
+  lineinfile:
+    dest: "/etc/opendkim/TrustedHosts"
+    regexp: '^{{ item.strip() }}$'
+    line: '{{ item.strip() }}'
+    insertafter: '^#'
+  notify: Restart OpenDKIM
+  tags:
+  - always
+
+- name: Produce the DKIM DNS TXT record data
+  with_items: "{{ dkim_selectors }}"
+  when: item.state | default('present') == 'present'
+  become: yes
+  command: cat /etc/opendkim/keys/{{ item.domain }}/{{ item.name }}.txt
+  register: dkim_dns_raw
+  tags:
+  - always
+
+- name: Clean the DKIM DNS TXT record raw data
+  with_items: "{{ dkim_dns_raw.results }}"
+  when: not item is skipped
+  set_fact: dkim_txt_all="{{ item.stdout.split() | join(' ') }}"
+  register: dkim_dns_cleaned
+
+- name: Parse the cleaned DKIM DNS TXT record data
+  with_items: "{{ dkim_dns_cleaned.results }}"
+  when: not item is skipped
+  set_fact: dkim_txt_attr_name="{{ item.ansible_facts.dkim_txt_all
+                                 | regex_replace('^([^\\s]+).*$',
+                                                 '\\1') }}"
+            dkim_txt_data_v="{{ item.ansible_facts.dkim_txt_all
+                                 | regex_replace('^.*v=([^;]+);.*$',
+                                                 '\\1') }}"
+            dkim_txt_data_k="{{ item.ansible_facts.dkim_txt_all
+                                 | regex_replace('^.*k=([^;]+);.*$',
+                                                 '\\1') }}"
+            dkim_txt_data_p="{{ item.ansible_facts.dkim_txt_all
+                                 | regex_replace('^.*p=([+/0-9A-Za-z]+).*$',
+                                                 '\\1') }}"
+  register: dkim_dns_detailed
+
+- name: Combine the DKIM DNS TXT record details
+  with_items: "{{ dkim_dns_detailed.results }}"
+  when: not item is skipped
+  set_fact:
+    dkim_txt_data: "v={{ item.ansible_facts.dkim_txt_data_v
+                }}; k={{ item.ansible_facts.dkim_txt_data_k
+                }}; p={{ item.ansible_facts.dkim_txt_data_p }}"
+    dkim_selector: "{{ item.item.item.item.name }}"
+    dkim_domain: "{{ item.item.item.item.domain }}"
+    dkim_managed: "{{ item.item.item.item.managed | default(False) }}"
+    dkim_state: "{{ item.item.item.item.state | default('present') }}"
+  register: dkim_dns
+
+- debug: var=dkim_dns
+
+- name: OpenDKIM auto restart
+  lineinfile:
+    dest: "/etc/opendkim.conf"
+    regexp: '^AutoRestart\s'
+    line: 'AutoRestart yes'
+    insertafter: '^#.*CONFIG.+OPTIONS'
+  notify: Restart OpenDKIM
+
+- name: OpenDKIM operating mode (sign and verify)
+  lineinfile:
+    dest: "/etc/opendkim.conf"
+    regexp: '^Mode\s'
+    line: 'Mode sv'
+    insertafter: '^#.*Mode'
+  notify: Restart OpenDKIM
+
+- name: OpenDKIM canonicalization
+  lineinfile:
+    dest: "/etc/opendkim.conf"
+    regexp: '^Canonicalization\s'
+    line: 'Canonicalization relaxed/simple'
+    insertafter: '^#.*canonicalization'
+  notify: Restart OpenDKIM
+
+#- name: OpenDKIM external hosts may send mail through the server
+#  lineinfile:
+#    dest=/etc/opendkim.conf
+#    regexp='^ExternalIgnoreList\s'
+#    line='ExternalIgnoreList refile:/etc/opendkim/ExternalHosts'
+#    insertafter='^#.*ExternalIgnoreList'
+
+- name: OpenDKIM 'internal' hosts whose mail should be signed
+  lineinfile:
+    dest: "/etc/opendkim.conf"
+    regexp: '^InternalHosts\s'
+    line: 'InternalHosts refile:/etc/opendkim/TrustedHosts'
+    insertafter: '^#.*InternalHosts'
+  notify: Restart OpenDKIM
+
+- name: OpenDKIM key table
+  lineinfile:
+    dest: "/etc/opendkim.conf"
+    regexp: '^KeyTable\s'
+    line: 'KeyTable refile:/etc/opendkim/KeyTable'
+    insertafter: '^#\s*KeyTable\s'
+  notify: Restart OpenDKIM
+
+- name: OpenDKIM signing table
+  lineinfile:
+    dest: "/etc/opendkim.conf"
+    regexp: '^SigningTable\s'
+    line: 'SigningTable refile:/etc/opendkim/SigningTable'
+    insertafter: '^#\s*SigningTable\s'
+  notify: Restart OpenDKIM
+
+- name: OpenDKIM signature algorithm
+  lineinfile:
+    dest: "/etc/opendkim.conf"
+    regexp: '^SignatureAlgorithm\s'
+    line: 'SignatureAlgorithm rsa-sha256'
+  notify: Restart OpenDKIM
+
+#
+# Postfix OpenDKIM milter
+# TODO: This will break if also other milters are in use.
+#
+- name: Postfix OpenDKIM
+  with_items:
+  - key: "smtpd_milters"
+    val: "inet:127.0.0.1:8891"
+  - key: "non_smtpd_milters"
+    val: "$smtpd_milters"
+  - key: "milter_default_action"
+    val: "accept"
+  - key: "milter_protocol"
+    val: "2"
+  lineinfile:
+    dest: "/etc/postfix/main.cf"
+    regexp: '^{{ item.key }}\s'
+    line: '{{ item.key }} = {{ item.val }}'
+  notify:
+  - Restart Postfix
+
+- name: Enable the OpenDKIM service
+  become: yes
+  service:
+    name: opendkim
+    enabled: yes
+    state: started

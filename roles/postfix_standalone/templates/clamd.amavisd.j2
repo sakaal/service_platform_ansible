@@ -1,0 +1,9 @@
+{# file: roles/postfix_standalone/templates/clamd.amavisd.j2
+
+   Based on CentOS 7 EPEL /usr/share/doc/clamav-server*/clamd.sysconfig
+
+   Deploy to /etc/sysconfig/clamd.amavisd
+#}
+CLAMD_CONFIGFILE=/etc/clamd.d/amavisd.conf
+CLAMD_SOCKET=/var/run/clamd.amavisd/clamd.sock
+#CLAMD_OPTIONS=

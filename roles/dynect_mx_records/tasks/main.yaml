@@ -4,108 +4,144 @@
 #
 ---
 
-- name: Check if DNS zones already have MX records
-  local_action: >
-                uri url="{{ dynect_api_url }}/MXRecord/{{
-                public_dns_zone | mandatory }}/{{ public_dns_zone }}/"
-                HEADER_Content-Type="application/json"
-                HEADER_Auth-Token="{{ dynect_session_token }}"
-  register: zone_mx_records
+- name: Check if mail domains already have MX records
+  local_action:
+    module: uri
+    url: "{{ dynect_api_url }}/MXRecord/{{ mail_domain }}/{{ mail_domain }}/"
+    headers:
+      Content-Type="application/json"
+      Auth-Token="{{ dynect_session_token }}"
+  register: domain_mx_records
 
-- name: Examine the DNS zone existing MX records
-  when: zone_mx_records|success
-  with_items: "{{ zone_mx_records.json.data }}"
-  local_action: >
-                uri url="{{ dynect_api_url }}/MXRecord/{{
-                public_dns_zone | mandatory }}/{{ public_dns_zone
-                }}/{{ item|basename }}"
-                HEADER_Content-Type="application/json"
-                HEADER_Auth-Token="{{ dynect_session_token }}"
+- name: Examine the mail domain existing MX records
+  when: domain_mx_records is success
+  with_items: "{{ domain_mx_records.json.data }}"
+  local_action:
+    module: uri
+    url: "{{ dynect_api_url }}/MXRecord/{{ mail_domain }}/{{ mail_domain
+          }}/{{ item | basename }}"
+    headers:
+      Content-Type="application/json"
+      Auth-Token="{{ dynect_session_token }}"
   register: current_mx_records
 
-- name: Update DNS zone MX records
-  with_items: current_mx_records.results|default([])
-  when: (item.json.data.rdata.exchange == "{{ public_hostname }}.") and
+- name: Update mail domain MX records
+  with_items: "{{ current_mx_records.results | default([]) }}"
+  when: (item.json.data.rdata.exchange == (public_hostname + '.')) and
         (item.json.data.rdata.preference != dns_mx_preference)
-  local_action: >
-                uri method=PUT url="{{ dynect_api_url }}/MXRecord/{{
-                public_dns_zone | mandatory }}/{{ public_dns_zone
-                }}/{{ item.json.data.record_id }}"
-                HEADER_Content-Type="application/json"
-                HEADER_Auth-Token="{{ dynect_session_token }}"
-                body='{ "rdata": {
-                "exchange": "{{ public_hostname | mandatory }}",
-                "preference": "{{ dns_mx_preference | mandatory }}"
-                }, "ttl": "0" }'
+  local_action:
+    module: uri
+    method: PUT
+    url: "{{ dynect_api_url }}/MXRecord/{{ mail_domain }}/{{ mail_domain
+          }}/{{ item.json.data.record_id }}"
+    headers:
+      Content-Type="application/json"
+      Auth-Token="{{ dynect_session_token }}"
+    body_format: json
+    body:
+      rdata:
+        exchange: "{{ public_hostname }}"
+        preference: "{{ dns_mx_preference }}"
+      ttl: 0
   register: updated_mx_records
   changed_when: True
 
 - name: Determine if any DNS MX records have changed
-  with_items: current_mx_records.results|default([])
-  when: (item.json.data.rdata.exchange == "{{ public_hostname }}.") and
-        (item.json.data.rdata.preference == "{{ dns_mx_preference }}")
+  with_items: "{{ current_mx_records.results | default([]) }}"
+  when: (item.json.data.rdata.exchange == (public_hostname + '.')) and
+        (item.json.data.rdata.preference == dns_mx_preference)
   debug: msg="MX record unchanged"
   register: existing_mx_record
   changed_when: False
 
-- name: Make DNS zone MX records
-  when: existing_mx_record|skipped
-  local_action: >
-                uri method=POST url="{{ dynect_api_url }}/MXRecord/{{
-                public_dns_zone | mandatory }}/{{ public_dns_zone }}/"
-                HEADER_Content-Type="application/json"
-                HEADER_Auth-Token="{{ dynect_session_token }}"
-                body='{ "rdata": {
-                "exchange": "{{ public_hostname | mandatory }}",
-                "preference": "{{ dns_mx_preference | mandatory }}"
-                }, "ttl": "0" }'
+- name: Make mail domain MX records
+  when: not (public_hostname + '.') in
+        current_mx_records | json_query('results[*].json.data.rdata.exchange')
+  local_action:
+    module: uri
+    method: POST
+    url: "{{ dynect_api_url }}/MXRecord/{{ mail_domain }}/{{ mail_domain }}/"
+    headers:
+      Content-Type="application/json"
+      Auth-Token="{{ dynect_session_token }}"
+    body_format: json
+    body:
+      rdata:
+        exchange: "{{ public_hostname }}"
+        preference: "{{ dns_mx_preference }}"
+      ttl: 0
 
 #
 # DomainKeys Identified Mail (DKIM) TXT records
 #
+# roles/postfix_standalone brings the dkim_dns.results
+#
 
-- name: Check if DNS zones already have DKIM TXT records
-  local_action: >
-                uri url="{{ dynect_api_url }}/TXTRecord/{{
-                public_dns_zone }}/{{ dns_txt_attr_name | mandatory }}.{{
-                public_dns_zone }}/"
-                HEADER_Content-Type="application/json"
-                HEADER_Auth-Token="{{ dynect_session_token }}"
+- name: Check if mail domains already have DKIM TXT records
+  with_items: "{{ dkim_dns.results }}"
+  when: (not item is skipped) and item.ansible_facts.dkim_managed | bool
+  local_action:
+    module: uri
+    url: "{{ dynect_api_url }}/TXTRecord/{{ item.ansible_facts.dkim_domain
+          }}/{{ item.item.ansible_facts.dkim_txt_attr_name }}.{{ item.ansible_facts.dkim_domain }}/"
+    headers:
+      Content-Type="application/json"
+      Auth-Token="{{ dynect_session_token }}"
   register: zone_txt_records
   ignore_errors: yes
 
-#
-# roles/postfix_standalone brings the dns_txt_data
-#
-- name: Update DNS zone DKIM TXT records
-  when: zone_txt_records|success
+- name: Update mail domain DKIM TXT records
+  with_items: "{{ zone_txt_records.results }}"
+  when: (not item is skipped) and item is success and
+        item.item.ansible_facts.dkim_state == 'present'
   local_action:
     module: uri
     method: PUT
-    url: "{{ dynect_api_url }}/TXTRecord/{{
-         public_dns_zone }}/{{ dns_txt_attr_name }}.{{ public_dns_zone
-         }}/{{ zone_txt_records.json.data.0|basename }}/"
-    HEADER_Content-Type: "application/json"
-    HEADER_Auth-Token: "{{ dynect_session_token }}"
+    url: "{{ item.url }}{{ item.json.data.0 | basename }}/"
+    headers:
+      Content-Type="application/json"
+      Auth-Token="{{ dynect_session_token }}"
     body_format: json
     body:
       rdata:
-        txtdata: "{{ dns_txt_data | mandatory }}"
-      ttl: 0
+        txtdata: "{{ item.item.ansible_facts.dkim_txt_data }}"
+      ttl: "0"
   register: updated_txt_records
   changed_when: True
 
-- name: Make DNS zone DKIM TXT records
-  when: updated_txt_records|skipped
-  local_action: >
-                uri method=POST url="{{ dynect_api_url }}/TXTRecord/{{
-                public_dns_zone | mandatory }}/{{ dns_txt_attr_name }}.{{
-                public_dns_zone }}/"
-                HEADER_Content-Type="application/json"
-                HEADER_Auth-Token="{{ dynect_session_token }}"
-                body='{ "rdata": {
-                "txtdata": "{{ dns_txt_data | mandatory }}"
-                }, "ttl": "0" }'
+- name: Delete mail domain DKIM TXT records
+  with_items: "{{ zone_txt_records.results }}"
+  when: (not item is skipped) and item is success and
+        item.item.ansible_facts.dkim_state == 'absent'
+  local_action:
+    module: uri
+    method: DELETE
+    url: "{{ item.url }}/{{ item.json.data.0 | basename }}/"
+    headers:
+      Content-Type="application/json"
+      Auth-Token="{{ dynect_session_token }}"
+  changed_when: True
+
+- name: Make mail domain DKIM TXT records
+  with_items: "{{ updated_txt_records.results }}"
+  when: item is skipped and
+        item.item.item.ansible_facts is defined and
+        item.item.item.ansible_facts.dkim_state == 'present' and
+        item.item.item.ansible_facts.dkim_managed | bool
+  local_action:
+    module: uri
+    method: POST
+    url: "{{ dynect_api_url }}/TXTRecord/{{ item.item.item.ansible_facts.dkim_domain
+          }}/{{ item.item.item.item.ansible_facts.dkim_txt_attr_name
+          }}.{{ item.item.item.ansible_facts.dkim_domain }}/"
+    headers:
+      Content-Type="application/json"
+      Auth-Token="{{ dynect_session_token }}"
+    body_format: json
+    body:
+      rdata:
+        txtdata: "{{ item.item.item.ansible_facts.dkim_txt_data }}"
+      ttl: "0"
 
 #
 # Sender Policy Framework (SPF) records
@@ -118,58 +154,81 @@
 #
 
 - name: Check if DNS zones already have SPF TXT records
-  local_action: >
-                uri url="{{ dynect_api_url }}/TXTRecord/{{
-                public_dns_zone }}/{{ public_dns_zone | mandatory }}/"
-                HEADER_Content-Type="application/json"
-                HEADER_Auth-Token="{{ dynect_session_token }}"
+  local_action:
+    module: uri
+    url: "{{ dynect_api_url }}/TXTRecord/{{ public_dns_zone
+          }}/{{ public_dns_zone }}/"
+    headers:
+      Content-Type: "application/json"
+      Auth-Token: "{{ dynect_session_token }}"
   register: zone_spf_records
   ignore_errors: yes
 
-#
-# roles/postfix_standalone brings the dns_spf_data
-#
-- name: Update DNS zone SPF TXT records
-  when: zone_spf_records|success
+- name: Check if mail domains have existing TXT records
+  local_action:
+    module: uri
+    url: "{{ dynect_api_url }}/TXTRecord/{{ mail_domain }}/{{ mail_domain }}/"
+    headers:
+      Content-Type: "application/json"
+      Auth-Token: "{{ dynect_session_token }}"
+  register: zone_spf_records
+  ignore_errors: yes
+
+- name: Check which TXT records are SPF records
+  when: zone_spf_records is success
   with_items: "{{ zone_spf_records.json.data }}"
   local_action:
     module: uri
+    url: "{{ dynect_api_url }}/TXTRecord/{{ mail_domain }}/{{ mail_domain
+          }}/{{ item | basename }}/"
+    headers:
+      Content-Type: "application/json"
+      Auth-Token: "{{ dynect_session_token }}"
+  register: zone_spf_records
+  changed_when: zone_spf_records.json.data.rdata.txtdata is match('v=spf.*')
+
+- name: Update mail domain SPF TXT records
+  with_items: "{{ zone_spf_records.results }}"
+  when: item is changed
+  local_action:
+    module: uri
     method: PUT
-    url: "{{ dynect_api_url }}/TXTRecord/{{
-         public_dns_zone }}/{{ public_dns_zone }}/{{ item|basename }}/"
-    HEADER_Content-Type: "application/json"
-    HEADER_Auth-Token: "{{ dynect_session_token }}"
+    url: "{{ dynect_api_url }}/TXTRecord/{{ mail_domain }}/{{ mail_domain
+          }}/{{ item.json.data.record_id }}/"
+    headers:
+      Content-Type: "application/json"
+      Auth-Token: "{{ dynect_session_token }}"
     body_format: json
     body:
       rdata:
-        txtdata: "{{ dns_spf_data | mandatory }}"
-      ttl: 0
+        txtdata: "{{ dns_spf_data }}"
+      ttl: "0"
   register: updated_spf_records
   changed_when: True
 
-- name: Make DNS zone SPF TXT records
-  when: updated_spf_records|skipped
+- name: Make mail domain SPF TXT records
+  when: updated_spf_records is skipped
   local_action:
     module: uri
     method: POST
-    url: "{{ dynect_api_url }}/TXTRecord/{{
-         public_dns_zone | mandatory }}/{{ public_dns_zone }}/"
-    HEADER_Content-Type: "application/json"
-    HEADER_Auth-Token: "{{ dynect_session_token }}"
+    url: "{{ dynect_api_url }}/TXTRecord/{{ mail_domain }}/{{ mail_domain }}/"
+    headers:
+      Content-Type: "application/json"
+      Auth-Token: "{{ dynect_session_token }}"
     body_format: json
     body:
       rdata:
-        txtdata: "{{ dns_spf_data | mandatory }}"
-      ttl: 0
+        txtdata: "{{ dns_spf_data }}"
+      ttl: "0"
 
-#
-# Publish the records
-#
-
-- name: Publish DNS zones
-  local_action: >
-                uri method=PUT url="{{ dynect_api_url }}/Zone/{{
-                public_dns_zone | mandatory }}"
-                HEADER_Content-Type="application/json"
-                HEADER_Auth-Token="{{ dynect_session_token }}"
-                body='{"publish":true}'
+- name: Publish mail domains
+  local_action:
+    module: uri
+    method: PUT
+    url: "{{ dynect_api_url }}/Zone/{{ mail_domain }}"
+    headers:
+      Content-Type: "application/json"
+      Auth-Token: "{{ dynect_session_token }}"
+    body_format: json
+    body:
+      publish: true

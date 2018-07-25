@@ -1,0 +1,43 @@
+# file: roles/postfix_standalone/tasks/users.yaml
+---
+
+#
+# You must redirect root mail to another account.
+#
+- name: Email aliases
+  with_items: "{{ email_aliases | default([]) }}"
+  lineinfile:
+    dest: "/etc/aliases"
+    regexp: '^#?{{ item.user }}:(\s*).*$'
+    line: '{{ item.user }}:\1{{ item.alias }}'
+    backrefs: yes
+    state: "{{ item.state | default('present') }}"
+  notify:
+  - Refresh aliases
+
+- name: Enable virtual aliasing
+  become: yes
+  lineinfile:
+    dest: "/etc/postfix/main.cf"
+    regexp: '^#?\s*virtual_alias_maps\s*=.*$'
+    line: 'virtual_alias_maps = hash:/etc/postfix/virtual'
+    state: "{{ postfix_virtual_aliasing is defined | ternary('present', 'absent') }}"
+  notify:
+  - Restart Postfix
+
+- name: Virtual aliasing
+  with_items: "{{ postfix_virtual_aliasing | default([]) }}"
+  become: yes
+  lineinfile:
+    path: "/etc/postfix/virtual"
+    regexp: '^#?\s*{{ item.recipient }}\s+.*$'
+    line: "{{ item.recipient }} {{ item.redirects_to | join(',') }}"
+    state: "{{ item.state | default('present') }}"
+  register: postfix_virtual
+  notify:
+  - Reload Postfix
+
+- name: Postfix virtual alias map indexing
+  when: postfix_virtual is changed
+  become: yes
+  shell: chdir="/etc/postfix" postmap virtual

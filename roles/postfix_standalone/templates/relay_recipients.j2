@@ -1,0 +1,9 @@
+{# file: roles/postfix_standalone/templates/relay_recipients.j2 #}
+{% for recipient_email in (
+  (local_users | default([]) | map(attribute='email') | list) +
+  (email_aliases | default([]) | map(attribute='user') | map('regex_replace', '^(.*)$', '\\1@' + mail_domain) | list) +
+  (email_aliases | default([]) | map(attribute='alias') | map('regex_replace', '^(.*)$', '\\1@' + mail_domain) | list) +
+  (hostvars[ groups['mail_servers'][0] ].postfix_virtual_aliasing | default([]) | map(attribute='recipient') | list)
+  ) | sort | unique %}
+{{ recipient_email }} x
+{% endfor %}

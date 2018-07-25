@@ -1,0 +1,59 @@
+# file: roles/postfix_standalone/tasks/postfix_tls.yaml
+#
+# Postfix TLS Support - http://www.postfix.org/TLS_README.html
+#
+---
+
+#
+# roles/transport_layer_security deploys the certificates and keys
+# http://www.postfix.org/TLS_README.html#server_cert_key
+#
+- name: Postfix TLS server-side certificate and private key 
+  when: public_hostname_certificate is skipped or
+        not public_hostname_certificate.stat.exists
+  fail:
+    msg: "Need a X.509 certificate for {{ public_hostname }}"
+
+- name: Postfix TLS RSA certificate and key
+  with_items:
+  - key: "smtpd_tls_CAfile"
+    val: "/etc/pki/ca-trust/extracted/openssl/ca-bundle.trust.crt"
+  - key: "smtpd_tls_cert_file"
+    val: "/etc/pki/tls/certs/{{ public_hostname }}-bundle.pem"
+  - key: "smtpd_tls_key_file"
+    val: "/etc/pki/tls/private/{{ public_hostname }}-key.pem"
+  lineinfile:
+    dest: "/etc/postfix/main.cf"
+    regexp: '^{{ item.key }}\s'
+    line: "{{ item.key }} = {{ item.val }}"
+  notify:
+  - Reload Postfix
+
+- name: Postfix TLS
+  with_items:
+  - key: smtpd_tls_mandatory_ciphers
+    val: high
+  - key: smtp_tls_mandatory_ciphers
+    val: high
+  - key: smtpd_tls_mandatory_exclude_ciphers
+    val: "{{ tls_ciphersuite_excludes | list | join(', ') }}"
+  - key: smtp_tls_mandatory_exclude_ciphers
+    val: "{{ tls_ciphersuite_excludes | list | join(', ') }}"
+  - key: smtpd_tls_security_level
+    val: may
+  - key: smtp_tls_security_level
+    val: may
+  - key: smtpd_tls_mandatory_protocols
+    val: "{{ tls_protocols | list | join(', ') +
+         ([''] + tls_protocol_excludes|list) | join(', !') }}"
+  - key: smtp_tls_mandatory_protocols
+    val: "{{ tls_protocols | list | join(', ') +
+         ([''] + tls_protocol_excludes|list) | join(', !') }}"
+  - key: smtpd_tls_eecdh_grade
+    val: strong
+  lineinfile:
+    dest: '/etc/postfix/main.cf'
+    regexp: '^{{ item.key }}'
+    line: '{{ item.key }} = {{ item.val }}'
+  notify:
+  - Reload Postfix

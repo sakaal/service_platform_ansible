@@ -24,50 +24,56 @@
 
 - name: DANE X.509 certificate SHA-256 fingerprint
   shell: >
-         openssl x509 -in "/etc/pki/tls/certs/{{ dane_cert_hostname | mandatory
+         openssl x509 -in "/etc/pki/tls/certs/{{ dane_cert_hostname
          }}-crt.pem" -outform DER
          | openssl dgst -sha256 -binary
          | hexdump -ve '/1 "%02x"'
   register: dane_full_cert
 
-- when: dane_full_cert|success
-  set_fact: dane_full_cert_sha256="{{ dane_full_cert.stdout | mandatory }}" 
+- when: dane_full_cert is success
+  set_fact:
+    dane_full_cert_sha256: "{{ dane_full_cert.stdout }}" 
 
 - name: DANE-EE public key SHA-256 fingerprint
   shell: >
-         openssl x509 -in "/etc/pki/tls/certs/{{ dane_cert_hostname | mandatory
+         openssl x509 -in "/etc/pki/tls/certs/{{ dane_cert_hostname
          }}-crt.pem" -noout -pubkey
          | openssl pkey -pubin -outform DER
          | openssl dgst -sha256 -binary
          | hexdump -ve '/1 "%02x"'
   register: dane_pub_key
 
-- when: dane_pub_key|success
-  set_fact: dane_public_key_sha256="{{ dane_pub_key.stdout | mandatory }}" 
+- when: dane_pub_key is success
+  set_fact:
+    dane_public_key_sha256: "{{ dane_pub_key.stdout }}" 
 
 - name: DANE-EE public key SHA-512 fingerprint
   shell: >
-         openssl x509 -in "/etc/pki/tls/certs/{{ dane_cert_hostname | mandatory
+         openssl x509 -in "/etc/pki/tls/certs/{{ dane_cert_hostname
          }}-crt.pem" -noout -pubkey
          | openssl pkey -pubin -outform DER
          | openssl dgst -sha512 -binary
          | hexdump -ve '/1 "%02x"'
   register: dane_pub_key
 
-- when: dane_pub_key|success
-  set_fact: dane_public_key_sha512="{{ dane_pub_key.stdout | mandatory }}" 
+- when: dane_pub_key is success
+  set_fact:
+    dane_public_key_sha512: "{{ dane_pub_key.stdout }}" 
 
 - name: Check if DNS zones already have DANE TLSA records
-  local_action: >
-                uri url="{{ dynect_api_url }}/TLSARecord/{{
-                public_dns_zone }}/*._tcp.{{ public_hostname | mandatory }}/"
-                HEADER_Content-Type="application/json"
-                HEADER_Auth-Token="{{ dynect_session_token }}"
+  local_action:
+    module: uri
+    url: "{{ dynect_api_url }}/TLSARecord/{{ public_dns_zone
+          }}/*._tcp.{{ public_hostname }}/"
+    headers:
+      Content-Type: "application/json"
+      Auth-Token: "{{ dynect_session_token }}"
   register: zone_tlsa_records
   ignore_errors: yes
 
-- set_fact: dane_ee_update="{{ zone_tlsa_records|success and
-                               zone_tlsa_records.json.data|list|length > 0 }}"
+- set_fact:
+    dane_ee_update: "{{ zone_tlsa_records is success and
+                        zone_tlsa_records.json.data | list | length > 0 }}"
 
 - debug: msg="{{ dane_public_key_sha256 }}"
 
@@ -78,15 +84,16 @@
     method: PUT
     url: "{{ dynect_api_url }}/TLSARecord/{{
          public_dns_zone }}/*._tcp.{{ public_hostname }}/"
-    HEADER_Content-Type: "application/json"
-    HEADER_Auth-Token: "{{ dynect_session_token }}"
+    headers:
+      Content-Type: "application/json"
+      Auth-Token: "{{ dynect_session_token }}"
     body_format: json
     body:
       rdata:
         cert_usage: 3
         selector: 1
         match_type: 1
-        certificate: "{{ dane_public_key_sha256 | mandatory }}"
+        certificate: "{{ dane_public_key_sha256 }}"
       ttl: 0
   register: updated_tlsa_records
   changed_when: True
@@ -102,7 +109,7 @@
 #                "cert_usage": "3",
 #                "selector": "1",
 #                "match_type": "2",
-#                "certificate": "{{ dane_public_key_sha512 | mandatory }}"
+#                "certificate": "{{ dane_public_key_sha512 }}"
 #                }, "ttl": "0" }'
 #  register: updated_tlsa_records
 #  changed_when: True
@@ -118,7 +125,7 @@
 #                "cert_usage": "1",
 #                "selector": "0",
 #                "match_type": "1",
-#                "certificate": "{{ dane_full_cert_sha256 | mandatory }}"
+#                "certificate": "{{ dane_full_cert_sha256 }}"
 #                }, "ttl": "0" }'
 #  register: updated_tlsa_records
 #  changed_when: True
@@ -129,44 +136,45 @@
     module: uri
     method: POST
     url: "{{ dynect_api_url }}/TLSARecord/{{
-         public_dns_zone | mandatory }}/*._tcp.{{ public_hostname }}/"
-    HEADER_Content-Type: "application/json"
-    HEADER_Auth-Token: "{{ dynect_session_token }}"
+         public_dns_zone }}/*._tcp.{{ public_hostname }}/"
+    headers:
+      Content-Type: "application/json"
+      Auth-Token: "{{ dynect_session_token }}"
     body_format: json
     body:
       rdata:
         cert_usage: 3
         selector: 1
         match_type: 1
-        certificate: "{{ dane_public_key_sha256 | mandatory }}"
+        certificate: "{{ dane_public_key_sha256 }}"
       ttl: 0
 
 #- name: Make DNS zone DANE-EE TLSA 3 1 2 records
 #  when: not dane_ee_update|bool
 #  local_action: >
 #                uri method=POST url="{{ dynect_api_url }}/TLSARecord/{{
-#                public_dns_zone | mandatory }}/*._tcp.{{ public_hostname }}/"
+#                public_dns_zone }}/*._tcp.{{ public_hostname }}/"
 #                HEADER_Content-Type="application/json"
 #                HEADER_Auth-Token="{{ dynect_session_token }}"
 #                body='{ "rdata": {
 #                "cert_usage": "3",
 #                "selector": "1",
 #                "match_type": "2",
-#                "certificate": "{{ dane_public_key_sha512 | mandatory }}"
+#                "certificate": "{{ dane_public_key_sha512 }}"
 #                }, "ttl": "0" }'
 
 #- name: Make DNS zone PKIX-EE TLSA 1 0 1 records
 #  when: not dane_ee_update|bool
 #  local_action: >
 #                uri method=POST url="{{ dynect_api_url }}/TLSARecord/{{
-#                public_dns_zone | mandatory }}/*._tcp.{{ public_hostname }}/"
+#                public_dns_zone }}/*._tcp.{{ public_hostname }}/"
 #                HEADER_Content-Type="application/json"
 #                HEADER_Auth-Token="{{ dynect_session_token }}"
 #                body='{ "rdata": {
 #                "cert_usage": "1",
 #                "selector": "0",
 #                "match_type": "1",
-#                "certificate": "{{ dane_full_cert_sha256 | mandatory }}"
+#                "certificate": "{{ dane_full_cert_sha256 }}"
 #                }, "ttl": "0" }'
 
 #
@@ -174,9 +182,13 @@
 #
 
 - name: Publish DNS zones
-  local_action: >
-                uri method=PUT url="{{ dynect_api_url }}/Zone/{{
-                public_dns_zone | mandatory }}"
-                HEADER_Content-Type="application/json"
-                HEADER_Auth-Token="{{ dynect_session_token }}"
-                body='{"publish":true}'
+  local_action:
+    module: uri
+    method: PUT
+    url: "{{ dynect_api_url }}/Zone/{{ public_dns_zone }}"
+    headers:
+      Content-Type: "application/json"
+      Auth-Token: "{{ dynect_session_token }}"
+    body_format: json
+    body:
+      publish: true

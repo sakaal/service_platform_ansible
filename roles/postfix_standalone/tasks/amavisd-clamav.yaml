@@ -1,0 +1,126 @@
+# file: roles/postfix_standalone/tasks/amavisd-clamav.yaml
+---
+
+#
+# Amavisd-new pulls clamav, clamd and spamassassin as its dependencies
+# The clamav-update package provides freshclam antivirus database updates
+#
+- name: Amavisd-new and ClamAV packages
+  with_items:
+  - amavisd-new
+  - clamav
+  - clamav-update
+  - clamav-server
+  - clamav-server-systemd
+  yum:
+    name: "{{ item }}"
+    state: present
+
+#
+# freshclam - virus database updates configuration
+#
+
+- name: Freshclam configuration
+  lineinfile:
+    dest: "/etc/freshclam.conf"
+    regexp: '^#?\s*Example'
+    line: '#Example'
+
+- name: Freshclam database mirror
+  lineinfile:
+    dest: "/etc/freshclam.conf"
+    regexp: '^#?\s*DatabaseMirror\s*db\.[A-Za-z]+\.clamav\.net$'
+    line: 'DatabaseMirror db.{{ network_country_code }}.clamav.net'
+
+- name: Freshclam update delay
+  lineinfile:
+    dest: "/etc/sysconfig/freshclam"
+    regexp: '^#?\s*FRESHCLAM_DELAY=(.*)$'
+    line: '#FRESHCLAM_DELAY=\1'
+    backrefs: yes
+
+#
+# ClamAV configuration
+#
+
+- name: ClamAV SELinux booleans
+  with_items:
+  - name: antivirus_use_jit
+    state: yes
+  become: yes
+  seboolean:
+    persistent: yes
+    name: "{{ item.name }}"
+    state: "{{ item.state }}"
+
+- name: Update ClamAV database
+  command: freshclam
+  register: freshclam_result
+  changed_when: freshclam_result.rc == 0
+  failed_when: freshclam_result.rc not in [ 0, 1 ]
+
+#
+# Amavisd configuration
+#
+
+- name: Amavisd concurrency
+  lineinfile:
+    dest: "/etc/amavisd/amavisd.conf"
+    regexp: '^\$max_servers'
+    line: "$max_servers = '{{ amavis_max_servers }}';"
+  notify:
+  - Restart Postfix
+  - Restart clamd@amavisd
+
+- name: Amavisd domain
+  lineinfile:
+    dest: "/etc/amavisd/amavisd.conf"
+    regexp: '^\$mydomain'
+    line: "$mydomain = '{{ postfix_mydomain }}';"
+  notify:
+  - Restart clamd@amavisd
+
+- name: Amavisd hostname
+  lineinfile:
+    dest: "/etc/amavisd/amavisd.conf"
+    regexp: '^\$myhostname'
+    line: "$myhostname = '{{ postfix_myhostname }}';"
+    insertafter: '^#\s+\$myhostname'
+  notify:
+  - Restart clamd@amavisd
+
+- name: Amavisd helpers home
+  lineinfile:
+    dest: "/etc/amavisd/amavisd.conf"
+    regexp: '^\$helpers_home'
+    line: '$helpers_home = "$MYHOME/var";'
+    insertafter: '^#\s+\$helpers_home'
+  notify:
+  - Restart clamd@amavisd
+
+#
+# systemd configuration for Amavisd
+#
+
+- name: sysconfig for clamd.amavisd
+  template:
+    src: "clamd.amavisd.j2"
+    dest: "/etc/sysconfig/clamd.amavisd"
+    owner: root
+    group: root
+    mode: 0644
+
+- name: systemd-tmpfiles for clamd.amavisd
+  template:
+    src: "clamd.amavisd.conf.j2"
+    dest: "/etc/tmpfiles.d/clamd.amavisd.conf"
+    owner: root
+    group: root
+    mode: 0644
+
+- name: systemd unit file for clamd
+  ini_file:
+    dest: "/usr/lib/systemd/system/clamd@.service"
+    section: "Install"
+    option: "WantedBy"
+    value: "multi-user.target"
