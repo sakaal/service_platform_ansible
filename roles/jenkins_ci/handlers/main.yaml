@@ -3,8 +3,12 @@
 
 - name: Restart Jenkins
   become: yes
-  service: name=jenkins state=restarted
+  service:
+    name: jenkins
+    state: restarted
 
 - name: Restart firewalld
   become: yes
-  service: name=firewalld state=restarted
+  service:
+    name: firewalld
+    state: restarted

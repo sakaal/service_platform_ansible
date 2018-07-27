@@ -4,14 +4,43 @@
 #
 ---
 
-- hosts: ci_servers
+- name: CONTINUOUS INTEGRATION AND DELIVERY
+  hosts: ci_servers
   roles:
-    - libvirt_guest_network_service
-    - transport_layer_security
-    - ../../service_commons_ansible/roles/updates_auto
-    - java_oracle
-    - ca_trust
-    - ../../service_commons_ansible/roles/java_truststore
-    - jenkins_ci
-    - jenkins_ci_backup
-    - continuous_delivery
+
+  - role: libvirt_guest_network_service
+    tags:
+    - network
+
+  - role: transport_layer_security
+    tags:
+    - pki
+
+  - role: "{{ playbook_dir | dirname }}/service_commons_ansible/roles/updates_auto"
+    tags:
+    - os
+
+  - role: java_openjdk
+    tags:
+    - java
+
+  - role: ca_trust
+    tags:
+    - pki
+
+  - role: "{{ playbook_dir | dirname }}/service_commons_ansible/roles/java_truststore"
+    tags:
+    - java
+    - pki
+
+  - role: jenkins_ci
+    tags:
+    - jenkins
+
+  - role: jenkins_ci_backup
+    tags:
+    - backup
+
+  - role: continuous_delivery
+    tags:
+    - cd

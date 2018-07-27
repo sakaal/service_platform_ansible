@@ -1,0 +1,10 @@
+# file: roles/java_openjdk/tasks/fedora.yaml
+---
+
+- name: Set OpenJDK java as default
+  become: yes
+  command: alternatives --set java "{{ java_openjdk_home }}/bin/java"
+
+- name: Set OpenJDK jar as default
+  become: yes
+  command: alternatives --set jar "{{ java_openjdk_home }}/bin/jar"

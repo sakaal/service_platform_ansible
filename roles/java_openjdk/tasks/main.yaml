@@ -1,0 +1,25 @@
+# file: roles/java_openjdk/tasks/main.yaml
+---
+
+- name: OpenJDK packages (yum)
+  when: ansible_pkg_mgr == "yum"
+  with_items: "{{ java_openjdk_packages }}"
+  become: yes
+  yum:
+    name: "{{ item }}"
+    state: latest
+
+- name: OpenJDK packages (dnf)
+  when: ansible_pkg_mgr == "dnf"
+  with_items: "{{ java_openjdk_packages }}"
+  become: yes
+  dnf:
+    name: "{{ item }}"
+    state: latest
+
+- when: ansible_distribution == "Fedora"
+  include: fedora.yaml
+
+- name: Red Hat family configuration
+  when: ansible_os_family == "RedHat"
+  include: redhat.yaml

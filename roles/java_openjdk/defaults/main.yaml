@@ -1,0 +1,7 @@
+# file: java_openjdk/defaults/main.yaml
+---
+
+java_openjdk_packages:
+- "java-1.8.0-openjdk-devel"
+
+java_openjdk_home: "/usr/lib/jvm/{{ java_openjdk_packages[0] | regex_replace('-devel$', '') }}"

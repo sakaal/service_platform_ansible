@@ -1,0 +1,6 @@
+# file: roles/java_oracle/meta/main.yaml
+---
+
+dependencies:
+- role: "../../service_commons_ansible/roles/entropy"
+- archive_deployment

@@ -7,14 +7,21 @@ jenkins_ci_default_plugins:
   - name: ansible                         # Ansible
   - name: ansicolor                       # AnsiColor
 #  - name: ant                             # Ant
+  - name: antisamy-markup-formatter       # OWASP Markup Formatter
+  - name: authentication-tokens           # Authentication Tokens API
+  - name: bouncycastle-api
+  - name: branch-api
 #  - name: build-monitor-plugin            # Build Monitor
 #  - name: build-pipeline-plugin           # Build Pipeline
+  - name: build-timeout
   - name: build-token-root                # Build Token Root
+  - name: built-on-column
 #  - name: checkstyle                      # Checkstyle
   - name: config-file-provider            # Config File Provider
   - name: configurationslicing            # Configuration Slicing
   - name: copyartifact                    # Copy Artifact
   - name: credentials                     # Credentials
+  - name: credentials-binding
   - name: dashboard-view                  # Dashboard View
 #  - name: delivery-pipeline-plugin        # Delivery Pipeline
 #  - name: dependency-check-jenkins-plugin # OWASP Dependency Check
@@ -24,28 +31,32 @@ jenkins_ci_default_plugins:
 #  - name: downstream-buildview            # Downstream buildview
   - name: emotional-jenkins-plugin        # Emotional Jenkins
   - name: envinject                       # EnvInject
+  - name: envinject-api
   - name: external-monitor-job            # Monitoring external jobs
   - name: ez-templates                    # EZ Templates
-  - name: git-client                      # Git Client
   - name: git                             # Git
+  - name: git-client                      # Git Client
+  - name: git-server
   - name: greenballs                      # Green Balls
   - name: http_request                    # HTTP Request
 #  - name: jacoco                          # JaCoCo
-#  - name: javadoc                         # Javadoc
+  - name: javadoc                         # Javadoc
   - name: jenkins-multijob-plugin         # Multijob
 #  - name: join                            # Join
   - name: jquery                          # jQuery
-#  - name: junit                           # JUnit
+  - name: junit                           # JUnit
   - name: ldap                            # LDAP
   - name: locale                          # Locale
 #  - name: m2release                       # M2 Release
   - name: mailer                          # Mailer
+  - name: mapdb-api                       # MapDB API
   - name: matrix-auth                     # Matrix Authorization Strategy
   - name: matrix-project                  # Matrix Project
   - name: maven-info                      # Maven Info
   - name: maven-plugin                    # Maven Project
   - name: monitoring                      # Monitoring
   - name: multiple-scms                   # Multiple SCMs
+  - name: pam-auth                        # PAM Authentication
   - name: parameterized-trigger           # Parameterized Trigger
   - name: pipeline-build-step             # Pipeline Build Step
   - name: pipeline-input-step             # Pipeline Input Step
@@ -53,6 +64,7 @@ jenkins_ci_default_plugins:
   - name: pipeline-stage-view             # Pipeline Stage View
   - name: pipeline-utility-steps          # Pipeline Utility Steps
   - name: promoted-builds                 # Promoted Builds
+  - name: publish-over                    # Infrastructure for Publish Over X
   - name: publish-over-ssh                # Publish Over SSH
   - name: role-strategy                   # Role-based Authorization Strategy
   - name: scm-api                         # SCM API
@@ -64,15 +76,16 @@ jenkins_ci_default_plugins:
   - name: timestamper                     # Timestamper
   - name: token-macro                     # Token Macro
   - name: workflow-aggregator             # Pipeline
-  - name: workflow-support                # Pipeline Supporting APIs
+  - name: workflow-api                    # Pipeline API
+  - name: workflow-basic-steps            # Pipeline Basic Steps
   - name: workflow-cps                    # Pipeline Groovy
   - name: workflow-cps-global-lib         # Pipeline Shared Groovy Libraries
-  - name: workflow-basic-steps            # Pipeline Basic Steps
+  - name: workflow-durable-task-step      # Pipeline Nodes and Processes
+  - name: workflow-job                    # Pipeline Job
   - name: workflow-multibranch            # Pipeline Multibranch
   - name: workflow-scm-step               # Pipeline SCM Step
-  - name: workflow-job                    # Pipeline Job
-  - name: workflow-durable-task-step      # Pipeline Nodes and Processes
   - name: workflow-step-api               # Pipeline Step API
-  - name: workflow-api                    # Pipeline API
+  - name: workflow-support                # Pipeline Supporting APIs
 #  - name: zapper                          # OWASP Zed Attack Proxy (ZAP)
+  - name: ws-cleanup                      # Workspace Cleanup
   - name: zentimestamp                    # ZenTimestamp
