@@ -4,6 +4,12 @@
 #
 ---
 
+- name: Check if the tls-keys local group is present
+  set_fact:
+    tls_keys_group: "{{ 'tls-keys' if (
+                        'tls-keys' in local_groups | default([]) | map(attribute='name')
+                         ) else 'root' }}"
+
 #
 # Public DNS domain certificate
 #
@@ -19,17 +25,23 @@
   when: not public_dns_zone_certificate is skipped
         and public_dns_zone_certificate.stat.exists
   become: yes
-  copy: src="{{ tls_files_dir }}/private/{{ public_dns_zone }}-key.pem"
-        dest=/etc/pki/tls/private/{{ public_dns_zone }}-key.pem
-        owner=root group=root mode=0600
+  copy:
+    src: "{{ tls_files_dir }}/private/{{ public_dns_zone }}-key.pem"
+    dest: "/etc/pki/tls/private/{{ public_dns_zone }}-key.pem"
+    owner: root
+    group: "{{ tls_keys_group }}"
+    mode: 0640
 
 - name: Domain X.509 certificate
   when: not public_dns_zone_certificate is skipped
         and public_dns_zone_certificate.stat.exists
   become: yes
-  copy: src="{{ tls_files_dir }}/certs/{{ public_dns_zone }}-crt.pem"
-        dest=/etc/pki/tls/certs/{{ public_dns_zone }}-crt.pem
-        owner=root group=root mode=0644
+  copy:
+    src: "{{ tls_files_dir }}/certs/{{ public_dns_zone }}-crt.pem"
+    dest: "/etc/pki/tls/certs/{{ public_dns_zone }}-crt.pem"
+    owner: root
+    group: root
+    mode: 0644
 
 #
 # Public subdomain wildcard certificate
@@ -38,25 +50,33 @@
 - name: Check if a wildcard certificate exists for the subdomains
   when: public_dns_zone is defined
   become: yes
-  local_action: stat path="{{ tls_files_dir }}/certs/_.{{ public_dns_zone }}-crt.pem"
-                     get_md5=no
+  local_action:
+    module: stat
+    path: "{{ tls_files_dir }}/certs/_.{{ public_dns_zone }}-crt.pem"
+    get_md5: no
   register: subdomain_wildcard_certificate
 
 - name: Public subdomain wildcard X.509 server key
   when: public_dns_zone is defined and
         subdomain_wildcard_certificate.stat.exists
   become: yes
-  copy: src="{{ tls_files_dir }}/private/_.{{ public_dns_zone }}-key.pem"
-        dest=/etc/pki/tls/private/_.{{ public_dns_zone }}-key.pem
-        owner=root group=root mode=0600
+  copy:
+    src: "{{ tls_files_dir }}/private/_.{{ public_dns_zone }}-key.pem"
+    dest: "/etc/pki/tls/private/_.{{ public_dns_zone }}-key.pem"
+    owner: root
+    group: "{{ tls_keys_group }}"
+    mode: 0640
 
 - name: Public subdomain wildcard X.509 certificate
   when: public_dns_zone is defined and
         subdomain_wildcard_certificate.stat.exists
   become: yes
-  copy: src="{{ tls_files_dir }}/certs/_.{{ public_dns_zone }}-crt.pem"
-        dest=/etc/pki/tls/certs/_.{{ public_dns_zone }}-crt.pem
-        owner=root group=root mode=0644
+  copy:
+    src: "{{ tls_files_dir }}/certs/_.{{ public_dns_zone }}-crt.pem"
+    dest: "/etc/pki/tls/certs/_.{{ public_dns_zone }}-crt.pem"
+    owner: root
+    group: root
+    mode: 0644
 
 #
 # Public hostname certificate
@@ -73,17 +93,23 @@
   when: not public_hostname_certificate is skipped
         and public_hostname_certificate.stat.exists
   become: yes
-  copy: src="{{ tls_files_dir }}/private/{{ public_hostname }}-key.pem"
-        dest=/etc/pki/tls/private/{{ public_hostname }}-key.pem
-        owner=root group=root mode=0600
+  copy:
+    src: "{{ tls_files_dir }}/private/{{ public_hostname }}-key.pem"
+    dest: "/etc/pki/tls/private/{{ public_hostname }}-key.pem"
+    owner: root
+    group: "{{ tls_keys_group }}"
+    mode: 0640
 
 - name: Public hostname X.509 certificate
   when: not public_hostname_certificate is skipped
         and public_hostname_certificate.stat.exists
   become: yes
-  copy: src="{{ tls_files_dir }}/certs/{{ public_hostname }}-crt.pem"
-        dest=/etc/pki/tls/certs/{{ public_hostname }}-crt.pem
-        owner=root group=root mode=0644
+  copy:
+    src: "{{ tls_files_dir }}/certs/{{ public_hostname }}-crt.pem"
+    dest: "/etc/pki/tls/certs/{{ public_hostname }}-crt.pem"
+    owner: root
+    group: root
+    mode: 0644
 
 #
 # See roles/ca_trust for trusted CA bundles. 

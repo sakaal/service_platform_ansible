@@ -93,10 +93,10 @@ SSLCertificateKeyFile {{ tls_certificate_key_file }}
 SSLCertificateChainFile {{ tls_certificate_chain_file }}
 {% endif %}
 
-SSLProtocol        {{ ([''] + tls_protocols|mandatory|list) | join(' +') +
-                    ([''] + tls_protocol_excludes|mandatory|list) | join(' -') }}
-SSLCipherSuite      {{ tls_ciphersuite|mandatory|list | join(':') +
-                    ([''] + tls_ciphersuite_excludes|mandatory|list) | join(':!') }}
+SSLProtocol        {{ ([''] + tls_protocols | list) | join(' +') +
+                    ([''] + tls_protocol_excludes | list) | join(' -') }}
+SSLCipherSuite      {{ tls_ciphersuite | list | join(':') +
+                    ([''] + tls_ciphersuite_excludes | list) | join(':!') }}
 SSLHonorCipherOrder on
 SSLCompression      off
 

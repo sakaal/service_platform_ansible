@@ -8,14 +8,16 @@
 - hosts: mail_servers
   become: yes
   roles:
-  - ca_trust
-  - dmz
-  - libvirt_guest_network_service
-  - certbot_standalone
-  - transport_layer_security
-  - ../../service_commons_ansible/roles/updates_auto
-  - access_control
-  - postfix_standalone
-  - dynect_dane_records
-  - dynect_mx_records
-  - alpine
+  - role: ca_trust
+  - role: dmz
+  - role: libvirt_guest_network_service
+  - role: "{{ playbook_dir | dirname }}/service_commons_ansible/roles/local_groups"
+  - role: "{{ playbook_dir | dirname }}/service_commons_ansible/roles/local_users"
+  - role: certbot_standalone
+  - role: transport_layer_security
+  - role: "{{ playbook_dir | dirname }}/service_commons_ansible/roles/updates_auto"
+  - role: access_control
+  - role: postfix_standalone
+  - role: dynect_dane_records
+  - role: dynect_mx_records
+  - role: alpine

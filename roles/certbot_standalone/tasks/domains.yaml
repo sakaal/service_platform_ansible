@@ -38,6 +38,24 @@
            --keep-until-expiring --quiet
            --expand
 
+- name: Copy the Certbot certificates and key to OS usual location
+  become: yes
+  args:
+    chdir: '/etc/letsencrypt/live/{{ certbot_domains[0] }}'
+  shell: cat cert.pem > '/etc/pki/tls/certs/{{ public_hostname }}-crt.pem';
+         cat chain.pem > '/etc/pki/tls/certs/{{ public_hostname }}-chain.pem';
+         ( umask 0027 && cat privkey.pem > '/etc/pki/tls/private/{{ public_hostname }}-key.pem';
+           getent group tls-keys >/dev/null &&
+           chgrp tls-keys '/etc/pki/tls/private/{{ public_hostname }}-key.pem'; )
+  register: certbot_copy_result
+  failed_when: certbot_copy_result.rc not in [ 0, 2 ]
+
+- name: Bundle the Certbot certificate for some applications
+  become: yes
+  args:
+    chdir: '/etc/letsencrypt/live/{{ certbot_domains[0] }}'
+  shell: cat fullchain.pem privkey.pem > '/etc/pki/tls/certs/{{ public_hostname }}-bundle.pem'
+
 - name: Certbot certificate renewal script
   become: yes
   template:

@@ -5,14 +5,10 @@
 ---
 
 #
-# roles/transport_layer_security deploys the certificates and keys
+# roles/transport_layer_security and/or roles/certbot_standalone
+# deploy the certificates and keys
 # http://www.postfix.org/TLS_README.html#server_cert_key
 #
-- name: Postfix TLS server-side certificate and private key 
-  when: public_hostname_certificate is skipped or
-        not public_hostname_certificate.stat.exists
-  fail:
-    msg: "Need a X.509 certificate for {{ public_hostname }}"
 
 - name: Postfix TLS RSA certificate and key
   with_items:
