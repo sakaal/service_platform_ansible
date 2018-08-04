@@ -1,0 +1,23 @@
+{# file: roles/nagios/templates/remote.cfg
+#}
+define host {
+	use			linux-server
+	host_name		{{ inventory_hostname }}
+	alias			{{ inventory_hostname_short | upper
+				}}{% if public_hostname is defined and
+					public_hostname != inventory_hostname %} ({{ public_hostname }}){% endif %}
+	address			{{ lookup('dig', inventory_hostname) }}
+	max_check_attempts	5
+	check_period		24x7
+	notification_interval	30
+	notification_period	24x7
+}
+
+{% for service in default_nagios_services | union(hostvars[inventory_hostname].nagios_services | default([])) %}
+define service{
+	host_name	{{ service.host_name | default( inventory_hostname ) }}
+{% for key, value in service.iteritems() %}
+	{{ key }}	{{ value }}
+{% endfor %}
+	}
+{% endfor %}

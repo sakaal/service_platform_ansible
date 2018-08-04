@@ -1,0 +1,63 @@
+# file: roles/nagios/defaults/main.yaml
+---
+
+nagios_packages:
+- "nagios"
+- "nagios-plugins-all"
+- "nagios-plugins-nrpe"
+- "nsca" # Nagios Service Check Acceptor
+- "python-passlib" # for Ansible htpasswd module
+
+nagios_nrpe_packages:
+- "nrpe" # Nagios Remote Plugin Executor
+- "nrpe-selinux" # SELinux context for NRPE
+
+nagios_nrpe_commands:
+
+- token: check_disk
+  command: '/usr/lib64/nagios/plugins/check_disk -w 10% -c 5% -W 10% -K 5%'
+
+- token: check_load
+  command: '/usr/lib64/nagios/plugins/check_load -r -w .9,.7,.5 -c 1.0,.8,.6'
+
+- token: check_swap
+  command: '/usr/lib64/nagios/plugins/check_swap -w 40% -c 20%'
+
+- token: check_procs_cpu
+  command: '/usr/lib64/nagios/plugins/check_procs -w 50 -c 80 -m CPU'
+
+- token: check_procs_total
+  command: '/usr/lib64/nagios/plugins/check_procs -w 80:240 -c 40:400 -s RSZDT'
+
+- token: check_procs_zombie
+  command: '/usr/lib64/nagios/plugins/check_procs -s Z -c 1'
+
+default_nagios_services:
+
+- service_description: "SSH"
+  use:                 "generic-service"
+  check_command:       "check_ssh{{ '' if admin_ssh_port == 22 else '!-p ' + (admin_ssh_port|string) }}"
+
+- service_description: "Disk"
+  use:                 "generic-service"
+  check_command:       "check_nrpe!check_disk"
+
+- service_description: "Current Load"
+  use:                 "generic-service"
+  check_command:       "check_nrpe!check_load"
+
+- service_description: "Swap Usage"
+  use:                 "generic-service"
+  check_command:       "check_nrpe!check_swap"
+
+- service_description: "Process CPU Usage"
+  use:                 "generic-service"
+  check_command:       "check_nrpe!check_procs_cpu"
+
+- service_description: "Total Processes"
+  use:                 "generic-service"
+  check_command:       "check_nrpe!check_procs_total"
+
+- service_description: "Zombie Processes"
+  use:                 "generic-service"
+  check_command:       "check_nrpe!check_procs_zombie"

@@ -1,0 +1,8 @@
+# file: roles/nagios/handler/main.yaml
+---
+
+- name: Restart Nagios
+  become: yes
+  service:
+    name: nagios
+    state: restarted

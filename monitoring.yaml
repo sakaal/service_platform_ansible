@@ -1,0 +1,31 @@
+# file: monitoring.yaml
+---
+
+- name: START
+  hosts: localhost,all
+  run_once: yes
+  connection: local
+  tasks:
+  - debug:
+      msg: "{{ ansible_date_time.iso8601 }}"
+  tags: always
+
+- name: MONITORING
+  hosts: all
+  pre_tasks:
+  - include: "{{ playbook_dir | dirname }}/service_commons_ansible/tasks/group_distros.yaml"
+  roles:
+  - role: "{{ playbook_dir | dirname }}/service_platform_ansible/roles/nagios"
+    tags: nagios
+  - when: nagvis_version is defined
+    role: "{{ playbook_dir | dirname }}/service_platform_ansible/roles/nagvis"
+    tags: nagvis
+
+- name: FINISH
+  hosts: localhost,all
+  run_once: yes
+  connection: local
+  tasks:
+  - debug:
+      msg: "{{ ansible_date_time.iso8601 }}"
+  tags: always

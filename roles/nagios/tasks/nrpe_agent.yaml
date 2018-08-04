@@ -1,0 +1,74 @@
+# file: roles/nagios/tasks/nrpe_agent.yaml
+#
+# Nodes monitored by NRPE
+#
+---
+
+- name: NRPE packages (yum)
+  when: ansible_pkg_mgr == "yum"
+  with_items: "{{ nagios_nrpe_packages }}"
+  become: yes
+  yum:
+    name: "{{ item }}"
+    state: present
+
+- name: NRPE packages (dnf)
+  when: ansible_pkg_mgr == "dnf"
+  with_items: "{{ nagios_nrpe_packages }}"
+  become: yes
+  dnf:
+    name: "{{ item }}"
+    state: present
+
+- name: NRPE allowed hosts
+  become: yes
+  lineinfile:
+    path: "/etc/nagios/nrpe.cfg"
+    regexp: "^allowed_hosts=.*$"
+    line: "allowed_hosts={{ ( [ '127.0.0.1', '::1' ] + nagios_nrpe_monitor_hosts ) | join(',') }}"
+    insertafter: "^#?allowed_hosts.*$"
+
+- name: Add NRPE to /etc/services
+  become: yes
+  lineinfile:
+    path: /etc/services
+    regexp: '^nrpe\s+5666/tcp\s+.*$'
+    line: 'nrpe            5666/tcp                # NRPE'
+    insertafter: '^.*\s+5666\s+.*NRPE.*$'
+
+- name: NRPE tokens
+  become: yes
+  with_items: "{{ nagios_nrpe_commands }}"
+  lineinfile:
+    path: /etc/nrpe.d/tokens.cfg
+    create: yes
+    regexp: '^command\[{{ item.token }}\]=.*$'
+    line: 'command[{{ item.token }}]={{ item.command }}'
+
+- name: Enable NRPE port in firewall
+  when: firewall_zone is defined
+  become: yes
+  firewalld:
+    zone: "{{ firewall_zone }}"
+    port: 5666/tcp
+    state: enabled
+    permanent: true
+    immediate: true
+
+- name: NRPE service
+  become: yes
+  service:
+    name: nrpe
+    state: restarted
+    enabled: yes
+
+- name: Register NRPE remote agents
+  with_items: "{{ nagios_nrpe_monitor_hosts | difference( [inventory_hostname] ) }}"
+  become: yes
+  delegate_to: "{{ item }}"
+  template:
+    src: "remote.cfg.j2"
+    dest: "/etc/nagios/servers/{{ inventory_hostname }}.cfg"
+    owner: root
+    group: nagios
+    mode: 0640

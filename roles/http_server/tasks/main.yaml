@@ -3,13 +3,15 @@
 
 - name: Apache HTTP Server
   become: yes
-  yum: name=httpd
+  yum:
+    name: httpd
 
 #
 # On the list of websites the first item is considered the default.
 #
 - when: websites is defined
-  set_fact: http_server_name="{{ websites.0 }}"
+  set_fact:
+    http_server_name: "{{ websites.0 }}"
 
 #
 # The public hostname (that also has reverse DNS resolution) may be the same
@@ -18,21 +20,24 @@
 #
 - when: (websites is not defined) and
         public_hostname is defined and (public_hostname != public_dns_zone) 
-  set_fact: http_server_name="{{ public_hostname }}"
+  set_fact:
+    http_server_name: "{{ public_hostname }}"
 
 #
 # When all else fails, use the FQDN. Note that this may be an internal name
 # that is not necessarily found in the DNS.
 #
 - when: (http_server_name is not defined) or http_server_name.strip() == ""
-  set_fact: http_server_name="{{ ansible_fqdn }}"
+  set_fact:
+    http_server_name: "{{ ansible_fqdn }}"
 
 - name: HTTP server name
   become: yes
-  lineinfile: dest=/etc/httpd/conf/httpd.conf
-              regexp='^\s*ServerName\s'
-              line="ServerName {{ http_server_name }}:80"
-              insertafter='^#\s*ServerName'
+  lineinfile:
+    dest: "/etc/httpd/conf/httpd.conf"
+    regexp: '^\s*ServerName\s'
+    line: "ServerName {{ http_server_name }}:80"
+    insertafter: '^#\s*ServerName'
 
 - name: HTTP server administrator public email address conforming to RFC 2142
   become: yes
@@ -57,10 +62,11 @@
 
 - name: HTTP server document root
   become: yes
-  lineinfile: dest=/etc/httpd/conf/httpd.conf
-              regexp='^\s*DocumentRoot\s'
-              line="DocumentRoot "/var/www/{{ http_server_name }}/htdocs""
-              insertafter='^#\s*DocumentRoot'
+  lineinfile:
+    dest: '/etc/httpd/conf/httpd.conf'
+    regexp: '^\s*DocumentRoot\s'
+    line: 'DocumentRoot "/var/www/{{ http_server_name }}/htdocs"'
+    insertafter: '^#\s*DocumentRoot'
 
 - name: Query if the HTTP service has been added to the firewall zone
   become: yes
@@ -73,6 +79,9 @@
 - name: Open the firewall for the HTTP service
   when: zone_http is changed
   become: yes
-  command: firewall-cmd --permanent --zone={{ firewall_zone | mandatory }}
-           --add-service=http
+  firewalld:
+    permanent: yes
+    zone: "{{ firewall_zone }}"
+    service: "http"
+    state: enabled
   notify: Restart firewalld

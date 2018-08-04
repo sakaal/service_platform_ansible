@@ -70,6 +70,8 @@ Virus definition updates                      | Freshclam
 Unsolicited mail filtering                    | Apache SpamAssassin (currently inactive)
 Email client for administrative and test use  | Alpine
 Web server                                    | Apache HTTP Server
+Network monitoring                            | Nagios
+Network monitoring visualization              | NagVis
 Directory service                             | OpenLDAP
 Application Virtual Machine                   | Oracle Java
 Software artifact management                  | Sonatype Nexus OSS

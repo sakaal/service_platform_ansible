@@ -1,0 +1,17 @@
+{# file: roles/nagios/templates/contacts.cfg
+#}
+# {{ ansible_managed }}
+
+define contact{
+        contact_name                    {{ admin_username }}    ; Short name of user
+        use                             generic-contact         ; Inherit default values from generic-contact template
+        alias                           {{ admin_fullname }}    ; Full name of user
+
+        email                           {{ admin_email }}       ;
+        }
+
+define contactgroup{
+        contactgroup_name       admins
+        alias                   Nagios Administrators
+        members                 {{ admin_username }}
+        }

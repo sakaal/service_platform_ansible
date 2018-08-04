@@ -1,0 +1,150 @@
+# file: roles/nagios/tasks/nrpe_monitor.yaml
+#
+# Monitors remote nodes via NRPE
+#
+---
+
+- name: Nagios monitor host configuration check
+  assert:
+    that:
+    - nagios_users is defined
+    - nagios_users | length > 0
+    - nagios_nrpe_agent_hosts is defined
+
+- name: Nagios monitor users configuration check
+  with_items: "{{ nagios_users | default([]) }}"
+  no_log: True
+  assert:
+    that:
+    - item.name is defined
+    - item.password is defined
+    - item.password | length > 15
+
+- name: Nagios packages (yum)
+  when: ansible_pkg_mgr == "yum"
+  with_items: "{{ nagios_packages }}"
+  become: yes
+  yum:
+    name: "{{ item }}"
+    state: present
+
+- name: Nagios packages (dnf)
+  when: ansible_pkg_mgr == "dnf"
+  with_items: "{{ nagios_packages }}"
+  become: yes
+  dnf:
+    name: "{{ item }}"
+    state: present
+
+- name: Nagios contacts
+  become: yes
+  template:
+    src: contacts.cfg.j2
+    dest: "/etc/nagios/objects/contacts.cfg"
+    owner: root
+    group: nagios
+    mode: 0640
+  notify:
+  - Restart Nagios
+
+- name: Agent servers directory
+  become: yes
+  file:
+    state: directory
+    path: "/etc/nagios/servers"
+    owner: root
+    group: nagios
+    mode: 0750
+
+- name: Nagios configuration for the Agent servers directory
+  become: yes
+  lineinfile:
+    path: "/etc/nagios/nagios.cfg"
+    regexp: "^#?cfg_dir=/etc/nagios/servers$"
+    line: "cfg_dir=/etc/nagios/servers"
+    insertafter: "^#?cfg_dir=.*$"
+  notify:
+  - Restart Nagios
+
+- name: NRPE remote agents (outside the inventory)
+  with_items: "{{ nagios_nrpe_agent_hosts }}"
+  when: item.hostname not in ansible_play_hosts
+  become: yes
+  template:
+    src: "host_name_only.cfg.j2"
+    dest: "/etc/nagios/servers/{{ item.hostname }}.cfg"
+    owner: root
+    group: nagios
+    mode: 0640
+  notify:
+  - Restart Nagios
+
+- name: NRPE command
+  become: yes
+  blockinfile:
+    path: /etc/nagios/objects/commands.cfg
+    block: |
+      define command {
+              command_name    check_nrpe
+              command_line    $USER1$/check_nrpe -H $HOSTADDRESS$ -t 30 -c $ARG1$ $ARG2$
+      }
+  notify:
+  - Restart Nagios
+
+- name: Nagios users
+  with_items: "{{ nagios_users }}"
+  no_log: True
+  become: yes
+  htpasswd:
+    path: "/etc/nagios/passwd"
+    name: "{{ item.name }}"
+    password: "{{ item.password }}"
+    state: "{{ item.state | default('present') }}"
+    owner: root
+    group: apache
+    mode: 0640
+
+- name: Default localhost SSH service
+  become: yes
+  lineinfile:
+    path: "/etc/nagios/objects/localhost.cfg"
+    regexp: '^(\s+)check_command(\s+)check_ssh.*$'
+    line: '\1check_command\2check_ssh{{ "" if admin_ssh_port == 22 else "!-p " + (admin_ssh_port|string) }}'
+    backrefs: yes
+  notify:
+  - Restart Nagios
+
+- name: Default localhost HTTP service
+  become: yes
+  lineinfile:
+    path: "/etc/nagios/objects/localhost.cfg"
+    regexp: '^(\s+)check_command(\s+)check_http.*$'
+    line: '\1check_command\2check_http!-u /nagios -e 401'
+    backrefs: yes
+  notify:
+  - Restart Nagios
+
+- name: Nagios service
+  become: yes
+  service:
+    name: nagios
+    state: restarted
+    enabled: yes
+
+- name: Open firewall port 80 access from within the default network
+  become: yes
+  firewalld:
+    permanent: yes
+    immediate: yes
+    rich_rule: "rule family='ipv4'
+                source address='{{ (ansible_default_ipv4.network + '/' + ansible_default_ipv4.netmask)
+                                   | ipaddr('net') }}'
+                port port='80' protocol='tcp' accept"
+    state: enabled
+
+- name: HTTP service
+  become: yes
+  service:
+    name: httpd
+    state: started
+    enabled: yes

@@ -1,0 +1,135 @@
+# file: roles/nagvis/tasks/main.yaml
+#
+# http://docs.nagvis.org/
+#
+---
+
+- name: NagVis configuration check
+  assert:
+    that:
+    - nagvis_version is defined
+    - nagvis_version is version_compare('1.9.8', '>=')
+    - nagvis_checksum is defined
+
+- name: Check if NagVis archive is already downloaded
+  local_action:
+    module: stat
+    path: "{{ role_path }}/files/nagvis-{{ nagvis_version }}.tar.gz"
+    checksum_algorithm: "{{ nagvis_checksum | regex_replace('^([^:]+):.*$', '\\1') }}"
+  register: nagvis_archive
+
+- name: Delete existing archive if checksum mismatch
+  when: nagvis_archive.stat.exists and
+        nagvis_archive.stat.checksum != (nagvis_checksum | regex_replace('^[^:]+:(.*)$', '\\1'))
+  local_action:
+    module: file
+    state: absent
+    path: nagvis_archive.stat.path
+  changed_when: yes
+
+- name: Download NagVis locally
+  local_action:
+    module: get_url
+    url: "https://www.nagvis.org/share/nagvis-{{ nagvis_version }}.tar.gz"
+    dest: "{{ role_path }}/files/nagvis-{{ nagvis_version }}.tar.gz"
+    checksum: "{{ nagvis_checksum }}"
+
+- name: NagVis directory
+  become: yes
+  file:
+    state: directory
+    path: /usr/local/nagvis
+
+- name: Unarchive NagVis
+  become: yes
+  unarchive:
+    src: "{{ role_path }}/files/nagvis-{{ nagvis_version }}.tar.gz"
+    dest: /usr/local/nagvis
+    extra_opts:
+    - "--strip-components=1"
+
+- name: NagVis dependencies (yum)
+  when: ansible_pkg_mgr == "yum"
+  with_items: "{{ nagvis_packages }}"
+  become: yes
+  yum:
+    name: "{{ item }}"
+    state: present
+
+- name: NagVis dependencies (dnf)
+  when: ansible_pkg_mgr == "dnf"
+  with_items: "{{ nagvis_packages }}"
+  become: yes
+  dnf:
+    name: "{{ item }}"
+    state: present
+
+- name: Copy the example main configuration file
+  become: yes
+  copy:
+    remote_src: yes
+    src: /usr/local/nagvis/etc/nagvis.ini.php-sample
+    dest: /usr/local/nagvis/etc/nagvis.ini.php
+    mode: 0664
+
+- name: Copy the apache2 sample configuration file
+  become: yes
+  copy:
+    remote_src: yes
+    src: /usr/local/nagvis/etc/apache2-nagvis.conf-sample
+    dest: /etc/httpd/conf.d/nagvis.conf
+
+- name: Replace the macros in apache2 configuration file
+  with_items:
+  - regexp: '@NAGVIS_WEB@'
+    replace: '/nagvis'
+  - regexp: '@NAGVIS_PATH@'
+    replace: '/usr/local/nagvis/share'
+  become: yes
+  replace:
+    path: /etc/httpd/conf.d/nagvis.conf
+    regexp: "{{ item.regexp }}"
+    replace: "{{ item.replace }}"
+
+- name: Check if docs subdirectory is not under share
+  become: yes
+  stat:
+    path: "/usr/local/nagvis/docs"
+  register: nagvis_docs
+
+- name: Remove old share/docs if present
+  when: nagvis_docs.stat.exists
+  become: yes
+  file:
+    state: absent
+    path: /usr/local/nagvis/share/docs
+
+- name: Move the docs subdirectory under share
+  when: nagvis_docs.stat.exists
+  become: yes
+  command: chdir=/usr/local/nagvis mv docs -t share
+
+- name: NagVis directory owner
+  become: yes
+  file:
+    path: /usr/local/nagvis
+    recurse: yes
+    owner: root
+    group: apache
+
+- name: NagVis directory permissions
+  with_items:
+  - etc/maps
+  - etc/geomap
+  - share/userfiles/images/maps
+  - var
+  - var/tmpl/cache
+  - var/tmpl/compile
+  become: yes
+  file:
+    state: directory
+    path: "/usr/local/nagvis/{{ item }}"
+    recurse: yes
+    mode: u=rwX,g=rwX,o=rX
+    owner: root
+    group: apache

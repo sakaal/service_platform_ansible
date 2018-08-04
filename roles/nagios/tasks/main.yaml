@@ -1,0 +1,21 @@
+# file: roles/nagios/tasks/main.yaml
+---
+
+- name: Nagios configuration check
+  assert:
+    that:
+    - nagios_nrpe_monitor_hosts is defined
+
+- name: Nagios agent host configuration check
+  with_items: "{{ nagios_nrpe_agent_hosts | default([]) }}"
+  assert:
+    that:
+    - item.hostname is defined
+
+- name: NRPE monitor hosts
+  when: inventory_hostname in ( nagios_nrpe_monitor_hosts | default([]) )
+  include_tasks: nrpe_monitor.yaml
+
+- name: NRPE agent hosts
+  when: nagios_nrpe_monitor_hosts | default([]) | length > 0
+  include_tasks: nrpe_agent.yaml
