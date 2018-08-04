@@ -9,5 +9,5 @@
             groups="public_cname_{{ hostvars[ item ].public_dns_cname_records | join(',public_cname_') }}"
 
 - name: DynECT Managed DNS
-  when: dynect_session_result|success
+  when: dynect_session_result is succeeded
   include: dynect.yaml

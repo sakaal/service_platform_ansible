@@ -6,7 +6,7 @@
 
 - name: Check if DNS zone already has CNAME record
   with_items: "{{ public_dns_cname_records | default([]) }}"
-  when: dynect_session_result | success and
+  when: dynect_session_result is succeeded and
         public_hostname is defined and
         public_dns_cname_records is defined and
         inventory_hostname == groups[ 'public_cname_{{ item }}' ][0]
@@ -27,7 +27,7 @@
 
 - name: Delete DNS CNAME records
   with_items: "{{ zone_cname_records.results | default([]) }}"
-  when: item|changed
+  when: item is changed
   local_action:
     module: uri
     method: DELETE
@@ -40,7 +40,7 @@
 
 - name: Create DNS CNAME records
   with_items: "{{ zone_cname_records.results | default([]) }}"
-  when: item|changed
+  when: item is changed
   local_action:
     module: uri
     method: POST
@@ -58,7 +58,7 @@
   failed_when: dynect_result.json.status != 'success'
 
 - name: Publish DNS zones
-  when: dynect_result|changed or not dynect_delete|skipped
+  when: dynect_result is changed or not dynect_delete is skipped
   local_action:
     module: uri
     method: PUT
