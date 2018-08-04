@@ -79,6 +79,47 @@
     src: /usr/local/nagvis/etc/apache2-nagvis.conf-sample
     dest: /etc/httpd/conf.d/nagvis.conf
 
+- name: Mark the Ansible managed Nagios authentication block
+  become: yes
+  lineinfile:
+    path: /etc/httpd/conf.d/nagvis.conf
+    line: "# BEGIN ANSIBLE MANAGED NAGIOS AUTHENTICATION"
+    insertbefore: '^\s*<IfModule mod_authz_core.c>$'
+
+- name: Mark the Ansible managed Nagios authentication block
+  become: yes
+  lineinfile:
+    path: /etc/httpd/conf.d/nagvis.conf
+    line: "# END ANSIBLE MANAGED NAGIOS AUTHENTICATION"
+    insertafter: '^\s*#Require valid-user.*$'
+
+- name: Enable Nagios htpasswd authentication
+  become: yes
+  blockinfile:
+    path: /etc/httpd/conf.d/nagvis.conf
+    marker: "# {mark} ANSIBLE MANAGED NAGIOS AUTHENTICATION"
+    insertafter: '^(\s+)#Require valid-user$'
+    block: |2
+        <IfVersion >= 2.3>
+          <RequireAll>
+            Require all granted
+
+            AuthName "Nagios Access"
+            AuthType Basic
+            AuthUserFile /etc/nagios/passwd
+            Require valid-user
+          </RequireAll>
+        </IfVersion>
+        <IfVersion < 2.3>
+          Order allow,deny
+          Allow from all
+
+          AuthName "Nagios Access"
+          AuthType Basic
+          AuthUserFile /etc/nagios/passwd
+          Require valid-user
+        </IfVersion>
+
 - name: Replace the macros in apache2 configuration file
   with_items:
   - regexp: '@NAGVIS_WEB@'
@@ -117,7 +158,7 @@
     owner: root
     group: apache
 
-- name: NagVis directory permissions
+- name: NagVis recursive directory permissions
   with_items:
   - etc/maps
   - etc/geomap
@@ -131,5 +172,27 @@
     path: "/usr/local/nagvis/{{ item }}"
     recurse: yes
     mode: u=rwX,g=rwX,o=rX
+    setype: httpd_sys_rw_content_t
     owner: root
     group: apache
+
+- name: NagVis non-recursive directory permissions
+  with_items:
+  - etc
+  become: yes
+  file:
+    state: directory
+    path: "/usr/local/nagvis/{{ item }}"
+    recurse: no
+    mode: u=rwX,g=rwX,o=rX
+    setype: httpd_sys_rw_content_t
+    owner: root
+    group: apache
+
+- name: First request to NagVis triggers creation of the auth.db
+  uri:
+    url: "http://localhost/nagvis/"
+    status_code: 401
+    return_content: yes
+  register: nagvis_init
+  failed_when: not 'Basic realm="Nagios Access"' in nagvis_init.www_authenticate
