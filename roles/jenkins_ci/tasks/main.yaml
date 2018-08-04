@@ -149,9 +149,10 @@
   firewalld:
     permanent: yes
     immediate: yes
-    rich_rule: 'rule family="ipv4"
-                source address="{{ ansible_default_ipv4.network }}/24"
-                port port="8080" protocol="tcp" accept'
+    rich_rule: "rule family='ipv4'
+                source address='{{ (ansible_default_ipv4.network + '/' + ansible_default_ipv4.netmask)
+                                   | ipaddr('net') }}'
+                port port='8080' protocol='tcp' accept"
     state: enabled
   notify: Restart firewalld
 
