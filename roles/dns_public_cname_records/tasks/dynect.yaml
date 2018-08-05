@@ -9,7 +9,7 @@
   when: dynect_session_result is succeeded and
         public_hostname is defined and
         public_dns_cname_records is defined and
-        inventory_hostname == groups[ 'public_cname_{{ item }}' ][0]
+        inventory_hostname == groups[ 'public_cname_' + item ][0]
   local_action:
     module: uri
     url: "{{ dynect_api_url }}/CNAMERecord/{{ public_dns_zone }}/{{ item }}/"
@@ -18,12 +18,12 @@
       Auth-Token: "{{ dynect_session_token }}"
     return_content: yes
   register: zone_cname_records
-  changed_when: "{{ ((zone_cname_records.json.status == 'failure') and
-                    (zone_cname_records.json.msgs[0].ERR_CD == 'NOT_FOUND')) or
-                    ((zone_cname_records.json.status == 'success') and
-                    (not item in zone_cname_records.json.data)) }}"
-  failed_when: "{{ zone_cname_records.json.status != 'success' and
-                   zone_cname_records.json.msgs[0].ERR_CD != 'NOT_FOUND' }}"
+  changed_when: ( (zone_cname_records.json.status == 'failure') and
+                  (zone_cname_records.json.msgs[0].ERR_CD == 'NOT_FOUND') ) or
+                ( (zone_cname_records.json.status == 'success') and
+                  (not item in zone_cname_records.json.data) )
+  failed_when: zone_cname_records.json.status != 'success' and
+               zone_cname_records.json.msgs[0].ERR_CD != 'NOT_FOUND'
 
 - name: Delete DNS CNAME records
   with_items: "{{ zone_cname_records.results | default([]) }}"
@@ -72,5 +72,5 @@
     return_content: yes
   register: dynect_result
   changed_when: dynect_result.json.status == 'success' and
-                '{{ public_dns_zone }} published' in dynect_result.json.msgs[0].INFO
+                (public_dns_zone + ' published') in dynect_result.json.msgs[0].INFO
   failed_when: dynect_result.json.status != 'success'
