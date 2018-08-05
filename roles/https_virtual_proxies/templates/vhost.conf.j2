@@ -76,6 +76,10 @@ ProxyPassReverseCookiePath /{{ proxy.backend_context }} /{{ proxy.context }}
 {% endfor %}
 {% endif %}
 
+{% if item.compression | default(True) %}
+SetOutputFilter DEFLATE
+{% endif %}
+
 ErrorLog logs/{{ item.fqdn }}_ssl_error_log
 TransferLog logs/{{ item.fqdn }}_ssl_access_log
 LogLevel warn
