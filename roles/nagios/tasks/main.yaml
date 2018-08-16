@@ -14,8 +14,12 @@
 
 - name: NRPE monitor hosts
   when: inventory_hostname in ( nagios_nrpe_monitor_hosts | default([]) )
-  include_tasks: nrpe_monitor.yaml
+  include_tasks: monitor_setup.yaml
 
 - name: NRPE agent hosts
   when: nagios_nrpe_monitor_hosts | default([]) | length > 0
   include_tasks: nrpe_agent.yaml
+
+- name: NRPE monitor hosts
+  when: inventory_hostname in ( nagios_nrpe_monitor_hosts | default([]) )
+  include_tasks: monitor_enable.yaml

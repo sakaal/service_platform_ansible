@@ -1,0 +1,27 @@
+# file: roles/nagios/tasks/monitor_enable.yaml
+---
+
+- name: Nagios service
+  become: yes
+  service:
+    name: nagios
+    state: restarted
+    enabled: yes
+
+- name: Open firewall port 80 access from within the default network
+  become: yes
+  firewalld:
+    permanent: yes
+    immediate: yes
+    rich_rule: "rule family='ipv4'
+                source address='{{ (ansible_default_ipv4.network + '/' + ansible_default_ipv4.netmask)
+                                   | ipaddr('net') }}'
+                port port='80' protocol='tcp' accept"
+    state: enabled
+
+- name: HTTP service
+  become: yes
+  service:
+    name: httpd
+    state: started
+    enabled: yes

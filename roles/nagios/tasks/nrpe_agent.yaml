@@ -36,9 +36,26 @@
     line: 'nrpe            5666/tcp                # NRPE'
     insertafter: '^.*\s+5666\s+.*NRPE.*$'
 
+- name: Drop in files in /etc/sudoers.d
+  with_items: "{{ default_nagios_nrpe_commands | union(
+              hostvars[inventory_hostname].nagios_nrpe_commands | default([])
+              ) }}"
+  when: item.command is match('^/usr/bin/sudo\s+.*$')
+  become: yes
+  copy:
+    dest: "/etc/sudoers.d/nagios_{{ item.token }}"
+    content: "nagios ALL=(root) NOPASSWD: {{
+              item.command | regex_replace('^/usr/bin/sudo\\s+', '') }}\n"
+    owner: root
+    group: root
+    mode: 0440
+    validate: 'bash -c "cat /etc/sudoers %s | visudo -cf-"'
+
 - name: NRPE tokens
   become: yes
-  with_items: "{{ nagios_nrpe_commands }}"
+  with_items: "{{ default_nagios_nrpe_commands | union(
+              hostvars[inventory_hostname].nagios_nrpe_commands | default([])
+              ) }}"
   lineinfile:
     path: /etc/nrpe.d/tokens.cfg
     create: yes
