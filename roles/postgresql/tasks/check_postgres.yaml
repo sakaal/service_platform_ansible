@@ -1,0 +1,47 @@
+# file: roles/postgresql/tasks/check_postgres.yaml
+#
+# PostgreSQL monitoring script from https://bucardo.org/check_postgres/
+#
+---
+
+- name: Download the latest check_postgresql.tar.gz
+  become: yes
+  get_url:
+    url: "http://bucardo.org/downloads/check_postgres.tar.gz"
+    dest: "/opt/check_postgres.tar.gz"
+
+- name: Dependencies
+  with_items:
+  - "perl-Data-Dumper"
+  become: yes
+  yum:
+    name: "{{ item }}"
+
+- name: Extract the package
+  become: yes
+  unarchive:
+    remote_src: yes
+    src: "/opt/check_postgres.tar.gz"
+    dest: "/opt"
+    list_files: yes
+  register: check_postgres_archive
+
+- name: Resolve the script location
+  set_fact:
+    check_postgres_path: "/opt/{{ (check_postgres_archive.files | select('match', '^.*/check_postgres.pl$') | list)[0] }}"
+
+- name: Copy the script to /usr/local/bin/check_postgres
+  become: yes
+  copy:
+    remote_src: yes
+    src: "{{ check_postgres_path }}"
+    dest: "/usr/local/bin/check_postgres"
+    mode: 0755
+
+- name: Create the symlinks
+  become: yes
+  command: check_postgres --symlinks
+  args:
+    chdir: "/usr/local/bin"
+  register: check_postgres_symlinks
+  changed_when: check_postgres_symlinks.stdout is search("Created")

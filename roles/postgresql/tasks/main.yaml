@@ -103,3 +103,6 @@
     zone: internal
     service: postgresql
     state: enabled
+
+- name: Monitoring script
+  include_tasks: check_postgres.yaml
