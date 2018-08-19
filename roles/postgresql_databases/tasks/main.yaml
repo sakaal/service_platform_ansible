@@ -8,11 +8,11 @@
 ---
 
 - name: Check if running locally on the server
-  when: (postgresql_master_user|default('') == '') and
-        (postgresql_master_password|default('') == '')
-  include: local.yaml
+  when: (postgresql_master_user | default('') == '') and
+        (postgresql_master_password | default('') == '')
+  include_tasks: local.yaml
 
 - name: Check if running from client
-  when: (postgresql_master_user|default('') != '') and
-        (postgresql_master_password|default('') != '')
-  include: client.yaml
+  when: (postgresql_master_user | default('') != '') and
+        (postgresql_master_password | default('') != '')
+  include_tasks: client.yaml

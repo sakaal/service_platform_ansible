@@ -43,8 +43,8 @@
   when: item.command is match('^/usr/bin/sudo\s+.*$')
   become: yes
   copy:
-    dest: "/etc/sudoers.d/nagios_{{ item.token }}"
-    content: "nagios ALL=(root) NOPASSWD: {{
+    dest: "/etc/sudoers.d/nrpe_{{ item.token }}"
+    content: "nrpe ALL=(root) NOPASSWD: {{
               item.command | regex_replace('^/usr/bin/sudo\\s+', '') }}\n"
     owner: root
     group: root

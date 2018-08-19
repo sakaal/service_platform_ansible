@@ -7,8 +7,10 @@
 - name: PostgreSQL server and adapter packages
   with_items:
   - postgresql-server
+  - postgresql-contrib # for the adminpack
   - python-psycopg2
-  yum: name="{{ item }}" 
+  yum:
+    name: "{{ item }}" 
 
 - name: Find the PostgreSQL data directory
   shell: "cat /etc/passwd | grep '^postgres:' | cut -d: -f6"
@@ -20,17 +22,18 @@
     postgresql_pgdata: "{{ postgres_home.stdout.strip() }}/data"
 
 - name: Check the PostgreSQL data directory structure
-  command: postgresql-check-db-dir "{{ postgresql_pgdata | mandatory }}"
+  command: postgresql-check-db-dir "{{ postgresql_pgdata }}"
   register: pgdata_status
   changed_when: pgdata_status.rc != 0
   failed_when: False
 
 - name: Check if manual intervention is necessary
-  when: pgdata_status|changed and 'version' in pgdata_status.stdout
-  fail: msg="{{ pgdata_status.stdout }}"
+  when: pgdata_status is changed and 'version' in pgdata_status.stdout
+  fail:
+    msg: "{{ pgdata_status.stdout }}"
 
 - name: Initialize the database cluster
-  when: pgdata_status|changed and 'initdb' in pgdata_status.stdout
+  when: pgdata_status is changed and 'initdb' in pgdata_status.stdout
   command: postgresql-setup initdb 
   environment:
     PGSETUP_INITDB_OPTIONS: >
@@ -43,11 +46,11 @@
 - name: Determine the internal IP address to listen
   when: ansible_virbr0.ipv4 is defined
   set_fact:
-    postgresql_listen: "{{ ansible_virbr0.ipv4.address | mandatory }}"
+    postgresql_listen: "{{ ansible_virbr0.ipv4.address }}"
 
 - when: postgresql_listen is not defined 
   set_fact:
-    postgresql_listen: "{{ ansible_eth0.ipv4.address | mandatory }}"
+    postgresql_listen: "{{ ansible_eth0.ipv4.address }}"
 
 #
 # PostgreSQL configuration
@@ -56,16 +59,16 @@
 - name: PostgreSQL configuration
   with_items:
   - key: listen_addresses
-    val: "'{{ postgresql_listen | mandatory }},localhost'"
+    val: "'{{ postgresql_listen }},localhost'"
   - key: max_connections
     val: 100
   - key: shared_buffers
     val: 24MB
   lineinfile:
-    dest="{{ postgresql_pgdata }}/postgresql.conf"
-    regexp="^\s*{{ item.key|mandatory }}\s*="
-    line="{{ item.key|mandatory }} = {{ item.val|mandatory }}"
-    insertafter='^#+\s*{{ item.key|mandatory }}'
+    dest: "{{ postgresql_pgdata }}/postgresql.conf"
+    regexp: "^\\s*{{ item.key }}\\s*="
+    line: "{{ item.key }} = {{ item.val }}"
+    insertafter: "^#+\\s*{{ item.key }}"
   notify:
   - Restart PostgreSQL
 
@@ -73,20 +76,30 @@
 # TODO: Further reduce the need of manual configuration. Manage apps, not CIDRs. 
 #
 - name: PostgreSQL host-based authentication
-  template: src=pg_hba.conf.j2
-            dest={{ postgresql_pgdata }}/pg_hba.conf
-            owner=postgres group=postgres mode=0600
+  template:
+    src: pg_hba.conf.j2
+    dest: "{{ postgresql_pgdata }}/pg_hba.conf"
+    owner: postgres
+    group: postgres
+    mode: 0600
   notify:
   - Restart PostgreSQL
 
 - name: Start the PostgreSQL service
-  service: name=postgresql state=started
+  service:
+    name: postgresql
+    state: started
 
 - name: Enable the PostgreSQL service
-  service: name=postgresql enabled=yes
+  service:
+    name: postgresql
+    enabled: yes
 
 - name: Open the internal firewall for PostgreSQL
   become: yes
-  command: firewall-cmd --permanent --zone=internal --add-service=postgresql
-#  notify:
-#  - Reload firewall
+  firewalld:
+    permanent: yes
+    immediate: yes
+    zone: internal
+    service: postgresql
+    state: enabled

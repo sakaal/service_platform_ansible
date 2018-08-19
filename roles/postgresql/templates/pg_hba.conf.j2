@@ -73,11 +73,11 @@
 
 {% for hba in postgresql_hba %}
 {{
-hba.type     | mandatory }} {{
-hba.database | mandatory }} {{
-hba.user     | mandatory }} {{
-hba.cidr                 }} {{
-hba.method   | mandatory
+hba.type }} {{
+hba.database }} {{
+hba.user }} {{
+hba.cidr }} {{
+hba.method
 }}
 {% endfor %}
 
