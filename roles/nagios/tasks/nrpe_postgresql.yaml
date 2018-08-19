@@ -1,0 +1,29 @@
+# file: roles/nagios/tasks/nrpe_postgresql.yaml
+#
+# Allow NRPE to monitor PostgreSQL databases
+#
+---
+
+- name: Resolve the nrpe user home directory on the remote host
+  become: yes
+  shell: "getent passwd nrpe | cut -d: -f6"
+  changed_when: False
+  register: nrpe_user_home
+  failed_when: nrpe_user_home.rc != 0 or
+               nrpe_user_home.stdout.strip() | length < 5
+
+- set_fact:
+    nrpe_user_home: "{{ nrpe_user_home.stdout }}"
+
+- name: .pgpass entries
+  with_items: "{{ postgresql_databases }}"
+  become: yes
+  become_user: nrpe
+  lineinfile:
+    path: "{{ nrpe_user_home }}/.pgpass"
+    create: yes
+    regexp: "^\\*:5432:{{ item.name }}:.*$"
+    line: "*:5432:{{ item.name }}:{{ item.owner }}:{{ vault_postgresql_roles[ item.owner ].password }}"
+    mode: 0600
+    owner: nrpe
+    group: nrpe

@@ -72,6 +72,10 @@
     permanent: true
     immediate: true
 
+- name: PostgreSQL monitoring access
+  when: postgresql_databases is defined
+  include_tasks: nrpe_postgresql.yaml
+
 - name: NRPE service
   become: yes
   service:
