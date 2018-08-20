@@ -40,12 +40,12 @@
   with_items: "{{ default_nagios_nrpe_commands | union(
               hostvars[inventory_hostname].nagios_nrpe_commands | default([])
               ) }}"
-  when: item.command is match('^/usr/bin/sudo\s+.*$')
+  when: item.sudo | default(False) or
+        item.sudo_user | default('') != ''
   become: yes
   copy:
     dest: "/etc/sudoers.d/nrpe_{{ item.token }}"
-    content: "nrpe ALL=(root) NOPASSWD: {{
-              item.command | regex_replace('^/usr/bin/sudo\\s+', '') }}\n"
+    content: "nrpe ALL=({{ item.sudo_user | default('root') }}) NOPASSWD: {{ item.command }}\n"
     owner: root
     group: root
     mode: 0440
@@ -60,7 +60,13 @@
     path: /etc/nrpe.d/tokens.cfg
     create: yes
     regexp: '^command\[{{ item.token }}\]=.*$'
-    line: 'command[{{ item.token }}]={{ item.command }}'
+    line: "command[{{ item.token }}]={%
+          if item.sudo | default(False) or item.sudo_user | default('') != ''
+          %}/usr/bin/sudo --non-interactive {%
+          if item.sudo_user | default('') != ''
+          %}--user={{ item.sudo_user }} {%
+          endif %}{% endif
+          %}{{ item.command }}"
 
 - name: Enable NRPE port in firewall
   when: firewall_zone is defined
