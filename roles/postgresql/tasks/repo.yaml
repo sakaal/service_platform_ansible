@@ -1,0 +1,29 @@
+# file: roles/postgresql/tasks/repo.yaml
+---
+
+- name: Augeas
+  become: yes
+  yum:
+    name: "augeas"
+    state: present
+
+- name: Check if PostgreSQL packages are excluded from the base repository
+  when: ansible_distribution == "CentOS"
+  become: yes
+  command: "augtool -s print /files/etc/yum.repos.d/CentOS-Base.repo/base/exclude"
+  register: centos_base_excludes
+  changed_when: not 'postgresql*' in centos_base_excludes.stdout
+
+- name: Exclude PostgreSQL packages from the base repository
+  when: centos_base_excludes is changed
+  with_items:
+  - base
+  - updates
+  become: yes
+  command: "augtool -s set /files/etc/yum.repos.d/CentOS-Base.repo/{{
+           item }}/exclude[1] postgresql*"
+
+- name: PostgreSQL Repository RPM
+  become: yes
+  yum:
+    name: "{{ postgresql_repo_rpm_url }}"

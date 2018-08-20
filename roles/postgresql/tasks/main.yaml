@@ -4,13 +4,42 @@
 #
 ---
 
+- name: Check if PostgreSQL version is configured
+  when: postgresql_version is not defined
+  fail:
+    msg: You must set postgresql_version to the major version.
+
+- name: Check if PostgreSQL packages are configured
+  when: postgresql_packages is not defined
+  fail:
+    msg: You must set postgresql_packages to list the package names.
+
+- name: Check if PostgreSQL host-based authentication is configured
+  when: postgresql_hba is not defined
+  fail:
+    msg: You must set postgresql_hba to list authenticated hosts.
+
+- name: Check PostgreSQL host-based authentication entries
+  with_items: "{{ postgresql_hba | default([]) }}"
+  when: item.type is not defined or
+        item.database is not defined or
+        item.user is not defined or
+        item.method is not defined
+  fail:
+    msg: >-
+         The following entry in the postgresql_hba list is invalid:
+         {{ item }}
+         Each list entry must be a dictionary with values for keys
+         'type', 'database', 'user', 'cidr', and 'method'.
+
+- name: PostgreSQL repository
+  include_tasks: repo.yaml
+
 - name: PostgreSQL server and adapter packages
-  with_items:
-  - postgresql-server
-  - postgresql-contrib # for the adminpack
-  - python-psycopg2
+  with_items: "{{ postgresql_packages }}"
+  become: yes
   yum:
-    name: "{{ item }}" 
+    name: "{{ item }}"
 
 - name: Find the PostgreSQL data directory
   shell: "cat /etc/passwd | grep '^postgres:' | cut -d: -f6"
@@ -18,11 +47,15 @@
   failed_when: postgres_home.stdout.strip() == ""
   changed_when: False
 
-- set_fact:
-    postgresql_pgdata: "{{ postgres_home.stdout.strip() }}/data"
+- name: Determine the PostgreSQL data directory location
+  set_fact:
+    postgresql_pgdata: "{{ postgres_home.stdout.strip()
+                        }}/{{ postgresql_version }}/data"
 
 - name: Check the PostgreSQL data directory structure
-  command: postgresql-check-db-dir "{{ postgresql_pgdata }}"
+  become: yes
+  shell: "PATH=$PATH:/usr/pgsql-{{ postgresql_version }}/bin;
+          {{ postgresql_name }}-check-db-dir {{ postgresql_pgdata }};"
   register: pgdata_status
   changed_when: pgdata_status.rc != 0
   failed_when: False
@@ -34,23 +67,16 @@
 
 - name: Initialize the database cluster
   when: pgdata_status is changed and 'initdb' in pgdata_status.stdout
-  command: postgresql-setup initdb 
+  become: yes
   environment:
     PGSETUP_INITDB_OPTIONS: >
                             --no-locale
                             -D '{{ postgresql_pgdata }}'
                             -E UNICODE
+  shell: "PATH=$PATH:/usr/pgsql-{{ postgresql_version }}/bin;
+          {{ postgresql_name }}-setup initdb;"
   notify:
    - Restart PostgreSQL
-
-- name: Determine the internal IP address to listen
-  when: ansible_virbr0.ipv4 is defined
-  set_fact:
-    postgresql_listen: "{{ ansible_virbr0.ipv4.address }}"
-
-- when: postgresql_listen is not defined 
-  set_fact:
-    postgresql_listen: "{{ ansible_eth0.ipv4.address }}"
 
 #
 # PostgreSQL configuration
@@ -61,9 +87,32 @@
   - key: listen_addresses
     val: "'{{ postgresql_listen }},localhost'"
   - key: max_connections
-    val: 100
+    val: "{{ postgresql_max_connections | default(40) }}"
   - key: shared_buffers
-    val: 24MB
+    val: "{{ postgresql_shared_buffers | default('256MB') }}"
+  - key: effective_cache_size
+    val: "{{ postgresql_effective_cache_size | default('1GB') }}"
+  - key: checkpoint_segments
+    val: "{{ postgresql_checkpoint_segments | default(20) }}"
+  - key: checkpoint_completion_target
+    val: "{{ postgresql_checkpoint_completion_target | default(0.9) }}"
+  - key: log_min_error_statement
+    val: "{{ postgresql_log_min_error_statement | default('ERROR') }}"
+  - key: log_min_duration_statement
+    val: "{{ postgresql_log_min_duration_statement | default('5000ms') }}"
+  - key: log_line_prefix
+    val: "'%t:%r:%u@%d:[%p]: '"
+  - key: log_statement
+    val: "{{ postgresql_log_statement | default('none') }}"
+  - key: work_mem
+    val: "{{ postgresql_work_mem | default('4MB') }}"
+  - key: maintenance_work_mem
+    val: "{{ postgresql_maintenance_work_mem | default('64MB') }}"
+  - key: wal_buffers
+    val: "{{ postgresql_wal_buffers | default('-1') }}"
+  - key: synchronous_commit
+    val: "{{ postgresql_synchronous_commit | default('on') }}"
+  become: yes
   lineinfile:
     dest: "{{ postgresql_pgdata }}/postgresql.conf"
     regexp: "^\\s*{{ item.key }}\\s*="
@@ -83,17 +132,13 @@
     group: postgres
     mode: 0600
   notify:
-  - Restart PostgreSQL
+  - Reload PostgreSQL
 
-- name: Start the PostgreSQL service
+- name: Enable and start the PostgreSQL service
   service:
-    name: postgresql
-    state: started
-
-- name: Enable the PostgreSQL service
-  service:
-    name: postgresql
+    name: "postgresql-{{ postgresql_version }}"
     enabled: yes
+    state: started
 
 - name: Open the internal firewall for PostgreSQL
   become: yes

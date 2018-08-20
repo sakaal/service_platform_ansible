@@ -1,0 +1,8 @@
+# file: roles/postgresql/defaults/main.yaml
+---
+
+#
+# You should configure the postgresql_listen IP address explicitly.
+# It's only guessed here when it hasn't been already set.
+#
+postgresql_listen: "{{ ansible_virbr0.ipv4.address | default( ansible_default_ipv4.address ) }}"

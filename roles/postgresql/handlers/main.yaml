@@ -1,9 +1,14 @@
 # file: roles/postgresql/handlers/main.yaml
 ---
 
+- name: Reload PostgreSQL
+  service:
+    name: "postgresql-{{ postgresql_version }}"
+    state: reloaded
+
 - name: Restart PostgreSQL
   service:
-    name: postgresql
+    name: "postgresql-{{ postgresql_version }}"
     state: restarted
 
 - name: Reload firewall
