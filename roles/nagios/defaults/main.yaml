@@ -11,6 +11,7 @@ nagios_packages:
 nagios_nrpe_packages:
 - "nrpe" # Nagios Remote Plugin Executor
 - "nrpe-selinux" # SELinux context for NRPE
+- "nagios-plugins-all"
 
 default_nagios_nrpe_commands:
 

@@ -20,12 +20,28 @@
     name: "{{ item }}"
     state: present
 
+- name: Resolve monitor host default addresses
+  set_fact:
+    nagios_nrpe_monitor_host_addresses: >-
+      {% for monhost in nagios_nrpe_monitor_hosts %}
+      {% if monhost in ansible_play_hosts %}
+      {{ hostvars[ monhost ].ansible_default_ipv4.address | default('') }}
+      {{ hostvars[ monhost ].ansible_default_ipv6.address | default('') }}
+      {% endif %}
+      {% endfor %}
+
+- name: Allow both the listed hosts and their addresses
+  set_fact:
+    nrpe_allowed_hosts: "{{ [ '127.0.0.1', '::1' ] +
+                          nagios_nrpe_monitor_host_addresses.split() | list
+                          | union( nagios_nrpe_monitor_hosts ) }}"
+
 - name: NRPE allowed hosts
   become: yes
   lineinfile:
     path: "/etc/nagios/nrpe.cfg"
     regexp: "^allowed_hosts=.*$"
-    line: "allowed_hosts={{ ( [ '127.0.0.1', '::1' ] + nagios_nrpe_monitor_hosts ) | join(',') }}"
+    line: "allowed_hosts={{ nrpe_allowed_hosts | join(',') }}"
     insertafter: "^#?allowed_hosts.*$"
 
 - name: Add NRPE to /etc/services
@@ -91,6 +107,10 @@
 
 - name: Register NRPE remote agents
   with_items: "{{ nagios_nrpe_monitor_hosts | difference( [inventory_hostname] ) }}"
+  when: item in hostvars and
+        inventory_hostname in (
+        hostvars[item].nagios_nrpe_agent_hosts | default([]) | map(attribute='hostname') | list
+        )
   become: yes
   delegate_to: "{{ item }}"
   template:

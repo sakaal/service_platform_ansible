@@ -195,4 +195,7 @@
     status_code: 401
     return_content: yes
   register: nagvis_init
-  failed_when: not 'Basic realm="Nagios Access"' in nagvis_init.www_authenticate
+  failed_when: not 'Basic realm="Nagios Access"' in nagvis_init.www_authenticate | default([])
+  ignore_errors: yes
+
+- debug: var=nagvis_init
