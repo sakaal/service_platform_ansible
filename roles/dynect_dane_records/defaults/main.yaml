@@ -2,3 +2,6 @@
 ---
 
 dane_cert_hostname: "{{ public_hostname }}"
+
+json_dependencies:
+- "jq"

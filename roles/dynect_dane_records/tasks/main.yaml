@@ -75,15 +75,31 @@
     dane_ee_update: "{{ zone_tlsa_records is success and
                         zone_tlsa_records.json.data | list | length > 0 }}"
 
-- debug: msg="{{ dane_public_key_sha256 }}"
+- name: Examine existing DANE TLSA records
+  with_items: "{{ zone_tlsa_records.json.data | default([]) }}"
+  local_action:
+    module: uri
+    method: GET
+    url: "{{ dynect_api_url }}/TLSARecord/{{
+         public_dns_zone }}/*._tcp.{{ public_hostname }}/{{ item | basename }}"
+    headers:
+      Content-Type: "application/json"
+      Auth-Token: "{{ dynect_session_token }}"
+  register: existing_tlsa_records
+  changed_when: True
+
+- debug:
+    var: existing_tlsa_records.results
 
 - name: Update DNS zone DANE-EE public key SHA-256 fingerprint
-  when: dane_ee_update|bool
+  with_items: "{{ existing_tlsa_records.results | default([])
+                | selectattr('json.data.rdata.match_type', 'equalto', 1)
+                | map(attribute='item') | list }}"
   local_action:
     module: uri
     method: PUT
     url: "{{ dynect_api_url }}/TLSARecord/{{
-         public_dns_zone }}/*._tcp.{{ public_hostname }}/"
+         public_dns_zone }}/*._tcp.{{ public_hostname }}/{{ item | basename }}"
     headers:
       Content-Type: "application/json"
       Auth-Token: "{{ dynect_session_token }}"
@@ -94,25 +110,32 @@
         selector: 1
         match_type: 1
         certificate: "{{ dane_public_key_sha256 }}"
-      ttl: 0
+      ttl: "{{ dns_dane_ttl | default(1800) }}"
   register: updated_tlsa_records
   changed_when: True
 
-#- name: Update DNS zone DANE-EE public key SHA-512 fingerprint
-#  when: dane_ee_update|bool
-#  local_action: >
-#                uri method=PUT url="{{ dynect_api_url }}/TLSARecord/{{
-#                public_dns_zone }}/*._tcp.{{ public_hostname }}/"
-#                HEADER_Content-Type="application/json"
-#                HEADER_Auth-Token="{{ dynect_session_token }}"
-#                body='{ "rdata": {
-#                "cert_usage": "3",
-#                "selector": "1",
-#                "match_type": "2",
-#                "certificate": "{{ dane_public_key_sha512 }}"
-#                }, "ttl": "0" }'
-#  register: updated_tlsa_records
-#  changed_when: True
+- name: Update DNS zone DANE-EE public key SHA-512 fingerprint
+  with_items: "{{ existing_tlsa_records.results | default([])
+                | selectattr('json.data.rdata.match_type', 'equalto', 2)
+                | map(attribute='item') | list }}"
+  local_action:
+    module: uri
+    method: PUT
+    url: "{{ dynect_api_url }}/TLSARecord/{{
+         public_dns_zone }}/*._tcp.{{ public_hostname }}/{{ item | basename }}"
+    headers:
+      Content-Type: "application/json"
+      Auth-Token: "{{ dynect_session_token }}"
+    body_format: json
+    body:
+      rdata:
+        cert_usage: 3
+        selector: 1
+        match_type: 2
+        certificate: "{{ dane_public_key_sha512 }}"
+      ttl: "{{ dns_dane_ttl | default(1800) }}"
+  register: updated_tlsa_records
+  changed_when: True
 
 #- name: Update DNS zone PKIX-EE TLSA records
 #  when: dane_ee_update|bool
@@ -147,21 +170,26 @@
         selector: 1
         match_type: 1
         certificate: "{{ dane_public_key_sha256 }}"
-      ttl: 0
+      ttl: "{{ dns_dane_ttl | default(1800) }}"
 
-#- name: Make DNS zone DANE-EE TLSA 3 1 2 records
-#  when: not dane_ee_update|bool
-#  local_action: >
-#                uri method=POST url="{{ dynect_api_url }}/TLSARecord/{{
-#                public_dns_zone }}/*._tcp.{{ public_hostname }}/"
-#                HEADER_Content-Type="application/json"
-#                HEADER_Auth-Token="{{ dynect_session_token }}"
-#                body='{ "rdata": {
-#                "cert_usage": "3",
-#                "selector": "1",
-#                "match_type": "2",
-#                "certificate": "{{ dane_public_key_sha512 }}"
-#                }, "ttl": "0" }'
+- name: Make DNS zone DANE-EE TLSA 3 1 2 records
+  when: not dane_ee_update|bool
+  local_action:
+    module: uri
+    method: POST
+    url: "{{ dynect_api_url }}/TLSARecord/{{
+         public_dns_zone }}/*._tcp.{{ public_hostname }}/"
+    headers:
+      Content-Type: "application/json"
+      Auth-Token: "{{ dynect_session_token }}"
+    body_format: json
+    body:
+      rdata:
+        cert_usage: 3
+        selector: 1
+        match_type: 2
+        certificate: "{{ dane_public_key_sha512 }}"
+      ttl: "{{ dns_dane_ttl | default(1800) }}"
 
 #- name: Make DNS zone PKIX-EE TLSA 1 0 1 records
 #  when: not dane_ee_update|bool
@@ -192,3 +220,44 @@
     body_format: json
     body:
       publish: true
+
+- name: JSON dependencies (yum)
+  when: ansible_pkg_mgr == "yum"
+  with_items: "{{ json_dependencies }}"
+  yum:
+    name: "{{ item }}"
+
+- name: JSON dependencies (dnf)
+  when: ansible_pkg_mgr == "dnf"
+  with_items: "{{ json_dependencies }}"
+  dnf:
+    name: "{{ item }}"
+
+- name: Manage DANE records with Certbot
+  when: certbot_domains | default([]) | length > 0
+  become: yes
+  template:
+    src: "dyn-dane-update.sh.j2"
+    dest: "/usr/local/sbin/dyn-dane-update"
+    mode: 0750
+    owner: root
+    group: root
+
+- name: Manage Dyn DNS API configuration
+  become: yes
+  file:
+    state: "{{ 'directory' if (certbot_domains | default([]) | length > 0) else 'absent' }}"
+    dest: "/root/.dyn"
+    mode: 0750
+    owner: root
+    group: root
+
+- name: Manage Dyn DNS API credentials for Certbot
+  when: certbot_domains | default([]) | length > 0
+  become: yes
+  template:
+    src: "dyn_credentials.j2"
+    dest: "/root/.dyn/credentials"
+    mode: 0600
+    owner: root
+    group: root

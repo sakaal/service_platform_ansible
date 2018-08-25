@@ -1,0 +1,133 @@
+{# file: roles/dynect_dane_records/templates/dyn-dane-update.sh.j2
+#}
+#!/bin/bash
+#
+# Manages DNS DANE records via the Dyn DNS API.
+#
+
+public_dns_zone={{ public_dns_zone }}
+public_hostname={{ public_hostname }}
+dns_dane_ttl={{ dns_dane_ttl | default(1800) }}
+
+source /root/.dyn/credentials
+
+# DANE-EE public key SHA-256 fingerprint
+dane_public_key_sha256=$( openssl x509 -noout -pubkey\
+ -in "/etc/pki/tls/certs/{{ dane_cert_hostname }}-crt.pem"\
+ | openssl pkey -pubin -outform DER\
+ | openssl dgst -sha256 -binary | hexdump -ve '/1 "%02x"'\
+)
+
+# DANE-EE public key SHA-512 fingerprint
+dane_public_key_sha512=$( openssl x509 -noout -pubkey\
+ -in "/etc/pki/tls/certs/{{ dane_cert_hostname }}-crt.pem"\
+ | openssl pkey -pubin -outform DER\
+ | openssl dgst -sha512 -binary | hexdump -ve '/1 "%02x"'\
+)
+
+# Establish a Dyn DNS API session
+payload='{"customer_name":"'${dynect_customer}'","user_name":"'${dynect_api_user}'","password":"'${dynect_api_password}'"}'
+dynect_session_result=$(\
+ curl -s\
+ -X POST\
+ -H "Content-Type: application/json"\
+ "${dynect_api_url}/Session/"\
+ -d "${payload}"\
+)
+
+if [ $(echo "${dynect_session_result}" | jq -r '.status') = "success" ]; then
+  dyn_session=$(echo "${dynect_session_result}" | jq -r '.data.token')
+else
+  echo "Failed to establish Dyn DNS API session" >&2
+  exit 1
+fi
+
+# Check if DNS zones already have DANE TLSA records
+
+zone_tlsa_records=$(\
+ curl -s\
+ -H "Content-Type: application/json"\
+ -H "Accept: application/json"\
+ -H "Auth-Token: ${dyn_session}"\
+ "${dynect_api_url}/TLSARecord/${public_dns_zone}/*._tcp.${public_hostname}/"\
+)
+dane_ee_records=$(echo "${zone_tlsa_records}" | jq -r '.data[]')
+
+payload_sha256='{"rdata":{"cert_usage":3,"selector":1,"match_type":1,"certificate":"'${dane_public_key_sha256}'"},"ttl":'${dns_dane_ttl}'}'
+payload_sha512='{"rdata":{"cert_usage":3,"selector":1,"match_type":2,"certificate":"'${dane_public_key_sha512}'"},"ttl":'${dns_dane_ttl}'}'
+
+# Examine the existing DANE-EE records (if any)
+while read -r line; do
+
+  # Skip empty lines
+  if [[ "$line" =~ ^[[:space:]]*$ ]]; then continue; fi
+
+  id=$(basename ${line})
+  tlsa_record=$(\
+    curl -s\
+    -H "Content-Type: application/json"\
+    -H "Auth-Token: ${dyn_session}"\
+    "${dynect_api_url}/TLSARecord/${public_dns_zone}/*._tcp.${public_hostname}/${id}"\
+  )
+
+  match_type=$(echo "${tlsa_record}" | jq -r '.data.rdata.match_type')
+
+  if [ "${match_type}" = "1" ]; then
+
+    # Update DNS zone DANE-EE TLSA 3 1 1 records
+    updated_tlsa_records=$( curl -s -X PUT\
+     -H "Content-Type: application/json"\
+     -H "Auth-Token: ${dyn_session}"\
+     "${dynect_api_url}/TLSARecord/${public_dns_zone}/*._tcp.${public_hostname}/${id}"\
+     -d "${payload_sha256}"\
+    )
+
+  elif [ "${match_type}" = "2" ]; then
+
+    # Update DNS zone DANE-EE TLSA 3 1 2 records
+    updated_tlsa_records=$( curl -s -X PUT\
+     -H "Content-Type: application/json"\
+     -H "Auth-Token: ${dyn_session}"\
+     "${dynect_api_url}/TLSARecord/${public_dns_zone}/*._tcp.${public_hostname}/${id}"\
+     -d "${payload_sha512}"\
+    )
+
+  fi
+done <<< "${dane_ee_records}"
+
+# Make new, if there are no existing DANE-EE records
+if [ $(echo -n "${dane_ee_records}" | wc -l) -eq 0 ]; then
+
+  # Make DNS zone DANE-EE TLSA 3 1 1 records
+  made_tlsa_records=$( curl -s -X POST\
+   -H "Content-Type: application/json"\
+   -H "Auth-Token: ${dyn_session}"\
+   "${dynect_api_url}/TLSARecord/${public_dns_zone}/*._tcp.${public_hostname}/"\
+   -d "${payload_sha256}"\
+  )
+  echo
+
+  # Make DNS zone DANE-EE TLSA 3 1 2 records
+  made_tlsa_records=$( curl -s -X POST\
+   -H "Content-Type: application/json"\
+   -H "Auth-Token: ${dyn_session}"\
+   "${dynect_api_url}/TLSARecord/${public_dns_zone}/*._tcp.${public_hostname}/"\
+   -d "${payload_sha512}"\
+  )
+
+fi
+
+#
+# Publish the DNS zone
+#
+curl -sS -o /dev/null -X PUT \
+ -H "Content-Type: application/json" \
+ -H "Auth-Token: ${dyn_session}" \
+ "${dynect_api_url}/Zone/${public_dns_zone}" \
+ -d '{"publish":true}'
+
+# End Dyn DNS API session
+curl -s -o /dev/null -X DELETE \
+ -H "Content-Type: application/json" \
+ -H "Auth-Token: ${dyn_session}" \
+ "${dynect_api_url}/Session/"

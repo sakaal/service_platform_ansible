@@ -54,6 +54,7 @@ certbot_renew_post_hook: >
   cat /etc/letsencrypt/live/{{ public_hostname }}/privkey.pem
   > /etc/pki/tls/private/{{ public_hostname }}-key.pem;
   chmod 0600 /etc/pki/tls/private/{{ public_hostname }}-key.pem;
+  /usr/local/sbin/dyn-dane-update;
   systemctl start httpd;
   systemctl reload postfix;
   systemctl reload dovecot;
