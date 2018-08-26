@@ -16,6 +16,8 @@
   service: name="{{ item }}" state=stopped
   failed_when: no
 
+- debug: var=firewall_zone
+
 - name: Configure the firewall for HTTP
   become: yes
   firewalld:

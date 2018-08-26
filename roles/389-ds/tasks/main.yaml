@@ -1,0 +1,320 @@
+# file: roles/389-ds/tasks/main.yaml
+#
+# Tested with 389-ds-base version 1.3.7.5 release 25.el7_5
+#
+---
+
+- name: Ansible python version
+  debug:
+    var: ansible_python_version
+
+- name: Resolve role dependencies
+  set_fact:
+    role_dependencies:
+    - "python{{ ansible_python_version.split('.')[0] }}-dns"
+
+- name: Install role dependencies (yum)
+  when: ansible_pkg_mgr == "yum"
+  with_items: "{{ role_dependencies }}"
+  become: yes
+  yum:
+    name: "{{ item }}"
+
+- name: Install role dependencies (dnf)
+  when: ansible_pkg_mgr == "dnf"
+  with_items: "{{ role_dependencies }}"
+  become: yes
+  dnf:
+    name: "{{ item }}"
+
+- name: Public hostname
+  debug:
+    var: public_hostname
+
+- name: Public hostname forward name resolution
+  set_fact:
+    forward_dns: "{{ lookup('dig', public_hostname) }}"
+
+- name: Manage forward DNS
+  when: forward_dns not in ansible_all_ipv4_addresses
+  include_role:
+    name: dns_public_records
+  tags: [ 'dns' ]
+
+- name: Public hostname reverse name resolution
+  set_fact:
+    reverse_dns: "{{ lookup('dig', forward_dns + '/PTR') }}"
+
+- name: Manage reverse DNS
+  when: reverse_dns != public_hostname
+  include_role:
+    name: dns_public_reverse_records
+  tags: [ 'dns' ]
+
+- name: TCP/IP ports
+  with_items:
+  - "389/tcp"
+  - "636/tcp"
+  - "9830/tcp"
+  become: yes
+  firewalld:
+    zone: "{{ firewall_zone }}"
+    port: "{{ item }}"
+    state: enabled
+    permanent: yes
+    immediate: yes
+
+- name: Install the DS packages (yum)
+  when: ansible_pkg_mgr == "yum"
+  with_items: "{{ ds_packages }}"
+  become: yes
+  yum:
+    name: "{{ item }}"
+
+- name: Install the DS packages (dnf)
+  when: ansible_pkg_mgr == "dnf"
+  with_items: "{{ ds_packages }}"
+  become: yes
+  dnf:
+    name: "{{ item }}"
+
+- name: Generate the setup.inf file
+  become: yes
+  template:
+    src: "setup.inf.j2"
+    dest: "/root/setup.inf"
+    mode: 0600
+
+#- name: Reinstall
+#  become: yes
+#  command: remove-ds.pl -a -i slapd-{{ inventory_hostname_short }}
+#  ignore_errors: yes
+
+- name: Create the Directory Server and Administration Server instances
+  become: yes
+  command: setup-ds-admin.pl --silent --file=setup.inf --logfile=setup-ds-admin-{{
+           ansible_date_time.iso8601 | replace(':', '') }}.log
+  args:
+    chdir: "/root"
+
+- name: Create PKCS12 password file
+  become: yes
+  copy:
+    dest: "/root/.pk12_pass-{{ public_hostname }}.txt"
+    content: testpk12pass1
+    mode: 0600
+    owner: root
+    group: root
+
+- name: Create PKCS12 file
+  become: yes
+  args:
+    chdir: "/etc/letsencrypt/live/{{ public_hostname }}"
+  shell: >-
+    umask 0077; openssl pkcs12 -export -in cert.pem -inkey privkey.pem -nodes
+    -passout file:/root/.pk12_pass-{{ public_hostname }}.txt
+    -name "Server-Cert"
+    -out /root/{{ public_hostname }}.p12
+
+- name: Create keystore password file
+  become: yes
+  copy:
+    dest: "/root/.keys_pass-{{ inventory_hostname_short }}.txt"
+    content: "{{ ds_keystore_password }}"
+    mode: 0600
+    owner: root
+    group: root
+
+- name: Import PKCS12 file to directory server
+  become: yes
+  args:
+    chdir: "/root"
+  shell: >-
+    pk12util -d /etc/dirsrv/slapd-{{ inventory_hostname_short }}
+    -i {{ public_hostname }}.p12
+    -w .pk12_pass-{{ public_hostname }}.txt
+    -k .keys_pass-{{ inventory_hostname_short }}.txt
+
+- name: Import CA certificates
+  with_items:
+
+  - name: "ca_cert"
+    trust: "CT,,"
+    path: "/etc/letsencrypt/live/{{ public_hostname }}/chain.pem"
+
+  become: yes
+  args:
+    chdir: "/root"
+  shell: >-
+    certutil -d /etc/dirsrv/slapd-{{ inventory_hostname_short }}
+    -A -n "{{ item.name }}" -t "{{ item.trust }}" -i "{{ item.path }}"
+
+- name: Check the keys
+  become: yes
+  args:
+    chdir: "/root"
+  shell: >-
+    certutil -K -d /etc/dirsrv/slapd-{{ inventory_hostname_short }}
+    -f .keys_pass-{{ inventory_hostname_short }}.txt
+  register: ds_keys
+  failed_when: not "Server-Cert" in ds_keys.stdout
+
+- name: Check the certificates
+  become: yes
+  args:
+    chdir: "/root"
+  shell: >-
+    certutil -L -d /etc/dirsrv/slapd-{{ inventory_hostname_short }}
+  register: ds_certs
+  failed_when: not "ca_cert" in ds_certs.stdout or
+               not "Server-Cert" in ds_certs.stdout
+
+- name: Report keys
+  debug:
+    var: ds_keys
+
+- name: Report certificates
+  debug:
+    var: ds_certs
+
+- name: Stop the directory service
+  become: yes
+  systemd:
+    name: "dirsrv@{{ inventory_hostname_short }}"
+    state: stopped
+
+- name: Enable TLS
+  become: yes
+  with_items:
+
+  - after: "^objectClass:\\s+nsslapdConfig$"
+    key: "nsslapd-security"
+    val: "on"
+
+  - after: "^cn:\\s+encryption$"
+    key: "sslVersionMin"
+    val: "TLS1.0"
+    state: absent
+
+  - key: "sslVersionMin"
+    state: absent
+
+  - key: "sslVersionMax"
+    state: absent
+
+  - key: "nsSSL3Ciphers"
+    state: absent
+
+  - after: "^cn:\\s+encryption$"
+    key: "nsSSL2"
+    val: "off"
+
+  - after: "^cn:\\s+encryption$"
+    key: "nsSSL3"
+    val: "off"
+
+  - after: "^cn:\\s+encryption$"
+    key: "nsSSLClientAuth"
+    val: "off"
+
+  - after: "^cn:\\s+encryption$"
+    key: "nsSSLSessionTimeout"
+    val: "0"
+
+  lineinfile:
+    dest: "/etc/dirsrv/slapd-{{ inventory_hostname_short }}/dse.ldif"
+    insertafter: "{{ item.after | default(omit) }}"
+    regexp: "^{{ item.key }}:.*$"
+    line: "{{ item.key }}: {{ item.val | default('') }}"
+    state: "{{ item.state | default(omit) }}"
+
+- name: TLS certificate
+  become: yes
+  blockinfile:
+    dest: "/etc/dirsrv/slapd-{{ inventory_hostname_short }}/dse.ldif"
+    insertbefore: "^dn:\\s+cn=features,cn=config$"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - RSA"
+    block: |+
+      dn: cn=RSA,cn=encryption,cn=config
+      objectClass: top
+      objectClass: nsEncryptionModule
+      nsSSLPersonalitySSL: Server-Cert
+      nsSSLActivation: on
+      nsSSLToken: internal (software)
+      cn: RSA
+      
+# Do not remove the significant newline above, needed in the LDIF file.
+
+- name: NSS Key Store password file for server startup
+  become: yes
+  copy:
+    dest: "/etc/dirsrv/slapd-{{ inventory_hostname_short }}/pin.txt"
+    content: "Internal (Software) Token:{{ ds_keystore_password }}"
+    mode: 0640
+    owner: root
+    group: dirsrv
+
+- name: Restart the directory
+  become: yes
+  systemd:
+    name: "dirsrv@{{ inventory_hostname_short }}"
+    state: restarted
+
+- name: Create Root DN password file
+  become: yes
+  copy:
+    dest: "/root/.rootdnpwd-{{ inventory_hostname_short }}"
+    content: "{{ ds_rootdn_password }}"
+    mode: 0600
+    owner: root
+    group: root
+
+- name: Check security
+  become: yes
+  command: >-
+    ldapsearch -x -W -D 'cn=Directory Manager'
+    -y '/root/.rootdnpwd-{{ inventory_hostname_short }}'
+    -H ldap://localhost/
+    -b 'cn=config' -s base nsslapd-security
+  register: ds_config_security
+  failed_when: not ds_config_security.stdout is search("nsslapd-security. on")
+
+- name: Report security
+  debug:
+    var: ds_config_security
+
+- name: Check encryption config
+  become: yes
+  command: >-
+    ldapsearch -x -W -D 'cn=Directory Manager'
+    -y '/root/.rootdnpwd-{{ inventory_hostname_short }}'
+    -H ldap://localhost/
+    -b 'cn=encryption,cn=config' -s base
+  register: ds_encryption_config
+
+- name: Report encryption config
+  debug:
+    var: ds_encryption_config
+
+- name: Check RSA config
+  become: yes
+  command: >-
+    ldapsearch -x -W -D 'cn=Directory Manager'
+    -y '/root/.rootdnpwd-{{ inventory_hostname_short }}'
+    -H ldap://localhost/
+    -b 'cn=RSA,cn=encryption,cn=config' -s base
+  register: ds_rsa_config
+
+- name: Report RSA config
+  debug:
+    var: ds_rsa_config
+
+- name: Remove the password files
+  with_items:
+  - ".rootdnpwd-{{ inventory_hostname_short }}"
+  - ".pk12_pass-{{ public_hostname }}.txt"
+  - ".keys_pass-{{ inventory_hostname_short }}.txt"
+  become: yes
+  file:
+    state: absent
+    dest: "/root/{{ item }}"

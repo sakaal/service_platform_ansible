@@ -2,5 +2,8 @@
 ---
 
 dependencies:
-- role: dns_public_records
+
+- when: lookup('dig', public_hostname) not in ansible_all_ipv4_addresses
+  role: dns_public_records
+
 - role: dns_public_cname_records

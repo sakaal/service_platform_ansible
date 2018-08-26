@@ -1,0 +1,16 @@
+# file: roles/dns_public_reverse_records/tasks/main.yaml
+---
+
+- assert:
+    that:
+    -  public_ipv4_address | default("") != ""
+
+- name: Update Hetzner reverse DNS records
+  local_action:
+    module: uri
+    method: POST
+    url: "{{ hetzner_api_url }}/rdns/{{ public_ipv4_address }}"
+    user: "{{ hetzner_api_user }}"
+    password: "{{ hetzner_api_password }}"
+    body: "ptr={{ public_hostname }}"
+    status_code: 200,201

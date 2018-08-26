@@ -1,0 +1,29 @@
+{# file: roles/389-ds/templates/setup.inf.j2
+#}
+[General]
+FullMachineName = {{ public_hostname }}
+SuiteSpotUserID = dirsrv
+SuiteSpotGroup = dirsrv
+AdminDomain = {{ public_dns_zone }}
+ConfigDirectoryAdminID = {{ ds_config_admin_id | default('admin') }}
+ConfigDirectoryAdminPwd = {{ ds_config_admin_password }}
+ConfigDirectoryLdapURL = ldap://{{ public_hostname }}:389/o=NetscapeRoot
+StrictHostCheck = false
+
+[slapd]
+SlapdConfigForMC = Yes
+UseExistingMC = 0
+ServerPort = 389
+ServerIdentifier = {{ inventory_hostname_short }}
+Suffix = {{ public_dns_zone.split('.') | map('regex_replace', '(.*)', 'dc=\\1') | join(',') }}
+RootDN = {{ ds_rootdn | default('cn=Directory Manager') }}
+RootDNPwd = {{ ds_rootdn_password }}
+ds_bename = {{ ds_bename | default('userRoot') }}
+AddOrgEntries = Yes
+AddSampleEntries = Yes
+
+[admin]
+Port = 9830
+ServerIpAddress = {{ public_ipv4_address }}
+ServerAdminID = {{ ds_admin_id | default('admin') }}
+ServerAdminPwd = {{ ds_admin_password }}

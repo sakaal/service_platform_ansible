@@ -1,0 +1,5 @@
+# file: roles/389-ds/defaults/main.yaml
+---
+
+ds_packages:
+- "389-ds"

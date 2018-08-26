@@ -6,10 +6,27 @@
 
 - hosts: directory_servers
   roles:
-    - libvirt_guest_network_service
-    - ca_trust
-    - transport_layer_security
-    - ../../service_commons_ansible/roles/updates_auto
-    - ldap_server
+    - role: dmz
+      tags: [ 'net' ]
+
+    - role: libvirt_guest_network_service
+      tags: [ 'net' ]
+
+    - role: ca_trust
+      tags: [ 'tls' ]
+
+#    - role: transport_layer_security
+#      tags: [ 'tls' ]
+
+    - role: certbot_standalone
+      tags: [ 'tls' ]
+
+    - role: "{{ playbook_dir | dirname }}/service_commons_ansible/roles/updates_auto"
+      tags: [ 'os' ]
+
+    - role: 389-ds
+      tags: [ 'ds' ]
+
+#    - ldap_server
 
 # TODO: LDAP backup
