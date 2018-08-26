@@ -1,0 +1,11 @@
+{# file: roles/postgresql/templates/postgres_vacuum.timer.j2 #}
+[Unit]
+Description=PostgreSQL VACUUM ANALYZE schedule
+
+[Timer]
+OnCalendar=*-*-* 23:00:00
+RandomizedDelaySec=4h
+Unit=postgres_vacuum.service
+
+[Install]
+WantedBy=timers.target

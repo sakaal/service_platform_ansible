@@ -151,3 +151,6 @@
 
 - name: Monitoring script
   include_tasks: check_postgres.yaml
+
+- name: VACUUM ANALYZE script
+  include_tasks: vacuum.yaml

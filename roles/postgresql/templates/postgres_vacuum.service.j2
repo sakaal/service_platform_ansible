@@ -1,0 +1,15 @@
+{# file: roles/postgresql/templates/postgres_vacuum.service.j2 #}
+[Unit]
+Description=PostgreSQL VACUUM ANALYZE
+BindsTo=postgresql-{{ postgresql_version }}.service
+After=postgresql-{{ postgresql_version }}.service
+Wants=postgres_vacuum.timer
+
+[Service]
+User=postgres
+Group=postgres
+Type=simple
+ExecStart=/usr/bin/vacuumdb --quiet --analyze --all
+
+[Install]
+WantedBy=multi-user.target

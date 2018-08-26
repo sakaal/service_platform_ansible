@@ -1,0 +1,22 @@
+# file: roles/postgresql/tasks/vacuum.yaml
+---
+
+- name: VACUUM ANALYZE systemd service and timer unit files
+  with_items:
+  - "postgres_vacuum.service"
+  - "postgres_vacuum.timer"
+  become: yes
+  template:
+    src: "{{ item }}.j2"
+    dest: "/etc/systemd/system/{{ item }}"
+    mode: 0644
+    owner: root
+    group: root
+
+- name: Enable and start the VACUUM ANALYZE timer
+  become: yes
+  systemd:
+    daemon_reload: yes
+    name: postgres_vacuum.timer
+    enabled: yes
+    state: started
