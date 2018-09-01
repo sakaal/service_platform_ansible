@@ -1,6 +1,10 @@
 # file: roles/jenkins_ci/defaults/main.yaml
 ---
 
+jenkins_plugin_dependencies:
+- "python-dns"     # used in Ansible scripts
+- "python-netaddr" # used in Ansible scripts
+
 jenkins_ci_default_plugins:
 #  - name: analysis-collector              # Analysis Collector
 #  - name: analysis-core                   # Static Code Analysis

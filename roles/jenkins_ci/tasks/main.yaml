@@ -99,6 +99,20 @@
     group: jenkins
     mode: 0600
 
+- name: Jenkins plugin dependencies (yum)
+  with_items: "{{ jenkins_plugin_dependencies | default([]) }}"
+  when: ansible_pkg_mgr == "yum"
+  become: yes
+  yum:
+    name: "{{ item }}"
+
+- name: Jenkins plugin dependencies (dnf)
+  with_items: "{{ jenkins_plugin_dependencies | default([]) }}"
+  when: ansible_pkg_mgr == "dnf"
+  become: yes
+  dnf:
+    name: "{{ item }}"
+
 - name: Create the plugins directory
   become: yes
   file:
