@@ -85,10 +85,11 @@
     dest: "/root/setup.inf"
     mode: 0600
 
-#- name: Reinstall
-#  become: yes
-#  command: remove-ds.pl -a -i slapd-{{ inventory_hostname_short }}
-#  ignore_errors: yes
+- name: Destroy and redeploy
+  when: destroy_and_redeploy | default(False) | bool
+  become: yes
+  command: remove-ds.pl -a -i slapd-{{ inventory_hostname_short }}
+  ignore_errors: yes
 
 - name: Create the Directory Server and Administration Server instances
   become: yes
