@@ -9,14 +9,17 @@
   - ansible
   - git
   become: yes
-  yum: name={{ item }}
+  yum:
+    name: "{{ item }}"
 
 - name: Continuous delivery playbooks
+  when: continuous_delivery_playbook_repo is defined
   become: yes
   become_user: jenkins
-  git: repo="{{ continuous_delivery_playbook_repo | mandatory }}"
-       dest="{{ jenkins_home | mandatory }}/continuous_delivery_ansible"
-       recursive=no
+  git:
+    repo: "{{ continuous_delivery_playbook_repo }}"
+    dest: "{{ jenkins_home }}/continuous_delivery_ansible"
+    recursive: no
 
 #
 # The Continuous Delivery inventory is backed up along with the Jenkins CI
