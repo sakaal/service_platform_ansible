@@ -11,7 +11,6 @@
   failed_when: False
 
 - name: Create the eth1 interface configuration file
-  when: link_eth1 is changed
   become: yes
   template:
     src: "ifcfg-eth1.j2"
@@ -53,11 +52,13 @@
 #    state: restarted
 #  register: network_status
 
-- name: Gather facts
+#- name: Gather facts
 #  when: network_status is changed
-  setup:
+#  setup:
 
-- set_fact:
+- name: Resolve public IPv4 address
+  when: public_ipv4_address is not defined
+  set_fact:
     public_ipv4_address: "{{ ansible_eth1.ipv4.address }}"
 
 #
@@ -75,7 +76,7 @@
     method: POST
     user: "{{ hetzner_api_user }}"
     password: "{{ hetzner_api_password }}"
-    url: "{{ hetzner_api_url }}/rdns/{{ ansible_eth1.ipv4.address }}"
+    url: "{{ hetzner_api_url }}/rdns/{{ public_ipv4_address }}"
     headers:
       Content-Type: application/x-www-form-urlencoded
     body: "ptr={{ public_hostname }}"

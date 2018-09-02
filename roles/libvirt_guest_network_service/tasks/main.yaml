@@ -6,7 +6,9 @@
 
 - name: Remove NetworkManager
   become: yes
-  yum: name=NetworkManager state=absent
+  yum:
+    name: NetworkManager
+    state: absent
   register: NetworkManager
 
 - name: Stop NetworkManager related services
@@ -14,15 +16,19 @@
   with_items:
   - NetworkManager.service
   become: yes
-  shell: systemctl stop {{ item }}
-  failed_when: False
+  systemd:
+    name: "{{ item }}"
+    state: stopped
+  failed_when: no
 
 - name: Disable NetworkManager related services
   when: NetworkManager is changed
   with_items:
   - NetworkManager.service
   become: yes
-  shell: systemctl disable {{ item }}
+  systemd:
+    name: "{{ item }}"
+    state: disabled
   failed_when: no
 
 - name: Network interfaces NM_CONTROLLED=no
@@ -49,4 +55,6 @@
 
 - name: Enable the network service
   become: yes
-  service: name=network enabled=yes
+  service:
+    name: network
+    enabled: yes
