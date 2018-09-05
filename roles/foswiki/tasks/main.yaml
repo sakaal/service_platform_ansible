@@ -1,0 +1,97 @@
+# file: roles/foswiki/tasks/main.yaml
+#
+# Preliminary Foswiki installation. This role is not complete.
+#
+---
+
+- name: Foswiki and dependencies (yum)
+  when: ansible_pkg_mgr == "yum"
+  with_items: "{{ foswiki_packages }}"
+  become: yes
+  yum:
+    name: "{{ item }}"
+
+- name: Foswiki and dependencies (dnf)
+  when: ansible_pkg_mgr == "dnf"
+  with_items: "{{ foswiki_packages }}"
+  become: yes
+  dnf:
+    name: "{{ item }}"
+
+- name: Download Foswiki archive
+  get_url:
+    url: "{{ foswiki_download_url }}"
+    dest: "~/{{ foswiki_archive }}"
+    checksum: "{{ foswiki_checksum_algorithm }}:{{ foswiki_checksum }}"
+    mode: 0644
+  register: foswiki_download
+
+- name: Downloaded Foswiki archive
+  debug:
+    var: foswiki_download
+
+- name: Foswiki directory
+  become: yes
+  file:
+    state: directory
+    path: "/var/www/foswiki"
+    owner: apache
+    group: apache
+    mode: 0755
+    seuser: system_u
+    serole: object_r
+    setype: httpd_sys_content_t
+    selevel: s0
+
+- name: Unpack Foswiki
+  become: yes
+  unarchive:
+    remote_src: yes
+    src: "{{ foswiki_download.dest }}"
+    dest: "/var/www/foswiki"
+    extra_opts: --strip-components=1
+    keep_newer: yes
+    owner: apache
+    group: apache
+    list_files: yes
+  register: foswiki_unarchive
+
+- name: foswiki/bin directory
+  become: yes
+  file:
+    state: directory
+    path: "/var/www/foswiki/bin"
+    recurse: yes
+#    owner: root
+#    group: root
+#    mode: 0755
+#    seuser: system_u
+#    serole: object_r
+    setype: httpd_sys_script_exec_t
+#    selevel: s0
+
+- name: httpd/conf.d/foswiki.conf
+  become: yes
+  template:
+    src: "foswiki.conf.j2"
+    dest: "/etc/httpd/conf.d/foswiki.conf"
+
+- name: SELinux
+  with_items:
+  - name: httpd_can_network_connect
+  - name: httpd_can_sendmail
+  - name: httpd_enable_cgi
+  - name: httpd_enable_homedirs
+  - name: httpd_read_user_content
+  - name: httpd_unified
+  become: yes
+  seboolean:
+    name: "{{ item.name }}"
+    state: "{{ item.state | default(True) }}"
+    persistent: yes
+
+- name: Restart Apache
+  become: yes
+  service:
+    name: httpd
+    state: restarted

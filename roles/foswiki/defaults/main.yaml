@@ -1,0 +1,46 @@
+# file: roles/foswiki/defaults/main.yaml
+---
+
+foswiki_version: "2.1.6"
+foswiki_archive: "Foswiki-{{ foswiki_version }}.tgz"
+foswiki_download_url: >-
+  https://github.com/foswiki/distro/releases/download/FoswikiRelease02x01x06/{{
+  foswiki_archive }}
+foswiki_checksum_algorithm: "md5"
+foswiki_checksum: "706fc6bf1fa6df6bfbe8a079c5007aa3"
+
+foswiki_packages:
+- "httpd"
+- "mod_perl" # Required if using Apache 2 and mod_perl
+- "perl-Algorithm-Diff"
+- "perl-Archive-Tar"
+- "perl-Authen-SASL"
+- "perl-CGI"
+- "perl-CGI-Session"
+- "perl-Crypt-PasswdMD5"
+- "perl-Digest-SHA"
+- "perl-Email-Address"
+- "perl-Email-MIME"
+- "perl-Encode"
+- "perl-Error"
+- "perl-File-Copy-Recursive"
+- "perl-HTML-Parser"
+- "perl-HTML-Tree"
+- "perl-IO-Socket-IP"
+- "perl-IO-Socket-SSL"
+- "perl-JSON"
+- "perl-libapreq2" # Required if using Apache 2 and mod_perl
+- "perl-Locale-Codes"
+- "perl-Locale-Maketext"
+- "perl-Locale-Maketext-Lexicon"
+#- "perl-Locale-Msgfmt" # n/a 2018-09-03
+- "perl-libwww-perl"
+- "perl-LWP-Protocol-https"
+- "perl-URI"
+- "perl-version"
+- "perl-DBI" # Foswiki Page cache
+- "perl-DBD-Pg" # PostgreSQL based Page Cache
+- "perl-FCGI" # fastcgi / fcgi apache modules
+- "perl-Crypt-SMIME" # S/MIME email signing
+#- "perl-Crypt-X509" # S/MIME email signing # n/a 2018-09-03
+#- "perl-Convert-PEM" # S/MIME email signing # n/a 2018-09-03

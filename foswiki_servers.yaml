@@ -1,0 +1,7 @@
+# file: foswiki_servers.yaml
+---
+
+- hosts: foswiki_servers
+  roles:
+  - "{{ playbook_dir | dirname }}/service_commons_ansible/roles/updates_auto"
+  - foswiki
