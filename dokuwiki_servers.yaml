@@ -1,0 +1,7 @@
+# file: dokuwiki_servers.yaml
+---
+
+- hosts: dokuwiki_servers
+  roles:
+  - "{{ playbook_dir | dirname }}/service_commons_ansible/roles/updates_auto"
+  - "{{ playbook_dir | dirname }}/service_platform_ansible/roles/dokuwiki"

@@ -1,0 +1,117 @@
+# file: roles/dokuwiki/tasks/main.yaml
+#
+# Preliminary DokuWiki installation - You need to access install.php manually.
+#
+---
+
+- name: DokuWiki and dependencies (yum)
+  when: ansible_pkg_mgr == "yum"
+  with_items: "{{ dokuwiki_packages }}"
+  become: yes
+  yum:
+    name: "{{ item }}"
+
+- name: DokuWiki and dependencies (dnf)
+  when: ansible_pkg_mgr == "dnf"
+  with_items: "{{ dokuwiki_packages }}"
+  become: yes
+  dnf:
+    name: "{{ item }}"
+
+- name: Enable Remi PHP 5.6 repository
+  become: yes
+  command: yum-config-manager --enable remi-php56
+
+- name: Update all (yum)
+  when: ansible_pkg_mgr == "yum"
+  become: yes
+  yum:
+    name: "*"
+    state: latest
+
+- name: Update all (dnf)
+  when: ansible_pkg_mgr == "dnf"
+  become: yes
+  dnf:
+    name: "*"
+    state: latest
+
+- name: Download DokuWiki
+  become: yes
+  get_url:
+    url: "{{ dokuwiki_download_url }}"
+    dest: "~/{{ dokuwiki_archive }}"
+  register: dokuwiki_download
+
+- name: DokuWiki directory
+  become: yes
+  file:
+    state: directory
+    path: "{{ dokuwiki_dir }}"
+    owner: root
+    group: www-data
+    mode: 0755
+    seuser: system_u
+    serole: object_r
+    setype: httpd_sys_content_t
+    selevel: s0
+
+- name: Unpack DokuWiki
+  become: yes
+  unarchive:
+    remote_src: yes
+    src: "{{ dokuwiki_download.dest }}"
+    dest: "{{ dokuwiki_dir }}"
+    extra_opts: --strip-components=1
+    keep_newer: no
+    owner: root
+    group: www-data
+    list_files: yes
+  register: dokuwiki_unarchive
+
+- debug:
+    var: dokuwiki_unarchive
+
+- name: File permissions
+  with_items:
+  - "data"
+  - "lib/plugins"
+  - "lib/tpl"
+  - "conf" # write maybe not needed for all files and subdirs
+  become: yes
+  file:
+    path: "{{ dokuwiki_dir }}/{{ item }}"
+    recurse: yes
+    owner: apache
+    mode: g+wX
+
+- name: Allow httpd to write DokuWiki conf and data
+  become: yes
+  with_items:
+  - "conf"
+  - "data"
+  sefcontext:
+    target: "{{ dokuwiki_dir }}/{{ item }}(/.*)?"
+    setype: httpd_sys_rw_content_t
+    state: present
+
+- name: SELinux
+  with_items:
+  - name: httpd_can_network_connect
+  - name: httpd_can_sendmail
+  - name: httpd_enable_cgi
+  - name: httpd_enable_homedirs
+  - name: httpd_read_user_content
+  - name: httpd_unified
+  become: yes
+  seboolean:
+    name: "{{ item.name }}"
+    state: "{{ item.state | default(True) }}"
+    persistent: yes
+
+- name: Apply new SELinux file context to filesystem
+  with_items:
+  - "conf"
+  - "data"
+  become: yes
+  command: restorecon -irv "{{ dokuwiki_dir }}/{{ item }}"

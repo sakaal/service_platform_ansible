@@ -1,0 +1,14 @@
+# file: roles/dokuwiki/defaults/main.yaml
+---
+
+dokuwiki_archive: "dokuwiki-stable.tgz"
+dokuwiki_download_url: "https://download.dokuwiki.org/src/dokuwiki/{{ dokuwiki_archive }}"
+
+dokuwiki_dir: "/var/www/dokuwiki"
+
+dokuwiki_packages:
+- "libselinux-python"
+- "policycoreutils-python"
+- "php-mbstring"
+- "php-gd"
+- "https://rpms.remirepo.net/enterprise/remi-release-7.rpm"
