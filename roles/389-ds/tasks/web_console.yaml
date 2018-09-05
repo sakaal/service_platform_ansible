@@ -1,0 +1,36 @@
+# file: roles/389-ds/tasks/web_console.yaml
+---
+
+- name: Install the DS web console packages (yum)
+  when: ansible_pkg_mgr == "yum"
+  with_items: "{{ ds_web_packages }}"
+  become: yes
+  yum:
+    name: "{{ item }}"
+
+- name: Install the DS web console packages (dnf)
+  when: ansible_pkg_mgr == "dnf"
+  with_items: "{{ ds_web_packages }}"
+  become: yes
+  dnf:
+    name: "{{ item }}"
+
+- name: Disable mpm_prefork_module
+  become: yes
+  lineinfile:
+    dest: '/etc/httpd/conf.modules.d/00-mpm.conf'
+    regexp: '^[# ]*(LoadModule\s+mpm_prefork_module.*)$'
+    backrefs: yes
+    line: '#\1'
+  notify:
+  - Restart httpd
+
+- name: Enable mpm_worker_module
+  become: yes
+  lineinfile:
+    dest: '/etc/httpd/conf.modules.d/00-mpm.conf'
+    regexp: '^[# ]*(LoadModule\s+mpm_worker_module.*)$'
+    backrefs: yes
+    line: '\1'
+  notify:
+  - Restart httpd

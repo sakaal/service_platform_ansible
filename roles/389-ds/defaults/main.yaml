@@ -3,3 +3,8 @@
 
 ds_packages:
 - "389-ds"
+
+ds_web_packages:
+- "httpd"
+- "java-1.8.0-openjdk"
+- "xorg-x11-xauth"

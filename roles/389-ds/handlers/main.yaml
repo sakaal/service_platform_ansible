@@ -1,0 +1,8 @@
+# file: roles/389-ds/handlers/main.yaml
+---
+
+- name: Restart httpd
+  become: yes
+  service:
+    name: httpd
+    state: restarted

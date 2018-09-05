@@ -319,3 +319,7 @@
   file:
     state: absent
     dest: "/root/{{ item }}"
+
+- name: Web console
+  include_tasks: web_console.yaml
+  tags: web_console
