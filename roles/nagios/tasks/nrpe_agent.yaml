@@ -52,6 +52,15 @@
     line: 'nrpe            5666/tcp                # NRPE'
     insertafter: '^.*\s+5666\s+.*NRPE.*$'
 
+- name: Install check_md_raid script to /usr/local/bin/
+  when: nagios_nrpe_commands | default([]) |
+        selectattr('command', 'search', 'check_md_raid') | list | length > 0
+  become: yes
+  copy:
+    src: "check_md_raid.sh"
+    dest: "/usr/local/bin/check_md_raid"
+    mode: 0755
+
 - name: Drop in files in /etc/sudoers.d
   with_items: "{{ default_nagios_nrpe_commands | union(
               hostvars[inventory_hostname].nagios_nrpe_commands | default([])
