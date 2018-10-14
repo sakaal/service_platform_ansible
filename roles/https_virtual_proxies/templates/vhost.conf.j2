@@ -59,7 +59,7 @@ RemoteIPHeader X-Forwarded-For
 {% endfor %}
 
 {% endif %}
-ProxyPass /{{ proxy.context }} http://{{ proxy.backend_host }}/{{ proxy.backend_context }} nocanon
+ProxyPass /{{ proxy.context }} http://{{ proxy.backend_host }}/{{ proxy.backend_context }} nocanon timeout=900
 ProxyPassReverse /{{ proxy.context }} http://{{ proxy.backend_host }}/{{ proxy.backend_context }}
 ProxyPassReverse /{{ proxy.context }} http://{{ item.fqdn }}/{{ proxy.backend_context }}
 ProxyPassReverseCookieDomain {{ proxy.backend_host }} {{ item.fqdn }}
