@@ -3,8 +3,9 @@
 
 - name: Set JAVA_HOME for all users
   become: yes
-  template: src="java_home.sh.j2"
-            dest="/etc/profile.d/java_home.sh"
-            owner=root
-            group=root
-            mode=0644
+  template:
+    src: "java_home.sh.j2"
+    dest: "/etc/profile.d/java_home.sh"
+    owner: root
+    group: root
+    mode: 0644
