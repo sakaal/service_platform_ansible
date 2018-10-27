@@ -1,0 +1,74 @@
+{# file: roles/backups/templates/backups.sh.j2 #}
+#!/usr/bin/env bash
+
+BACKUPS_DIR="{{ backup_directory | default('/srv/rsync/backups') }}"
+
+retain_noon_eve_dawn() {
+# Assume the current directory is $backup_path
+    find . -maxdepth 1 -type d -name "backup.*" -ctime +2
+}
+
+do_backup() {
+    if [[ -n "${backup_host}" && -n "${backup_path}" ]]; then
+        echo "Backing up ${name}: ${backup_host}:${backup_path}"
+
+        mkdir -p "${BACKUPS_DIR}/${backup_host}/${backup_path}"
+        cd "${BACKUPS_DIR}/${backup_host}/${backup_path}"
+
+        if [ -d "backup.${timestamp}" ]; then
+            echo "Warning: Skipping - Directory backup.${timestamp} already exists." 1>&2
+            return 0
+        fi
+
+        rsync_opts="-a --delete --numeric-ids"
+
+        # Check the size of previous backup.
+        last_backup="$(ls -ctd1 -- backup.* 2>/dev/null | head -n 1)"
+        if [ ! -z "${last_backup}" ]; then
+            size_kiB="$(du -sB1024 ${last_backup} | cut -f1)"
+            avail_kiB="$(df --output=avail --total -B1024 $PWD | tail -n 1)"
+
+            # We require at least twice the size of last backup available plus 256 kiB.
+            need_kiB=$(( size_kiB * 2 + 256 ))
+
+            if [ "${avail_kiB}" -lt "${need_kiB}" ]; then
+                echo "Out of space. Available ${avail_kiB} kiB. "\
+                     "Needed (${need_kiB} kiB)." 1>&2
+                exit 1
+            fi
+            rsync_opts+=" --link-dest=../${last_backup}"
+        else
+            echo "No previous backup found."
+        fi
+        rsync ${rsync_opts} -e 'ssh -o BatchMode=yes' root@${backup_host}:${backup_path}/ backup.${timestamp}/
+    fi
+}
+
+for filename in /usr/local/etc/backups.d/*.conf; do
+(
+    if [[ ${filename} == *"*"* ]]; then
+        exit 1
+    fi
+
+    unset name backup_host backup_path
+    . "${filename}"
+    timestamp="$(date -u +'%FT%H%MZ')"
+
+    do_backup
+
+    EXITVALUE=$?
+    if [ $EXITVALUE -ne 0 ]; then
+        echo "Failed to backup ${name}: ${backup_host}:${backup_path}" 1>&2
+    fi
+)
+done
+EXITVALUE=$?
+if [ $EXITVALUE -ne 0 ]; then
+    echo "Couldn't find /usr/local/etc/backups.d/*.conf" 1>&2
+    exit $EXITVALUE
+fi
+
+/usr/local/sbin/backups_retention
+
+echo Finished.
+exit $EXITVALUE

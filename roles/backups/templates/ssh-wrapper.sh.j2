@@ -1,0 +1,13 @@
+#!/bin/bash
+
+{% for target in backup_targets | default([]) %}
+{% if target.host == item.host %}
+if [[ "${SSH_ORIGINAL_COMMAND}" =~ ^rsync\ ([.CDLcdefgilmnoprstuvx-]+\ )+{{ target.path }}/?$ ]]; then
+    ${SSH_ORIGINAL_COMMAND}
+    exit $?
+fi
+{% endif %}
+{% endfor %}
+echo "Access denied"
+echo "Denied: ${SSH_ORIGINAL_COMMAND} from ${SSH_CLIENT}" >> /var/log/ssh-forced-commands
+exit 1

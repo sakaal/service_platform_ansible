@@ -1,0 +1,11 @@
+[Unit]
+Description=backups schedule
+
+[Timer]
+OnCalendar={{ backups_timer_on_calendar }}
+#RandomizedDelaySec=2 h 30 min
+#AccuracySec=2 h 30 min
+Unit=backups.service
+
+[Install]
+WantedBy=timers.target

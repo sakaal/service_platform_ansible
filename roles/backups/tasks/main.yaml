@@ -1,0 +1,213 @@
+# file: roles/backups/tasks/main.yaml
+---
+
+- name: Local script directory
+  with_items: "{{ backup_targets | default([]) }}"
+  local_action:
+    module: file
+    state: directory
+    path: "{{ role_path }}/files/{{ item.host }}"
+
+- name: List targets per host
+  with_items: "{{ backup_targets | default([]) }}"
+  local_action:
+    module: template
+    src: "ssh-wrapper.sh.j2"
+    dest: "{{ role_path }}/files/{{ item.host }}/ssh-wrapper.sh"
+
+- name: SSH wrapper script
+  with_items: "{{ backup_targets | default([]) }}"
+  local_action:
+    module: command
+    _raw_params: >-
+      scp
+      {{ role_path }}/files/{{ item.host }}/ssh-wrapper.sh
+      {{ hostvars[ item.host ].ansible_user
+      }}@{{ item.host }}:ssh-wrapper.sh
+
+- name: Move the SSH wrapper script into place
+  with_items: "{{ backup_targets | default([]) }}"
+  local_action:
+    module: command
+    _raw_params: >-
+      ssh
+      {{ hostvars[ item.host ].ansible_user
+      }}@{{ item.host }}
+      [ -f "ssh-wrapper.sh" ] && sudo mv -f ssh-wrapper.sh /usr/local/bin/ssh-wrapper.sh
+  register: backups_sshwrapper
+  changed_when: backups_sshwrapper.rc == 0
+  failed_when: false
+
+- name: SSH wrapper script permissions
+  with_items: "{{ backups_sshwrapper.results | default([]) }}"
+  when: item is changed
+  local_action:
+    module: command
+    _raw_params: >-
+      ssh
+      {{ hostvars[ item.item.host ].ansible_user
+      }}@{{ item.item.host }}
+      sudo chmod 0755 /usr/local/bin/ssh-wrapper.sh &&
+      sudo chown root:root /usr/local/bin/ssh-wrapper.sh
+
+- name: Backup user SSH public key
+  become: yes
+  user:
+    name: root
+    generate_ssh_key: yes
+    ssh_key_bits: "{{ ssh_key_bits | default(4096) }}"
+    ssh_key_type: "{{ ssh_key_type | default('rsa') }}"
+    ssh_key_comment: "root@{{ ansible_fqdn }}_{{ ansible_date_time.iso8601 | replace(':', '') }}"
+  register: backups_user
+
+- name: Ensure SSH authorized_keys file exists
+  with_items: "{{ backup_targets | default([]) }}"
+  local_action:
+    module: command
+    _raw_params: >-
+      ssh -A
+      -o BatchMode=yes
+      -o ConnectTimeout=10
+      -o StrictHostKeyChecking=no
+      -o PasswordAuthentication=no
+      {{ hostvars[ item.host ].ansible_user
+      }}@{{ item.host }}
+      "sudo -s eval 'umask 077;
+      mkdir -p /root/.ssh;
+      touch -a /root/.ssh/authorized_keys'"
+
+- name: Preserve existing authorized SSH keys
+  with_items: "{{ backup_targets | default([]) }}"
+  local_action:
+    module: command
+    _raw_params: >-
+      ssh -A
+      -o BatchMode=yes
+      -o ConnectTimeout=10
+      -o StrictHostKeyChecking=no
+      -o PasswordAuthentication=no
+      {{ hostvars[ item.host ].ansible_user
+      }}@{{ item.host }}
+      sudo cat /root/.ssh/authorized_keys > authorized_keys.tmp
+
+- name: Authorize SSH key for port forwarding
+  with_items: "{{ groups['libvirt_hosts'] }}"
+  delegate_to: "{{ item }}"
+  authorized_key:
+    user: "{{ admin_username }}"
+    key_options: "command=\"echo 'Port forwarding only'\",\
+                  no-agent-forwarding,no-X11-forwarding,\
+                  permitopen=\"*:{{ admin_ssh_port }}\""
+    key: "{{ backups_user.ssh_public_key }}"
+    state: present
+
+- name: Authorize SSH keys for rsync
+  with_items: "{{ backup_targets | default([]) }}"
+  local_action:
+    module: command
+    _raw_params:
+      ssh -A
+      -o BatchMode=yes
+      -o ConnectTimeout=10
+      -o StrictHostKeyChecking=no
+      -o PasswordAuthentication=no
+      {{ hostvars[ item.host ].ansible_user
+      }}@{{ item.host }}
+      echo 'command=\"/usr/local/bin/ssh-wrapper.sh\",no-pty,no-agent-forwarding,no-port-forwarding,no-X11-forwarding
+      {{ backups_user.ssh_public_key }}' >> authorized_keys.tmp
+
+- name: Remove duplicate authorized SSH keys
+  with_items: "{{ backup_targets | default([]) }}"
+  local_action:
+    module: command
+    _raw_params: >-
+      ssh -A
+      -o BatchMode=yes
+      -o ConnectTimeout=10
+      -o StrictHostKeyChecking=no
+      -o PasswordAuthentication=no
+      {{ hostvars[ item.host ].ansible_user
+      }}@{{ item.host }}
+      cat authorized_keys.tmp | sort | uniq | sudo tee /root/.ssh/authorized_keys
+
+- name: Backups script
+  become: yes
+  template:
+    src: "backups.sh.j2"
+    dest: "/usr/local/sbin/backups"
+    owner: root
+    group: root
+    mode: u=rwx,g=rx,o=
+
+- name: Backups retention script
+  become: yes
+  template:
+    src: "backups_retention.sh.j2"
+    dest: "/usr/local/sbin/backups_retention"
+    owner: root
+    group: root
+    mode: u=rwx,g=rx,o=
+
+- name: Backups configuration directory
+  become: yes
+  file:
+    path: "/usr/local/etc/backups.d"
+    state: directory
+    owner: root
+    group: root
+    mode: u=rwx,g=rx,o=rx
+
+- name: Backups configuration files
+  with_items: "{{ backup_targets | default([]) }}"
+  when: item.state | default('present') == 'present'
+  become: yes
+  template:
+    src: "backups.conf.j2"
+    dest: "/usr/local/etc/backups.d/{{ item.name }}.conf"
+    owner: root
+    group: root
+    mode: u=rwx,g=rx,o=rx
+
+- name: Delete backups configuration files
+  with_items: "{{ backup_targets | default([]) }}"
+  when: item.state | default('present') == 'absent'
+  become: yes
+  file:
+    path: "/usr/local/etc/backups.d/{{ item.name }}.conf"
+    state: "{{ item.state | default('present') }}"
+
+- name: Backups systemd service unit file
+  become: yes
+  template:
+    src: "backups.service.j2"
+    dest: "/etc/systemd/system/backups.service"
+    owner: root
+    group: root
+    mode: ug=rw,o=r
+  notify: systemctl daemon-reload
+
+- name: Backups systemd timer unit file
+  become: yes
+  template:
+    src: "backups.timer.j2"
+    dest: "/etc/systemd/system/backups.timer"
+    owner: root
+    group: root
+    mode: ug=rw,o=r
+  notify: systemctl daemon-reload
+
+- name: Enable or disable the backups timer
+  become: yes
+  systemd:
+    name: "backups.timer"
+    enabled: "{{ backups_timer_active | default(True) | bool }}"
+
+- name: Start or stop the backups timer
+  become: yes
+  systemd:
+    name: "backups.timer"
+    state: "{{ 'started' if (backups_timer_active | default(True) | bool) else 'stopped' }}"
+
+- name: Backup schedule
+  debug:
+    msg: "The backups will run on: {{ backups_timer_on_calendar }} in {{ ansible_date_time.tz }} time zone"

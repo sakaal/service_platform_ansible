@@ -1,0 +1,9 @@
+[Unit]
+Description=backups
+
+[Service]
+Type=simple
+ExecStart=/usr/local/sbin/backups
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,107 @@
+{# file: roles/backups/templates/backups_retention.sh.j2 #}
+#!/usr/bin/env bash
+#
+# This retention policy is assuming backups are taken every four hours.
+#
+
+BACKUPS_DIR="{{ backup_directory | default('/srv/rsync/backups') }}"
+
+retain_noon_eve_dawn() {
+    for directory in $(find . -maxdepth 1 -type d -name "backup.*" -ctime +3 -ctime -7); do
+        time_of_day=${directory//*T/}
+        hour_of_day=${time_of_day:0:2}
+        fourhour=$(( 10#$hour_of_day / 4 ))
+        if (( $fourhour % 2 == 0 )); then
+            echo "Deleting (retain noon eve dawn) ${BACKUPS_DIR}/${backup_host}/${backup_path}/${directory//.\//}"
+            rm -rf "${BACKUPS_DIR}/${backup_host}/${backup_path}/${directory//.\//}"
+        fi
+    done
+}
+
+retain_noon_dawn() {
+    for directory in $(find . -maxdepth 1 -type d -name "backup.*" -ctime +7 -ctime -14); do
+        time_of_day=${directory//*T/}
+        hour_of_day=${time_of_day:0:2}
+        eighthour=$(( 10#$hour_of_day / 8 ))
+        if (( $eighthour % 3 == 2 )); then
+            echo "Deleting (retain noon dawn) ${BACKUPS_DIR}/${backup_host}/${backup_path}/${directory//.\//}"
+            rm -rf "${BACKUPS_DIR}/${backup_host}/${backup_path}/${directory//.\//}"
+        fi
+    done
+}
+
+retain_nightly() {
+    for directory in $(find . -maxdepth 1 -type d -name "backup.*" -ctime +14 -ctime -35); do
+        time_of_day=${directory//*T/}
+        hour_of_day=${time_of_day:0:2}
+        halfday=$(( 10#$hour_of_day / 12 ))
+        if (( $halfday % 2 == 1 )); then
+            echo "Deleting (retain nightly) ${BACKUPS_DIR}/${backup_host}/${backup_path}/${directory//.\//}"
+            rm -rf "${BACKUPS_DIR}/${backup_host}/${backup_path}/${directory//.\//}"
+        fi
+    done
+}
+
+retain_six_weekdays() {
+    for directory in $(find . -maxdepth 1 -type d -name "backup.*" -ctime +35 -ctime -91); do
+        timestamp=${directory//*backup\./}
+        timestamp=${timestamp//T*/}
+        day_of_week=$(date -d "${timestamp}" +%u)
+        if (( $day_of_week == 7 )); then
+            echo "Deleting (retain six weekdays) ${BACKUPS_DIR}/${backup_host}/${backup_path}/${directory//.\//}"
+            rm -rf "${BACKUPS_DIR}/${backup_host}/${backup_path}/${directory//.\//}"
+        fi
+    done
+}
+
+retain_Mon_Thu_Sat() {
+    for directory in $(find . -maxdepth 1 -type d -name "backup.*" -ctime +91 -ctime -182); do
+        timestamp=${directory//*backup\./}
+        timestamp=${timestamp//T*/}
+        day_of_week=$(date -d "${timestamp}" +%u)
+        if [[ "2 3 5" =~ (^|[[:space:]])"${day_of_week}"($|[[:space:]]) ]]; then
+            echo "Deleting (retain Mon Thu Sat) ${BACKUPS_DIR}/${backup_host}/${backup_path}/${directory//.\//}"
+            rm -rf "${BACKUPS_DIR}/${backup_host}/${backup_path}/${directory//.\//}"
+        fi
+    done
+}
+
+retain_weekly() {
+    for directory in $(find . -maxdepth 1 -type d -name "backup.*" -ctime +182 -ctime -364); do
+        timestamp=${directory//*backup\./}
+        timestamp=${timestamp//T*/}
+        day_of_week=$(date -d "${timestamp}" +%u)
+        if [ "${day_of_week}" -ne 1 ]; then
+            echo "Deleting (retain weekly) ${BACKUPS_DIR}/${backup_host}/${backup_path}/${directory//.\//}"
+            rm -rf "${BACKUPS_DIR}/${backup_host}/${backup_path}/${directory//.\//}"
+        fi
+    done
+}
+
+echo Applying backup retention policy
+
+for filename in /usr/local/etc/backups.d/*.conf; do
+(
+    if [[ ${filename} == *"*"* ]]; then
+        exit 1
+    fi
+
+    unset name backup_host backup_path
+    . "${filename}"
+
+    if [[ -n "${backup_host}" && -n "${backup_path}" ]]; then
+        cd "${BACKUPS_DIR}/${backup_host}/${backup_path}"
+        retain_noon_eve_dawn
+        retain_noon_dawn
+        retain_nightly
+        retain_six_weekdays
+        retain_Mon_Thu_Sat
+        retain_weekly
+    fi
+)
+done
+EXITVALUE=$?
+if [ $EXITVALUE -ne 0 ]; then
+    echo "Couldn't find /usr/local/etc/backups.d/*.conf" 1>&2
+    exit $EXITVALUE
+fi

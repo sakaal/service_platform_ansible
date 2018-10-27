@@ -1,0 +1,7 @@
+# file: roles/backups/handlers/main.yaml
+---
+
+- name: systemctl daemon-reload
+  become: yes
+  systemd:
+    daemon_reload: yes

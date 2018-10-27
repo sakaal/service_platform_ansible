@@ -1,0 +1,4 @@
+# file: roles/backups/defaults/main.yaml
+---
+
+backups_timer_on_calendar: "*-*-* 0/4:{{ [ 59|random, 59|random ] | join(':') }}"

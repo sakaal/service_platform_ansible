@@ -1,0 +1,22 @@
+# file: backups.yaml
+#
+# Backups servers
+#
+---
+
+- name: BACKUP SERVERS
+  hosts: backup_servers
+  pre_tasks:
+  - name: SSH proxy configuration
+    loop: "{{ groups['libvirt_hosts'] }}"
+    loop_control:
+      loop_var: hostname
+    include_role:
+      name: "{{ playbook_dir | dirname }}/service_infra_ansible/roles/ssh_proxy"
+    vars:
+      ansible_become: yes
+      ansible_user_id: root
+  roles:
+  - role: "{{ playbook_dir | dirname }}/service_commons_ansible/roles/local_groups"
+  - role: "{{ playbook_dir | dirname }}/service_commons_ansible/roles/local_users"
+  - role: "{{ playbook_dir | dirname }}/service_platform_ansible/roles/backups"
