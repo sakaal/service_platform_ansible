@@ -1,0 +1,7 @@
+# file: roles/ossec/defaults/client.yaml
+---
+
+ossec_packages:
+- "ossec-hids"
+- "ossec-hids-client"
+

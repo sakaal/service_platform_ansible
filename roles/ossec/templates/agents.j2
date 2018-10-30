@@ -1,0 +1,4 @@
+{# file: roles/ossec/templates/agents.j2 #}
+{% for agent in ossec_agents %}
+{{  agent.ip }},{{ agent.name }}
+{% endfor %}

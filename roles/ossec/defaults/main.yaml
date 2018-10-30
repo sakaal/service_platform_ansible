@@ -1,0 +1,12 @@
+# file: roles/ossec/defaults/main.yaml
+---
+
+atomic_repository_url: "https://updates.atomicorp.com/channels/atomic/centos/7/x86_64/RPMS/"
+atomic_version: "1.0-21.el7"
+atomic_release_rpm: "atomic-release-{{ atomic_version }}.art.noarch.rpm"
+atomic_release_rpm_url: "{{ atomic_repository_url }}{{ atomic_release_rpm }}"
+atomic_gpg_key_url: "https://www.atomicorp.com/RPM-GPG-KEY.atomicorp.txt"
+
+ossec_agents:
+- name: localAgent
+  ip: 127.0.0.1

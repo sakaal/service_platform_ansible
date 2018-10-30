@@ -1,0 +1,7 @@
+# file: ossec.yaml
+---
+
+- name: OSSEC
+  hosts: ossec_servers
+  roles:
+  - role: ossec

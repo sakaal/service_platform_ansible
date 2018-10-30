@@ -1,0 +1,70 @@
+# file: roles/ossec/tasks/main.yaml
+#
+# This is a preliminary test configuration only.
+#
+---
+
+- name: Atomic Release Repository GPG key
+  become: yes
+  rpm_key:
+    key: "{{ atomic_gpg_key_url }}"
+
+- name: Atomic Release Repository
+  become: yes
+  yum:
+    name: "{{ atomic_release_rpm_url }}"
+
+- name: OSSEC role
+  include_vars: "{{ ossec_role | default('server') }}.yaml"
+
+- name: OSSEC packages
+  become: yes
+  yum:
+    name: "{{ ossec_packages }}"
+    state: latest
+
+- name: Remove double-hyphens within comments
+  become: yes
+  replace:
+    path: "/var/ossec/etc/ossec.conf"
+    regexp: '(<!--.*)-(-[^>])'
+    replace: '\1\2'
+
+- name: OSSEC SMTP
+  with_items:
+  - xpath: "/ossec_config/global/smtp_server"
+    value: "{{ smtp_host }}"
+  - xpath: "/ossec_config/global/email_to"
+    value: "{{ admin_fullname }} <{{ admin_email }}>"
+  - xpath: "/ossec_config/global/email_from"
+    value: "{{ smtp_from }}."
+  become: yes
+  xml:
+    path: "/var/ossec/etc/ossec.conf"
+    xpath: "{{ item.xpath }}"
+    value: "{{ item.value }}"
+
+- name: Remove XML document type
+  become: yes
+  lineinfile:
+    path: "/var/ossec/etc/ossec.conf"
+    regexp: '^<\?xml\s+version=.*?>$'
+    state: absent
+
+- name: OSSEC agents file
+  become: yes
+  template:
+    src: "agents.j2"
+    dest: "/var/ossec/etc/agents"
+
+- name: Manage OSSEC agents
+  become: yes
+  command: /var/ossec/bin/manage_agents -f /var/ossec/etc/agents
+  register: ossec_manage_agents
+  changed_when: ossec_manage_agents.stdout is search('Agent information')
+
+- name: Restart OSSEC
+  become: yes
+  service:
+    name: "ossec-hids"
+    state: restarted
