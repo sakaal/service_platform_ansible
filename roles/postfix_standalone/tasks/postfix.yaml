@@ -103,7 +103,7 @@
     insertafter: '^#relay_domains'
     state: "{{ postfix_relay_domains is defined | ternary('present', 'absent') }}"
   notify:
-  - reload postfix
+  - Reload Postfix
 
 - name: Postfix relay recipient maps
   lineinfile:
@@ -115,7 +115,7 @@
                'relay_recipients' in postfix_lookup_tables | default([]) | map(attribute='name') | list )
                | ternary('present', 'absent') }}"
   notify:
-  - reload postfix
+  - Reload Postfix
 
 - name: Postfix relay host
   lineinfile:

@@ -89,6 +89,27 @@
   notify:
   - Restart clamd@amavisd
 
+- name: Resolve Amavisd mynetworks
+  set_fact:
+    amavisd_mynetworks: "{{ ( postfix_mynetworks.split(',') + [
+                            '127.0.0.0/8', '[::1]', '[FE80::]/10', '[FEC0::]/10',
+                            '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16'
+                            ] ) | map('trim') | list | unique }}"
+
+- debug:
+    var: amavisd_mynetworks
+
+- name: Amavisd mynetworks
+  args:
+    chdir: "/etc/amavisd"
+  shell:
+    _raw_params: >-
+      cp -f amavisd.conf amavisd.conf.before;
+      perl -0777 -pi -e 's|\@mynetworks\s*=\s*([^;]*);|\@mynetworks = qw(
+      {{ amavisd_mynetworks | join(" ") }} );|g' amavisd.conf
+  notify:
+  - Restart clamd@amavisd
+
 - name: Amavisd helpers home
   lineinfile:
     dest: "/etc/amavisd/amavisd.conf"
