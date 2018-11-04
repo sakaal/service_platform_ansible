@@ -133,7 +133,7 @@ samba_shares:
 - path: "/srv/samba/users"
   owner: root
   group: users
-  mode: "2750"
+  mode: "3750"
   state: present
 
 #
