@@ -1,0 +1,8 @@
+# file: samba.yaml
+---
+
+- name: FILE SHARING AND PRINTING SERVICES
+  hosts: all
+  roles:
+  - role: "{{ playbook_dir | dirname }}/service_commons_ansible/roles/local_users"
+  - role: samba

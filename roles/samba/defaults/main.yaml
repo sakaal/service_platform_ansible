@@ -1,0 +1,83 @@
+# file: roles/samba/defaults/main.yaml
+---
+
+samba_conf:
+
+- section: "global"
+  options:
+
+  - option: "server string"
+    value: "Samba %v on %h"
+
+  - option: "hosts allow" # by default only allow from the SSH client IPv4 /16 subnet
+    value: '{{ ansible_env["SSH_CONNECTION"] |
+               regex_replace("^([0-9]+\.[0-9]+\.).*$", "\1") }}'
+
+  - option: "interfaces"
+    value: "lo {{ ansible_default_ipv4.interface }}"
+
+  - option: "passdb backend"
+    value: "smbpasswd:/etc/samba/smbpasswd.txt"
+
+  - option: "smb encrypt"
+    value: "mandatory"
+
+  - option: "min protocol"
+    value: "smb3"
+
+  - option: "unix extensions"
+    value: "no"
+
+- section: "homes"
+  options:
+
+  - option: "follow symlinks"
+    value: "yes"
+
+  - option: "wide links"
+    value: "no"
+
+- section: "scratch"
+  state: absent
+  options:
+
+  - option: "comment"
+    value: "Scratch space"
+
+  - option: "path"
+    value: "/srv/samba/scratch"
+
+  - option: "available"
+    value: "yes"
+
+  - option: "browseable"
+    value: "yes"
+
+  - option: "public"
+    value: "no"
+
+  - option: "restrict anonymous"
+    value: "2"
+
+  - option: "read only"
+    value: "no"
+
+  - option: "valid users"
+    value: "@users"
+
+  - option: "write list"
+    value: "@users"
+
+  - option: "writable"
+    value: "yes"
+
+#
+# The default below only ensures that /srv/samba/scratch is NOT shared.
+# Set "state: present" for shares that you want.
+#
+samba_shares:
+
+- path: "/srv/samba/scratch"
+  owner: root
+  group: root
+  state: absent

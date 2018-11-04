@@ -1,0 +1,6 @@
+# file: roles/samba/handlers/main.yaml
+---
+
+- name: Reload Samba daemon
+  become: yes
+  command: smbcontrol smbd reload-config

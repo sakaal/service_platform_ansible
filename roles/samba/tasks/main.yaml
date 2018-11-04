@@ -1,0 +1,166 @@
+# file: roles/samba/tasks/main.yaml
+---
+
+- name: Check firewall configuration 
+  assert:
+    that:
+    - firewall_zone | default('') != ''
+
+- name: Check Samba configuration sections
+  with_items: "{{ samba_conf | default([]) }}"
+  assert:
+    that:
+    - item.section is defined or item.options is defined
+    - item.state | default('present') == 'absent' or item.options is defined
+
+- name: Check Samba configuration options
+  with_subelements:
+  - "{{ samba_conf | default([]) }}"
+  - options
+  - skip_missing: True
+  assert:
+    that:
+    - item[1].option | default('') != ''
+    - item[1].state | default('present') == 'absent' or item[1].value is defined
+
+#
+# This is a workaround for Ansible issue with leading whitespace in INI files:
+# https://github.com/ansible/ansible-modules-core/issues/4997
+#
+- name: Normalize indentation in Samba configuration
+  become: yes
+  replace:
+    path: "/etc/samba/smb.conf"
+    regexp: '^\s*([^\s#[].+=.*)$'
+    replace: '\t\1'
+    validate: >-
+      testparm --suppress-prompt --debuglevel=0 %s 1>/dev/null 2>&1
+  changed_when: no
+
+- name: Remove Samba configuration sections if necessary
+  with_items: "{{ samba_conf | default([]) }}"
+  when:
+  - item.section | default('') != ''
+  - item.state | default('present') == 'absent'
+  become: yes
+  ini_file:
+    path: "/etc/samba/smb.conf"
+    section: "{{ item.section }}"
+    state: "{{ item.state }}"
+    create: no
+  notify: Reload Samba daemon
+
+- name: Deploy Samba configuration
+  with_subelements:
+  - "{{ samba_conf | default([]) }}"
+  - options
+  - skip_missing: True
+  when:
+  - item[0].state | default('present') == 'present'
+  become: yes
+  ini_file:
+    path: "/etc/samba/smb.conf"
+    section: "{{ item[0].section | default('') }}"
+    option: "\t{{ item[1].option }}"
+    value: "{{ item[1].value | default(omit) }}"
+    state: "{{ item[1].state | default('present') }}"
+    create: yes
+    owner: root
+    group: root
+    mode: u=rw,go=r
+    seuser: "_default" # system_u
+    serole: "_default" # object_r
+    setype: "_default" # samba_etc_t
+    selevel: "_default" # s0
+  notify: Reload Samba daemon
+
+- name: Create Samba shares
+  with_items: "{{ samba_shares | default([]) }}"
+  when: item.state | default('present') == 'present'
+  become: yes
+  file:
+    state: directory
+    path: "{{ item.path }}"
+    owner: "{{ item.owner | default(omit) }}"
+    group: "{{ item.group | default(item.owner | default(omit)) }}"
+    mode: "{{ item.mode | default(omit) }}"
+
+- name: SELinux context for Samba shares
+  with_items: "{{ samba_shares | default([]) }}"
+  become: yes
+  sefcontext:
+    target: "{{ item.path }}(/.*)?"
+    setype: "samba_share_t"
+    state: "{{ item.state | default('present') }}"
+
+- name: Restore SELinux context for Samba shares
+  with_items: "{{ samba_shares | default([]) }}"
+  when: item.state | default('present') == 'present'
+  become: yes
+  command: restorecon -R {{ item.path }}
+
+- name: SELinux samba_enable_home_dirs
+  become: yes
+  seboolean:
+    name: samba_enable_home_dirs
+    state: yes
+    persistent: yes
+
+- name: Validate Samba configuration
+  become: yes
+  shell: >-
+    testparm --suppress-prompt --debuglevel=0 /etc/samba/smb.conf 1> /dev/null
+  register: samba_testparm
+  changed_when: no
+  failed_when: samba_testparm.rc != 0
+
+- name: Firewall
+  become: yes
+  firewalld:
+    service: samba
+    zone: "{{ firewall_zone }}"
+    immediate: yes
+    permanent: yes
+    state: enabled
+
+- name: Samba service
+  become: yes
+  service:
+    name: smb
+    enabled: yes
+    state: started
+
+- name: Check current Samba shares
+  become: yes
+  shell: smbstatus --shares --fast | grep "^.*[09]\+.*$" | cut -d' ' -f1 | uniq
+  register: samba_status
+  changed_when: no
+
+- name: Close current Samba shares marked absent
+  with_items: "{{ samba_conf | default([]) }}"
+  when:
+  - item.state | default('present') == 'absent'
+  - item.section | default('') != ''
+  - item.section in samba_status.stdout_lines
+  become: yes
+  command: smbcontrol smbd close-share {{ item.section }}
+
+- name: Prepare query for Samba configuration sections with 'available' parameter set
+  set_fact:
+    samba_share_query: >-
+      [].{
+      section: section,
+      available: (options[?option=='available'].value|[0])
+      }
+      [?available != null]
+
+- name: Perform the Samba configuration query
+  set_fact:
+    samba_conf_status: "{{ samba_conf | default([]) | json_query(samba_share_query) }}"
+
+- name: Close current Samba shares marked not available
+  with_items: "{{ samba_conf_status | default([]) }}"
+  when:
+  - not item.available | default(yes) | bool
+  become: yes
+  command: smbcontrol smbd close-share {{ item.section }}
