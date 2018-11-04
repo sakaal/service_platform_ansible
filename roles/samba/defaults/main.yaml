@@ -62,19 +62,19 @@ samba_conf:
     value: "@users"
 
   - option: "inherit permissions"
-    value: "yes"
+    value: "no"
 
   - option: "create mask"
     value: "0640"
 
   - option: "directory mask"
-    value: "0750"
+    value: "2750"
 
   - option: "security mask"
     value: "0664"
 
   - option: "directory security mask"
-    value: "0775"
+    value: "2775"
 
   - option: "force create mode"
     value: "0600"
