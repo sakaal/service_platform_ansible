@@ -31,6 +31,9 @@ samba_conf:
   - option: "unix extensions"
     value: "no"
 
+  - option: "restrict anonymous"
+    value: "2"
+
 - section: "homes"
   options:
 
@@ -51,9 +54,6 @@ samba_conf:
 
   - option: "public"
     value: "no"
-
-  - option: "restrict anonymous"
-    value: "2"
 
   - option: "read only"
     value: "no"
@@ -112,9 +112,6 @@ samba_conf:
 
   - option: "public"
     value: "no"
-
-  - option: "restrict anonymous"
-    value: "2"
 
   - option: "read only"
     value: "no"
