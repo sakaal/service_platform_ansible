@@ -17,7 +17,10 @@ samba_conf:
     value: "lo {{ ansible_default_ipv4.interface }}"
 
   - option: "passdb backend"
-    value: "smbpasswd:/etc/samba/smbpasswd.txt"
+    value: "tdbsam:/var/lib/samba/private/passdb.tdb"
+
+  - option: "private dir"
+    value: "/var/lib/samba/private"
 
   - option: "smb encrypt"
     value: "mandatory"
@@ -33,6 +36,60 @@ samba_conf:
 
   - option: "follow symlinks"
     value: "yes"
+
+  - option: "wide links"
+    value: "no"
+
+- section: "users"
+  options:
+
+  - option: "comment"
+    value: "Samba network users"
+
+  - option: "path"
+    value: "/srv/samba/users"
+
+  - option: "public"
+    value: "no"
+
+  - option: "restrict anonymous"
+    value: "2"
+
+  - option: "read only"
+    value: "no"
+
+  - option: "valid users"
+    value: "@users"
+
+  - option: "inherit permissions"
+    value: "yes"
+
+  - option: "create mask"
+    value: "0640"
+
+  - option: "directory mask"
+    value: "0750"
+
+  - option: "security mask"
+    value: "0664"
+
+  - option: "directory security mask"
+    value: "0775"
+
+  - option: "force create mode"
+    value: "0600"
+
+  - option: "force directory mode"
+    value: "0700"
+
+  - option: "force security mode"
+    value: "0400"
+
+  - option: "force directory security mode"
+    value: "0500"
+
+  - option: "follow symlinks"
+    value: "no"
 
   - option: "wide links"
     value: "no"
@@ -71,12 +128,18 @@ samba_conf:
   - option: "writable"
     value: "yes"
 
+samba_shares:
+
+- path: "/srv/samba/users"
+  owner: root
+  group: users
+  mode: "2750"
+  state: present
+
 #
 # The default below only ensures that /srv/samba/scratch is NOT shared.
 # Set "state: present" for shares that you want.
 #
-samba_shares:
-
 - path: "/srv/samba/scratch"
   owner: root
   group: root
