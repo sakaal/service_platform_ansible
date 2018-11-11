@@ -4,7 +4,7 @@
 - name: Check firewall configuration 
   assert:
     that:
-    - firewall_zone | default('') != ''
+    - samba_firewall_zone | default('') != ''
 
 - name: Check Samba configuration sections
   with_items: "{{ samba_conf | default([]) }}"
@@ -22,6 +22,11 @@
     that:
     - item[1].option | default('') != ''
     - item[1].state | default('present') == 'absent' or item[1].value is defined
+
+- name: Samba packages
+  become: yes
+  package:
+    name: "{{ samba_packages }}"
 
 #
 # This is a workaround for Ansible issue with leading whitespace in INI files:
@@ -118,7 +123,7 @@
   become: yes
   firewalld:
     service: samba
-    zone: "{{ firewall_zone }}"
+    zone: "{{ samba_firewall_zone }}"
     immediate: yes
     permanent: yes
     state: enabled

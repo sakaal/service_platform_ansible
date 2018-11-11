@@ -1,6 +1,11 @@
 # file: roles/samba/defaults/main.yaml
 ---
 
+samba_firewall_zone: "dmz"
+
+samba_packages:
+- "samba"
+
 samba_conf:
 
 - section: "global"
