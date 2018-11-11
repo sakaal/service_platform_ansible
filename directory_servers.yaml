@@ -6,7 +6,7 @@
 
 - hosts: directory_servers
   roles:
-    - role: dmz
+    - role: guest_dmz
       tags: [ 'net' ]
 
     - role: libvirt_guest_network_service

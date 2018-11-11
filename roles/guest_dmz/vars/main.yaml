@@ -1,0 +1,4 @@
+# file: roles/guest_dmz/vars/main.yaml
+---
+
+firewall_zone: dmz

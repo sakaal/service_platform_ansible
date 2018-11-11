@@ -8,7 +8,7 @@
   roles:
   - access_control
   - ca_trust
-  - dmz
+  - guest_dmz
   - libvirt_guest_network_service
   - certbot_standalone
   - transport_layer_security

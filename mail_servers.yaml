@@ -9,7 +9,7 @@
   become: yes
   roles:
   - role: ca_trust
-  - role: dmz
+  - role: guest_dmz
   - role: libvirt_guest_network_service
   - role: "{{ playbook_dir | dirname }}/service_commons_ansible/roles/local_groups"
   - role: "{{ playbook_dir | dirname }}/service_commons_ansible/roles/local_users"

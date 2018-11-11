@@ -1,4 +1,4 @@
-# file: roles/dmz/tasks/main.yaml
+# file: roles/guest_dmz/tasks/main.yaml
 #
 # Configures the other network interface of a guest to the DMZ.
 #

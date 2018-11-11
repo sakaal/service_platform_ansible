@@ -1,4 +1,4 @@
-# file: roles/dmz/handlers/main.yaml
+# file: roles/guest_dmz/handlers/main.yaml
 ---
 
 - name: Restart firewalld
