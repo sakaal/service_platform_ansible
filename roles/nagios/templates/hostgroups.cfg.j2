@@ -1,0 +1,8 @@
+{# file: roles/nagios/templates/hostgroups.cfg.j2
+#}
+{% for hostgroup in nagios_hostgroups | default([]) %}
+define hostgroup {
+	hostgroup_name		{{ hostgroup.name }}
+	alias			{{ hostgroup.alias }}
+	}
+{% endfor %}

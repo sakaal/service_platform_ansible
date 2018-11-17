@@ -13,6 +13,14 @@ nagios_nrpe_packages:
 - "nrpe-selinux" # SELinux context for NRPE
 - "nagios-plugins-all"
 
+nagios_hostgroups:
+
+- name: "service-host-names"
+  alias: "Service Host Names"
+
+- name: "virtual-machine-monitors"
+  alias: "Virtual Machine Monitors"
+
 default_nagios_nrpe_commands:
 
 - token: check_disk

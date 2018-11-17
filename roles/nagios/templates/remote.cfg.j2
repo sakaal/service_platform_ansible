@@ -2,6 +2,9 @@
 #}
 define host {
 	use			linux-server
+{% if 'libvirt_hosts' in group_names %}
+	hostgroups		virtual-machine-monitors
+{% endif %}
 	host_name		{{ inventory_hostname }}
 	alias			{{ inventory_hostname_short | upper
 				}}{% if public_hostname is defined and

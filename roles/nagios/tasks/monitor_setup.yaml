@@ -114,6 +114,17 @@
   notify:
   - Restart Nagios
 
+- name: Nagios host groups
+  become: yes
+  template:
+    src: "hostgroups.cfg.j2"
+    dest: "/etc/nagios/conf.d/hostgroups.cfg"
+    owner: root
+    group: nagios
+    mode: 0640
+  notify:
+  - Restart Nagios
+
 - name: Default localhost HTTP service
   become: yes
   lineinfile:

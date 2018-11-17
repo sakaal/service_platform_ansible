@@ -2,6 +2,7 @@
 #}
 define host {
 	use			linux-server
+        hostgroups		service-host-names
 	host_name		{{ item.hostname }}
 	alias			{{ item.alias | default(item.hostname | upper) }}
 	address			{{ lookup('dig', item.hostname) }}
