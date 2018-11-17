@@ -12,17 +12,6 @@
     that:
     - item.hostname is defined
 
-- name: Role packages on localhost
-  run_once: yes
-  become: yes
-  local_action:
-    module: package
-    name: "{{ local_packages }}"
-  vars:
-    local_packages:
-    - "python-dns"
-    - "python-netaddr"
-
 - name: NRPE monitor hosts
   when: inventory_hostname in ( nagios_nrpe_monitor_hosts | default([]) )
   include_tasks: monitor_setup.yaml
