@@ -6,6 +6,7 @@ define host {
 	alias			{{ inventory_hostname_short | upper
 				}}{% if public_hostname is defined and
 					public_hostname != inventory_hostname %} ({{ public_hostname }}){% endif %}
+
 	address			{{ lookup('dig', inventory_hostname) }}
 	max_check_attempts	5
 	check_period		24x7
