@@ -25,7 +25,7 @@ default_nagios_nrpe_commands:
   command: '/usr/lib64/nagios/plugins/check_swap -w 40% -c 20%'
 
 - token: check_procs_cpu
-  command: '/usr/lib64/nagios/plugins/check_procs -w 50 -c 80 -m CPU'
+  command: '/usr/lib64/nagios/plugins/check_procs -w 80 -c 90 -m CPU'
 
 - token: check_procs_total
   command: '/usr/lib64/nagios/plugins/check_procs -w 80:240 -c 40:400 -s RSZDT'
