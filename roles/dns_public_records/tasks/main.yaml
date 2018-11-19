@@ -2,7 +2,9 @@
 ---
 
 - name: Check if public DNS records are defined
-  when: public_dns_zone is defined and
-        public_hostname is defined and
-        public_ipv4_address is defined
-  include: api_call.yaml
+  when:
+  - public_dns_provider | default(None) | lower != 'none'
+  - public_dns_zone is defined
+  - public_hostname is defined
+  - public_ipv4_address is defined
+  include_tasks: api_call.yaml
