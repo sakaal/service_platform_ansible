@@ -1,0 +1,32 @@
+# file: roles/postgresql/vars/postgresql-9.6.yaml
+---
+
+postgresql_conf:
+- key: listen_addresses
+  val: "'{{ postgresql_listen }},localhost'"
+- key: max_connections
+  val: "{{ postgresql_max_connections | default(100) }}"
+- key: shared_buffers
+  val: "{{ postgresql_shared_buffers | default('256MB') }}"
+- key: effective_cache_size
+  val: "{{ postgresql_effective_cache_size | default('1GB') }}"
+- key: checkpoint_segments
+  state: absent
+- key: checkpoint_completion_target
+  val: "{{ postgresql_checkpoint_completion_target | default(0.9) }}"
+- key: log_min_error_statement
+  val: "{{ postgresql_log_min_error_statement | default('ERROR') }}"
+- key: log_min_duration_statement
+  val: "{{ postgresql_log_min_duration_statement | default('5000ms') }}"
+- key: log_line_prefix
+  val: "'%t:%r:%u@%d:[%p]: '"
+- key: log_statement
+  val: "{{ postgresql_log_statement | default('none') }}"
+- key: work_mem
+  val: "{{ postgresql_work_mem | default('4MB') }}"
+- key: maintenance_work_mem
+  val: "{{ postgresql_maintenance_work_mem | default('64MB') }}"
+- key: wal_buffers
+  val: "{{ postgresql_wal_buffers | default('-1') }}"
+- key: synchronous_commit
+  val: "{{ postgresql_synchronous_commit | default('on') }}"
