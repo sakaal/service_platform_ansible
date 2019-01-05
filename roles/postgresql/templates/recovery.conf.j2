@@ -1,0 +1,9 @@
+# {{ ansible_managed }}
+standby_mode = 'on'
+{% if postgresql_recovery.primary_conninfo is defined %}
+primary_conninfo = 'host={{ postgresql_recovery.primary_conninfo.host
+                 }} port={{ postgresql_recovery.primary_conninfo.port
+                 }} user={{ postgresql_recovery.primary_conninfo.user
+                 }} password={{ postgresql_recovery.primary_conninfo.password
+                 }}'
+{% endif %}

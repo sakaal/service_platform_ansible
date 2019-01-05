@@ -11,11 +11,9 @@
     dest: "/opt/check_postgres.tar.gz"
 
 - name: Dependencies
-  with_items:
-  - "perl-Data-Dumper"
   become: yes
-  yum:
-    name: "{{ item }}"
+  package:
+    name: "perl-Data-Dumper"
 
 - name: Extract the package
   become: yes

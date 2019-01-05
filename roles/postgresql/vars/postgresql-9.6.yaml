@@ -28,5 +28,13 @@ postgresql_conf:
   val: "{{ postgresql_maintenance_work_mem | default('64MB') }}"
 - key: wal_buffers
   val: "{{ postgresql_wal_buffers | default('-1') }}"
+- key: wal_level
+  val: "{{ postgresql_wal_level | default('minimal') }}"
+- key: max_wal_senders
+  val: "{{ postgresql_max_wal_senders | default('0') }}"
+- key: wal_keep_segments
+  val: "{{ postgresql_wal_keep_segments | default('0') }}"
+- key: hot_standby
+  val: "{{ 'on' if postgresql_hot_standby | default('off') else 'off' }}"
 - key: synchronous_commit
   val: "{{ postgresql_synchronous_commit | default('on') }}"

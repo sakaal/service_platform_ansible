@@ -10,6 +10,7 @@
     msg: You must set postgresql_version to the major version.
 
 - name: Include variables for the PostgreSQL version
+  when: postgresql_conf is not defined
   include_vars: "postgresql-{{ postgresql_version }}.yaml"
 
 - name: Check if PostgreSQL is configured
@@ -45,10 +46,9 @@
   include_tasks: repo.yaml
 
 - name: PostgreSQL server and adapter packages
-  with_items: "{{ postgresql_packages }}"
   become: yes
-  yum:
-    name: "{{ item }}"
+  package:
+    name: "{{ postgresql_packages }}"
 
 - name: Find the PostgreSQL data directory
   shell: "cat /etc/passwd | grep '^postgres:' | cut -d: -f6"
@@ -97,7 +97,7 @@
     dest: "{{ postgresql_pgdata }}/postgresql.conf"
     regexp: "^\\s*{{ item.key }}\\s*="
     line: "{{ item.key }} = {{ item.val | default('') }}"
-    insertafter: "^#+\\s*{{ item.key }}"
+    insertafter: "^#+\\s*{{ item.key }}\\s*="
     state: "{{ item.state | default('present') }}"
   notify:
   - Restart PostgreSQL
@@ -112,6 +112,27 @@
     owner: postgres
     group: postgres
     mode: 0600
+  notify:
+  - Reload PostgreSQL
+
+- name: Enable PostgreSQL recovery configuration
+  when:
+  - postgresql_recovery | default({}) | length > 0
+  template:
+    src: "recovery.conf.j2"
+    dest: "{{ postgresql_pgdata }}/recovery.conf"
+    owner: postgres
+    group: postgres
+    mode: 0600
+  notify:
+  - Reload PostgreSQL
+
+- name: Disable PostgreSQL recovery configuration
+  when:
+  - postgresql_recovery | default({}) | length == 0
+  file:
+    path: "{{ postgresql_pgdata }}/recovery.conf"
+    state: absent
   notify:
   - Reload PostgreSQL
 
