@@ -3,9 +3,10 @@
 
 - name: Dovecot packages
   with_items:
-  - dovecot
+  - "dovecot"
   - "dovecot-pigeonhole" # TODO: Sieve mail filtering
-  - mailx
+  - "mailx"
+  - "uw-imap-utils" # https://bugzilla.redhat.com/show_bug.cgi?id=427561
   yum:
     name: "{{ item }}"
     state: present
