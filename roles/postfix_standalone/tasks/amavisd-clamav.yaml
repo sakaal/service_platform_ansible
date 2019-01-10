@@ -63,29 +63,39 @@
 # Amavisd configuration
 #
 
-- name: Amavisd concurrency
+- name: Amavisd concurrency, domain, and hostname
+  vars:
+    amavisd_conf:
+    - key: "max_servers"
+      val: "'{{ amavis_max_servers }}'"
+    - key: "mydomain"
+      val: "'{{ postfix_mydomain }}'"
+    - key: "myhostname"
+      val: "'{{ postfix_myhostname }}'"
   lineinfile:
     dest: "/etc/amavisd/amavisd.conf"
-    regexp: '^\$max_servers'
-    line: "$max_servers = '{{ amavis_max_servers }}';"
+    regexp: '^\${{ item.key }}'
+    line: "${{ item.key }} = {{ item.val }};"
+    insertafter: '^#\s+\${{ item.key }}'
   notify:
   - Restart Postfix
   - Restart clamd@amavisd
 
-- name: Amavisd domain
+- name: Amavisd bad header quarantine
+  vars:
+    amavisd_conf:
+    - key: "final_bad_header_destiny"
+      val: "D_PASS"
+    - key: "bad_header_quarantine_method"
+      val: "'local:badh-%i-%n'"
+    - key: "bad_header_quarantine_to"
+      val: "'bad-header-quarantine'"
+  with_items: "{{ amavisd_conf }}"
   lineinfile:
     dest: "/etc/amavisd/amavisd.conf"
-    regexp: '^\$mydomain'
-    line: "$mydomain = '{{ postfix_mydomain }}';"
-  notify:
-  - Restart clamd@amavisd
-
-- name: Amavisd hostname
-  lineinfile:
-    dest: "/etc/amavisd/amavisd.conf"
-    regexp: '^\$myhostname'
-    line: "$myhostname = '{{ postfix_myhostname }}';"
-    insertafter: '^#\s+\$myhostname'
+    regexp: '^\${{ item.key }}'
+    line: "${{ item.key }} = {{ item.val }};"
+    insertafter: '^#\s+\${{ item.key }}'
   notify:
   - Restart clamd@amavisd
 
