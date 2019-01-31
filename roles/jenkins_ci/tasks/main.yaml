@@ -170,6 +170,51 @@
     state: enabled
   notify: Restart firewalld
 
+- name: Find any init script directories
+  local_action:
+    module: find
+    paths:
+    - "{{ inventory_dir }}/roles/jenkins_ci/files/{{ inventory_hostname }}"
+    - "{{ inventory_dir }}/roles/jenkins_ci/files"
+    patterns: "init.*.d"
+    recurse: no
+    file_type: directory
+  register: jenkins_ci_init_dirs
+
+- name: Deploy init script directories
+  when: jenkins_ci_init_dirs.matched > 0
+  with_items: "{{ jenkins_ci_init_dirs.files | default([]) }}"
+  become: yes
+  file:
+    state: directory
+    path: "{{ jenkins_home }}/{{ item.path | basename }}"
+    owner: jenkins
+    group: jenkins
+    mode: 0750
+
+- name: Find any init scripts
+  when: jenkins_ci_init_dirs.matched > 0
+  local_action:
+    module: find
+    paths: "{{ jenkins_ci_init_dirs.files | map(attribute='path') | list }}"
+    patterns: "*.*"
+    recurse: no
+    file_type: file
+  register: jenkins_ci_init_scripts
+
+- name: Deploy init scripts
+  when:
+  - not jenkins_ci_init_scripts is skipped
+  - jenkins_ci_init_scripts.matched > 0
+  with_items: "{{ jenkins_ci_init_scripts.files | default([]) }}"
+  become: yes
+  copy:
+    src: "{{ item.path }}"
+    dest: "{{ jenkins_home }}/{{ item.path | dirname | basename }}/{{ item.path | basename }}"
+    owner: jenkins
+    group: jenkins
+    mode: 0640
+
 - name: Enable the Jenkins CI service
   become: yes
   service:
