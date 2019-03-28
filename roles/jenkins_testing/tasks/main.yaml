@@ -1,0 +1,79 @@
+# file: roles/jenkins_testing/tasks/main.yml
+#
+# Testing smart XML search and replace across all Jenkins jobs' config.xml
+#
+---
+
+- assert:
+    that:
+    - (public_hostname | default("")).strip() != ""
+
+- name: Get the jenkins user info
+  getent:
+    database: passwd
+    key: jenkins
+
+- name: Resolve the Jenkins CI home directory
+  set_fact:
+    jenkins_home: "{{ getent_passwd.jenkins[4] }}"
+
+- debug:
+    var: jenkins_home
+
+- become: yes
+  package:
+    name: python-lxml
+
+- name: Locate all Jenkins jobs
+  become: yes
+  find:
+    paths: "{{ jenkins_home }}/jobs"
+    file_type: directory
+    recurse: no
+  register: jenkins_jobs
+
+- name: Rename playbooks in job config.xml files
+  with_nested:
+
+  - "{{ jenkins_jobs.files }}"
+
+  - - xpath: "//project/builders/org.jenkinsci.plugins.ansible.AnsiblePlaybookBuilder/playbook"
+      old: "example_playbooks/sample.yml"
+      new: "example_playbooks/newname.yaml"
+
+    - xpath: "//project/builders/org.jenkinsci.plugins.ansible.AnsiblePlaybookBuilder/playbook"
+      old: "example_playbooks/update.yml"
+      new: "example_playbooks/newupdate.yaml"
+
+    - xpath: "//project/builders/org.jenkinsci.plugins.ansible.AnsiblePlaybookBuilder/playbook"
+      old: "example_playbooks/${playbook}.yml"
+      new: "example_playbooks/${playbook}.yaml"
+
+    - xpath: "//*"
+      old: "update"
+      new: "newupdate"
+
+    - xpath: "//*"
+      old: "old_import"
+      new: "import"
+
+    - xpath: "//*"
+      old: "old_export"
+      new: "export"
+
+  become: yes
+  xml:
+    path: "{{ item[0].path }}/config.xml"
+    xpath: "{{ item[1].xpath }}/text()[normalize-space(.)='{{ item[1].old }}']/parent::*"
+    value: "{{ item[1].new }}"
+  register: jenkins_job_config
+  ignore_errors: yes
+
+- debug:
+    msg: "{{ jenkins_job_config.results | selectattr('changed','equalto', True) | list }}"
+
+- name: Restart Jenkins
+  become: yes
+  service:
+    name: jenkins
+    state: restarted

@@ -1,0 +1,8 @@
+# file: roles/jenkins_testing/handlers/main.yaml
+---
+
+- name: restart jenkins
+  become: yes
+  service:
+    name: jenkins
+    state: restarted
