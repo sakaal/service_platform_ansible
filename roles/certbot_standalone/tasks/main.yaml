@@ -12,18 +12,16 @@
 
 - name: Certbot Apache package (yum)
   when: ansible_pkg_mgr == "yum"
-  with_items: "{{ certbot_packages }}"
   become: yes
   yum:
-    name: "{{ item }}"
+    name: "{{ certbot_packages }}"
     state: present
 
 - name: Certbot Apache package (dnf)
   when: ansible_pkg_mgr == "dnf"
-  with_items: "{{ certbot_packages }}"
   become: yes
   dnf:
-    name: "{{ item }}"
+    name: "{{ certbot_packages }}"
     state: present
 
 - debug: var=certbot_domains
