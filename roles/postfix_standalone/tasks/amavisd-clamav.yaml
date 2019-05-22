@@ -64,6 +64,7 @@
 #
 
 - name: Amavisd concurrency, domain, and hostname
+  with_items: "{{ amavisd_conf }}"
   vars:
     amavisd_conf:
     - key: "max_servers"
