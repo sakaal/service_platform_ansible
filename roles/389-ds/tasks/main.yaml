@@ -13,19 +13,10 @@
     role_dependencies:
     - "python{{ ansible_python_version.split('.')[0] }}-dns"
 
-- name: Install role dependencies (yum)
-  when: ansible_pkg_mgr == "yum"
-  with_items: "{{ role_dependencies }}"
+- name: Install role dependencies
   become: yes
-  yum:
-    name: "{{ item }}"
-
-- name: Install role dependencies (dnf)
-  when: ansible_pkg_mgr == "dnf"
-  with_items: "{{ role_dependencies }}"
-  become: yes
-  dnf:
-    name: "{{ item }}"
+  package:
+    name: "{{ role_dependencies }}"
 
 - name: Public hostname
   debug:
@@ -64,19 +55,10 @@
     permanent: yes
     immediate: yes
 
-- name: Install the DS packages (yum)
-  when: ansible_pkg_mgr == "yum"
-  with_items: "{{ ds_packages }}"
+- name: Install the DS packages
   become: yes
-  yum:
-    name: "{{ item }}"
-
-- name: Install the DS packages (dnf)
-  when: ansible_pkg_mgr == "dnf"
-  with_items: "{{ ds_packages }}"
-  become: yes
-  dnf:
-    name: "{{ item }}"
+  package:
+    name: "{{ ds_packages }}"
 
 - name: Generate the setup.inf file
   become: yes

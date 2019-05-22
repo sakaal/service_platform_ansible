@@ -1,19 +1,10 @@
 # file: roles/389-ds/tasks/web_console.yaml
 ---
 
-- name: Install the DS web console packages (yum)
-  when: ansible_pkg_mgr == "yum"
-  with_items: "{{ ds_web_packages }}"
+- name: Install the DS web console packages
   become: yes
-  yum:
-    name: "{{ item }}"
-
-- name: Install the DS web console packages (dnf)
-  when: ansible_pkg_mgr == "dnf"
-  with_items: "{{ ds_web_packages }}"
-  become: yes
-  dnf:
-    name: "{{ item }}"
+  package:
+    name: "{{ ds_web_packages }}"
 
 - name: Disable mpm_prefork_module
   become: yes
