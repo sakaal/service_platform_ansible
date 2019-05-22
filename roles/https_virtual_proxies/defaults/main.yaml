@@ -1,0 +1,14 @@
+# file: roles/https_virtual_proxies/defaults/main.yaml
+---
+
+default_headers:
+# HSTS
+# https://www.owasp.org/index.php/HTTP_Strict_Transport_Security
+- always set Strict-Transport-Security "max-age={{ tls_hsts_max_age
+                                        }}; includeSubDomains; preload"
+# https://www.owasp.org/index.php/List_of_useful_HTTP_headers
+- always set X-Content-Type-Options nosniff
+- always set X-Frame-Options SAMEORIGIN
+- always set X-XSS-Protection "1; mode=block"
+#https://community.atlassian.com/t5/Confluence-questions/Setting-up-Content-Security-Policy-for-Atlassian-products/qaq-p/666158
+- 'set Content-Security-Policy "default-src https:; connect-src https:; font-src https: data:; frame-src https:; img-src https: data:; media-src https:; object-src https:; script-src \''unsafe-inline\'' \''unsafe-eval\'' about: https:; style-src \''unsafe-inline\'' https:;"'
