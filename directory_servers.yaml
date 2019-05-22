@@ -5,6 +5,19 @@
 ---
 
 - hosts: directory_servers
+
+  pre_tasks:
+
+  - assert:
+      that:
+      - public_hostname is defined
+      - public_dns_zone is defined
+      - ds_config_admin_password is defined
+      - ds_rootdn_password is defined
+      - ds_admin_password is defined
+      - firewall_zone is defined
+      - public_ipv4_address is defined
+
   roles:
     - role: guest_dmz
       tags: [ 'net' ]
