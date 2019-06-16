@@ -1,6 +1,9 @@
 # file: roles/postfix_standalone/defaults/main.yaml
 ---
 
+postfix_packages:
+- "postfix"
+
 mail_domain: "{{ public_dns_zone }}"
 
 default_ipv4_netmask: "{{ ansible_default_ipv4.network }}/{{ ansible_default_ipv4.netmask }}"
@@ -24,10 +27,20 @@ dns_mx_preference: 10
 
 dns_spf_data: "v=spf1 ip4:{{ default_ipv4_netmask | ipaddr('net') }} a mx ~all"
 
+amavisd_packages:
+- "amavisd-new"
+- "clamav"
+- "clamav-update"
+- "clamav-server"
+- "clamav-server-systemd"
+
 #
 # Amavis concurrency
 #
 amavis_max_servers: 12
+
+opendkim_packages:
+- "opendkim"
 
 #
 # DKIM selectors per mail domain
@@ -58,3 +71,22 @@ certbot_renew_post_hook: >
   systemctl start httpd;
   systemctl reload postfix;
   systemctl reload dovecot;
+
+dovecot_packages:
+- "dovecot"
+- "dovecot-pigeonhole" # TODO: Sieve mail filtering
+- "mailx"
+- "uw-imap-utils" # https://bugzilla.redhat.com/show_bug.cgi?id=427561
+
+#
+# If Dovecot LDAP authentication is configured
+#
+dovecot_ldap_packages:
+- 'openldap-clients'
+
+dovecot_auth_username_chars: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890.-_@'
+
+dovecot_ldap_user_attrs: 'homeDirectory=home,uidNumber=uid,gidNumber=gid'
+dovecot_ldap_user_filter: '(&(objectClass=posixAccount)(uid=%u))'
+dovecot_ldap_pass_attrs: 'uid=user,userPassword=password'
+dovecot_ldap_pass_filter: '(&(objectClass=posixAccount)(uid=%u))'

@@ -2,13 +2,8 @@
 ---
 
 - name: Dovecot packages
-  with_items:
-  - "dovecot"
-  - "dovecot-pigeonhole" # TODO: Sieve mail filtering
-  - "mailx"
-  - "uw-imap-utils" # https://bugzilla.redhat.com/show_bug.cgi?id=427561
   yum:
-    name: "{{ item }}"
+    name: "{{ dovecot_packages }}"
     state: present
 
 - name: Dovecot LDA
@@ -34,6 +29,11 @@
     val: "mbox:~/mail:INBOX=/var/mail/%u"
   - key: "mail_privileged_group"
     val: "mail"
+  - key: "first_valid_uid"
+    val: "{{ dovecot_first_valid_uid | default('') }}"
+  - key: "first_valid_gid"
+    val: "{{ dovecot_first_valid_gid | default('') }}"
+  when: item.val != ''
   lineinfile:
     dest: "/etc/dovecot/conf.d/10-mail.conf"
     regexp: '^{{ item.key }}\s'
@@ -70,6 +70,10 @@
   - Restart Dovecot
   tags:
   - tls
+
+- name: Check if Dovecot LDAP is configured
+  when: dovecot_ldap_uris | default("") != ""
+  include_tasks: dovecot_ldap.yaml
 
 #
 # http://wiki2.dovecot.org/MailLocation/mbox

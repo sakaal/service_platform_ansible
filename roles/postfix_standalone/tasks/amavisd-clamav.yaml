@@ -6,14 +6,8 @@
 # The clamav-update package provides freshclam antivirus database updates
 #
 - name: Amavisd-new and ClamAV packages
-  with_items:
-  - amavisd-new
-  - clamav
-  - clamav-update
-  - clamav-server
-  - clamav-server-systemd
   yum:
-    name: "{{ item }}"
+    name: "{{ amavisd_packages }}"
     state: present
 
 #

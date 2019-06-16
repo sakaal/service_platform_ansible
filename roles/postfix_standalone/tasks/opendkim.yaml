@@ -5,10 +5,8 @@
 ---
 
 - name: OpenDKIM packages
-  with_items:
-  - opendkim
   yum:
-    name: "{{ item }}"
+    name: "{{ opendkim_packages }}"
     state: present
 
 - name: OpenDKIM keys directory for the mail domains
@@ -89,7 +87,7 @@
 
 - name: Encrypt newly managed OpenDKIM keys
   with_items: "{{ opendkim_keys_fetch.results }}"
-  when: item is changed and item.dest | match('.*private')
+  when: item is changed and item.dest is match('.*private')
   become: no
   local_action: shell chdir="{{ item.dest | dirname }}"
                 ansible-vault encrypt --encrypt-vault-id "{{ inventory_vault_id }}" "{{ item.dest | basename }}"

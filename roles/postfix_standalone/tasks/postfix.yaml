@@ -5,10 +5,8 @@
 ---
 
 - name: Postfix packages
-  with_items:
-  - postfix
   yum:
-    name: "{{ item }}"
+    name: "postfix"
     state: present
 
 - name: Postfix disable soft_bounce

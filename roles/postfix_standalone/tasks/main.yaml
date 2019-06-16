@@ -25,10 +25,8 @@
     - dns_spf_data | length > 8
 
 - name: Postfix packages
-  with_items:
-  - postfix
   yum:
-    name: "{{ item }}"
+    name: "{{ postfix_packages }}"
     state: present
 
 - name: Amavisd-new and ClamAV

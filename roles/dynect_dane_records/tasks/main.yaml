@@ -223,15 +223,13 @@
 
 - name: JSON dependencies (yum)
   when: ansible_pkg_mgr == "yum"
-  with_items: "{{ json_dependencies }}"
   yum:
-    name: "{{ item }}"
+    name: "{{ json_dependencies }}"
 
 - name: JSON dependencies (dnf)
   when: ansible_pkg_mgr == "dnf"
-  with_items: "{{ json_dependencies }}"
   dnf:
-    name: "{{ item }}"
+    name: "{{ json_dependencies }}"
 
 - name: Manage DANE records with Certbot
   when: certbot_domains | default([]) | length > 0

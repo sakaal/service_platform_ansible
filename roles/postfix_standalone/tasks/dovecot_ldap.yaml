@@ -1,0 +1,78 @@
+# file: roles/postfix_standalone/tasks/dovecot_ldap.yaml
+---
+
+- assert:
+    that:
+    - dovecot_ldap_uris is defined
+
+- name: Dovecot LDAP packages
+  become: yes
+  yum:
+    name: "{{ dovecot_ldap_packages | default([]) }}"
+    state: present
+
+- name: Dovecot authentication
+  with_items:
+  - key: "auth_username_chars"
+    val: "{{ dovecot_auth_username_chars }}"
+  - key: "disable_plaintext_auth"
+    val: "yes"
+  - key: "auth_cache_size"
+    val: "{{ dovecot_auth_cache_size | default('') }}"
+  - key: "auth_cache_ttl"
+    val: "{{ dovecot_auth_cache_ttl | default('') }}"
+  - key: "auth_cache_negative_ttl"
+    val: "{{ dovecot_auth_cache_negative_ttl | default('') }}"
+  when: item.val != ""
+  lineinfile:
+    dest: "/etc/dovecot/conf.d/10-auth.conf"
+    regexp: '^{{ item.key }}\s'
+    line: '{{ item.key }} = {{ item.val }}'
+  notify:
+  - Restart Dovecot
+
+- name: Enable Dovecot LDAP authentication
+  with_items:
+  - "!include auth-ldap.conf.ext"
+  lineinfile:
+    dest: "/etc/dovecot/conf.d/10-auth.conf"
+    regexp: '^#?{{ item }}'
+    line: '{{ item }}'
+  notify:
+  - Restart Dovecot
+
+- name: Dovecot LDAP
+  with_items:
+  - key: "uris"
+    val: "{{ dovecot_ldap_uris }}"
+  - key: "auth_bind"
+    val: "yes"
+  - key: "auth_bind_userdn"
+    val: "{{ dovecot_ldap_auth_bind_userdn }}"
+  - key: "ldap_version"
+    val: "{{ dovecot_ldap_version }}"
+  - key: "base"
+    val: "{{ dovecot_ldap_base }}"
+  - key: "scope"
+    val: "{{ dovecot_ldap_scope }}"
+  - key: "user_attrs"
+    val: "{{ dovecot_ldap_user_attrs }}"
+  - key: "user_filter"
+    val: "{{ dovecot_ldap_user_filter }}"
+  - key: "pass_attrs"
+    val: "{{ dovecot_ldap_pass_attrs }}"
+  - key: "pass_filter"
+    val: "{{ dovecot_ldap_pass_filter }}"
+  - key: "default_pass_scheme"
+    val: "{{ dovecot_ldap_default_pass_scheme }}"
+  when: item.val != ""
+  lineinfile:
+    dest: "/etc/dovecot/dovecot-ldap.conf.ext"
+    regexp: '^{{ item.key }}\s'
+    line: '{{ item.key }} = {{ item.val }}'
+    create: yes
+    owner: root
+    group: root
+    mode: 0600
+  notify:
+  - Restart Dovecot
