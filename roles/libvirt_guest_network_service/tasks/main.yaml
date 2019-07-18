@@ -6,8 +6,8 @@
 
 - name: Remove NetworkManager
   become: yes
-  yum:
-    name: NetworkManager
+  package:
+    name: "NetworkManager"
     state: absent
   register: NetworkManager
 
